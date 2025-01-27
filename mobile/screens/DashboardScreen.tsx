@@ -6,9 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type Shift } from '../../db/schema';
+
+const API_BASE_URL = 'http://0.0.0.0:5000';
 
 type NavigationProps = {
   navigation: {
@@ -20,6 +23,7 @@ type NavigationProps = {
 export default function DashboardScreen({ navigation }: NavigationProps) {
   const [user, setUser] = useState<any>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadUser();
@@ -27,29 +31,38 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
   }, []);
 
   const loadUser = async () => {
-    const userData = await AsyncStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
     }
   };
 
   const fetchShifts = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/shifts', {
+      setIsLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/shifts`, {
         credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
         setShifts(data);
+      } else {
+        throw new Error('Failed to fetch shifts');
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch shifts');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:5000/api/logout', {
+      await fetch(`${API_BASE_URL}/api/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -59,6 +72,14 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
       Alert.alert('Error', 'Logout failed');
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#01843d" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -73,25 +94,29 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
         style={styles.shiftsButton}
         onPress={() => navigation.navigate('Shifts')}
       >
-        <Text style={styles.shiftsButtonText}>View Shifts</Text>
+        <Text style={styles.shiftsButtonText}>View All Shifts</Text>
       </TouchableOpacity>
 
       <ScrollView style={styles.shiftsContainer}>
         <Text style={styles.sectionTitle}>Recent Shifts</Text>
-        {shifts.map((shift) => (
-          <View key={shift.id} style={styles.shiftCard}>
-            <Text style={styles.shiftDate}>
-              {new Date(shift.startTime).toLocaleDateString()}
-            </Text>
-            <Text style={styles.shiftTime}>
-              {new Date(shift.startTime).toLocaleTimeString()} - 
-              {new Date(shift.endTime).toLocaleTimeString()}
-            </Text>
-            {shift.notes && (
-              <Text style={styles.shiftNotes}>{shift.notes}</Text>
-            )}
-          </View>
-        ))}
+        {shifts.length === 0 ? (
+          <Text style={styles.noShifts}>No shifts found</Text>
+        ) : (
+          shifts.map((shift) => (
+            <View key={shift.id} style={styles.shiftCard}>
+              <Text style={styles.shiftDate}>
+                {new Date(shift.startTime).toLocaleDateString()}
+              </Text>
+              <Text style={styles.shiftTime}>
+                {new Date(shift.startTime).toLocaleTimeString()} - 
+                {new Date(shift.endTime).toLocaleTimeString()}
+              </Text>
+              {shift.notes && (
+                <Text style={styles.shiftNotes}>{shift.notes}</Text>
+              )}
+            </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -101,6 +126,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -141,6 +171,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+  noShifts: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
   },
   shiftCard: {
     backgroundColor: 'white',
