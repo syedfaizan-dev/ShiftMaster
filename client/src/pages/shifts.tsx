@@ -1,9 +1,13 @@
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import ShiftForm from "@/components/shift-form";
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -57,29 +61,32 @@ export default function Shifts() {
         ) : shifts.length === 0 ? (
           <p className="text-center text-gray-500">No shifts found</p>
         ) : (
-          <div className="grid gap-4">
-            {shifts.map((shift) => (
-              <Card key={shift.id}>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <h3 className="font-semibold">Inspector: {getInspectorName(shift.inspectorId)}</h3>
-                      <span className="text-sm text-gray-500">Week: {shift.week}</span>
-                    </div>
-                    <p className="text-sm text-gray-600">Role: {getRoleName(shift.roleId)}</p>
-                    <p className="text-sm text-gray-600">
-                      Time: {format(new Date(shift.startTime), "h:mm a")} - {format(new Date(shift.endTime), "h:mm a")}
-                    </p>
-                    {shift.backupId && (
-                      <p className="text-sm text-gray-600">
-                        Backup Inspector: {getInspectorName(shift.backupId)}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Inspector Name</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Week</TableHead>
+                <TableHead>Backup Inspector</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {shifts.map((shift) => (
+                <TableRow key={shift.id}>
+                  <TableCell>{getInspectorName(shift.inspectorId)}</TableCell>
+                  <TableCell>{getRoleName(shift.roleId)}</TableCell>
+                  <TableCell>
+                    {format(new Date(shift.startTime), "h:mm a")} - {format(new Date(shift.endTime), "h:mm a")}
+                  </TableCell>
+                  <TableCell>{shift.week}</TableCell>
+                  <TableCell>
+                    {shift.backupId ? getInspectorName(shift.backupId) : "-"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
