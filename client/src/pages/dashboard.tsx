@@ -4,25 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import UserTable from "@/components/user-table";
 import ShiftCalendar from "@/components/shift-calendar";
+import Navbar from "@/components/navbar";
 
 export default function Dashboard() {
-  const { user, logout } = useUser();
+  const { user } = useUser();
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navbar />
       <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Welcome, {user?.fullName}</h1>
-          <div className="space-x-4">
-            <Link href="/shifts">
-              <Button variant="outline">View Shifts</Button>
-            </Link>
-            <Button variant="destructive" onClick={() => logout()}>
-              Logout
-            </Button>
-          </div>
-        </div>
-
         <div className="grid gap-6">
           {user?.isAdmin ? (
             <>
