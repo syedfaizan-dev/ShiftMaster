@@ -14,17 +14,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-import type { User } from "@db/schema";
+import type { User, Role } from "@db/schema";
 
 const employeeSchema = z.object({
   username: z.string().email("Invalid email format"),
   fullName: z.string().min(1, "Full name is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  roleId: z.string().min(1, "Role is required"),
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -34,7 +36,6 @@ function EmployeesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -42,11 +43,17 @@ function EmployeesPage() {
       username: "",
       fullName: "",
       password: "",
+      roleId: "",
     },
   });
 
-  const { data: employees = [], isLoading } = useQuery<User[]>({
+  const { data: employees = [], isLoading: isLoadingEmployees } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
+    enabled: user?.isAdmin,
+  });
+
+  const { data: roles = [], isLoading: isLoadingRoles } = useQuery<Role[]>({
+    queryKey: ["/api/admin/roles"],
     enabled: user?.isAdmin,
   });
 
@@ -55,7 +62,11 @@ function EmployeesPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, isAdmin: false }),
+        body: JSON.stringify({
+          ...data,
+          isAdmin: false,
+          roleId: parseInt(data.roleId),
+        }),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -87,13 +98,14 @@ function EmployeesPage() {
     );
   }
 
+  const isLoading = isLoadingEmployees || isLoadingRoles;
+
   return (
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Employees</h1>
           <Button onClick={() => {
-            setEditingEmployee(null);
             form.reset();
             setIsDialogOpen(true);
           }}>
@@ -120,7 +132,7 @@ function EmployeesPage() {
                   <TableCell>{employee.fullName}</TableCell>
                   <TableCell>{employee.username}</TableCell>
                   <TableCell>
-                    {employee.isAdmin ? "Admin" : "Employee"}
+                    {roles.find(r => r.id === employee.roleId)?.name || 'No Role'}
                   </TableCell>
                 </TableRow>
               ))}
@@ -131,23 +143,10 @@ function EmployeesPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogTitle>
-              {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
+              Add New Employee
             </DialogTitle>
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => createEmployee.mutate(data))} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -156,6 +155,19 @@ function EmployeesPage() {
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
                         <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -174,8 +186,32 @@ function EmployeesPage() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="roleId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roles.map((role) => (
+                            <SelectItem key={role.id} value={role.id.toString()}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button type="submit" disabled={createEmployee.isPending}>
-                  {editingEmployee ? 'Update Employee' : 'Add Employee'}
+                  Add Employee
                 </Button>
               </form>
             </Form>
