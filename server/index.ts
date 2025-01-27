@@ -6,8 +6,13 @@ const app = express();
 
 // Enable CORS for mobile app
 app.use((req, res, next) => {
-  // Allow specific origins instead of '*' since we're using credentials
-  res.header('Access-Control-Allow-Origin', 'http://0.0.0.0:5000');
+  const allowedOrigins = ['http://localhost:5000', 'http://0.0.0.0:5000', 'exp://'];
+  const origin = req.headers.origin;
+
+  if (origin && allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -59,8 +64,8 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    console.error('Server Error:', err);
     res.status(status).json({ message });
-    throw err;
   });
 
   if (app.get("env") === "development") {
