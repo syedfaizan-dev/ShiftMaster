@@ -1,22 +1,37 @@
 import { QueryClient } from "@tanstack/react-query";
 
+const API_BASE_URL = window.location.origin;
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: async ({ queryKey }) => {
-        const res = await fetch(queryKey[0] as string, {
-          credentials: "include",
-        });
+        const url = queryKey[0].startsWith('http') 
+          ? queryKey[0] 
+          : `${API_BASE_URL}${queryKey[0]}`;
 
-        if (!res.ok) {
-          if (res.status >= 500) {
-            throw new Error(`${res.status}: ${res.statusText}`);
+        try {
+          const res = await fetch(url, {
+            credentials: "include",
+            headers: {
+              "Accept": "application/json",
+            },
+          });
+
+          if (!res.ok) {
+            if (res.status >= 500) {
+              throw new Error(`${res.status}: ${res.statusText}`);
+            }
+
+            const errorText = await res.text();
+            throw new Error(`${res.status}: ${errorText}`);
           }
 
-          throw new Error(`${res.status}: ${await res.text()}`);
+          return res.json();
+        } catch (error) {
+          console.error('Query error:', error);
+          throw error;
         }
-
-        return res.json();
       },
       refetchInterval: false,
       refetchOnWindowFocus: false,
