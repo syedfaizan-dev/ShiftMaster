@@ -13,13 +13,13 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
         {/* Primary color (30%) */}
         <div className="absolute inset-0 w-64 bg-primary" />
         {/* Secondary color (70%) */}
-        <div className="absolute inset-0 left-64 right-0 bg-secondary" />
+        <div className="absolute inset-0 left-64 right-0" style={{ backgroundColor: '#04a3e0' }} />
         {/* Content */}
         <div className="relative flex items-center justify-between px-6 w-full">
           <h2 className="text-xl font-bold text-primary-foreground">
             Shift Management
           </h2>
-          <span className="text-secondary-foreground font-medium">
+          <span className="text-white font-medium">
             Welcome, {user?.fullName}
           </span>
         </div>

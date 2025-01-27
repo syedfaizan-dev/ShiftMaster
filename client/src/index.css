@@ -7,6 +7,13 @@
     @apply border-border;
   }
 
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+    --secondary: 197 100% 44%;
+    --secondary-foreground: 0 0% 98%;
+  }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
