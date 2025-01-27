@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type ShiftFormProps = {
   onSuccess: () => void;
@@ -13,6 +13,8 @@ type ShiftFormProps = {
 
 export default function ShiftForm({ onSuccess }: ShiftFormProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const form = useForm({
     defaultValues: {
       inspectorId: "",
@@ -50,6 +52,10 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Shift created successfully" });
+      // Invalidate both admin and user shift queries
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      form.reset();
       onSuccess();
     },
     onError: (error: Error) => {
