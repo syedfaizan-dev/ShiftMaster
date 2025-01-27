@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Shifts from "@/pages/shifts";
+import Roles from "@/pages/roles";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -28,6 +29,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/shifts" component={Shifts} />
+      <Route path="/roles" component={Roles} />
       <Route component={NotFound} />
     </Switch>
   );
