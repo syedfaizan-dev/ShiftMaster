@@ -30,7 +30,7 @@ const crypto = {
 
 declare global {
   namespace Express {
-    interface User extends SelectUser { }
+    interface User extends SelectUser {}
   }
 }
 
@@ -106,7 +106,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password } = result.data;
+      const { username, password, isAdmin } = result.data;
 
       const [existingUser] = await db
         .select()
@@ -120,23 +120,34 @@ export function setupAuth(app: Express) {
 
       const hashedPassword = await crypto.hash(password);
 
+      // Create the new user with isAdmin if provided
       const [newUser] = await db
         .insert(users)
         .values({
           ...result.data,
           password: hashedPassword,
+          isAdmin: isAdmin || false,
         })
         .returning();
 
-      req.login(newUser, (err) => {
-        if (err) {
-          return next(err);
-        }
+      // Only log in if not being created by an admin
+      if (!req.user?.isAdmin) {
+        req.login(newUser, (err) => {
+          if (err) {
+            return next(err);
+          }
+          return res.json({
+            message: "Registration successful",
+            user: { id: newUser.id, username: newUser.username },
+          });
+        });
+      } else {
+        // If created by admin, just return success
         return res.json({
-          message: "Registration successful",
+          message: "Employee created successfully",
           user: { id: newUser.id, username: newUser.username },
         });
-      });
+      }
     } catch (error) {
       next(error);
     }

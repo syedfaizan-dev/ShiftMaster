@@ -55,7 +55,7 @@ function EmployeesPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, isAdmin: false }),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
