@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
 
 type ShiftFormProps = {
   onSuccess: () => void;
@@ -15,10 +15,12 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
   const { toast } = useToast();
   const form = useForm({
     defaultValues: {
-      userId: "",
+      inspectorId: "",
+      roleId: "",
       startTime: "",
       endTime: "",
-      notes: "",
+      week: "",
+      backupId: "",
     },
   });
 
@@ -26,12 +28,21 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
     queryKey: ["/api/admin/users"],
   });
 
+  const { data: roles } = useQuery<any[]>({
+    queryKey: ["/api/admin/roles"],
+  });
+
   const createShift = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch("/api/admin/shifts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          inspectorId: parseInt(data.inspectorId),
+          roleId: parseInt(data.roleId),
+          backupId: data.backupId ? parseInt(data.backupId) : null,
+        }),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -55,14 +66,14 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
       <form onSubmit={form.handleSubmit((data) => createShift.mutate(data))} className="space-y-4">
         <FormField
           control={form.control}
-          name="userId"
+          name="inspectorId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>User</FormLabel>
+              <FormLabel>Inspector</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
+                    <SelectValue placeholder="Select an inspector" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -73,6 +84,32 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="roleId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Role</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {roles?.map((role) => (
+                    <SelectItem key={role.id} value={role.id.toString()}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -84,8 +121,16 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
             <FormItem>
               <FormLabel>Start Time</FormLabel>
               <FormControl>
-                <Input type="datetime-local" {...field} />
+                <Input 
+                  type="datetime-local" 
+                  {...field} 
+                  onChange={(e) => {
+                    const date = new Date(e.target.value);
+                    field.onChange(format(date, "yyyy-MM-dd'T'HH:mm"));
+                  }}
+                />
               </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -97,21 +142,55 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
             <FormItem>
               <FormLabel>End Time</FormLabel>
               <FormControl>
-                <Input type="datetime-local" {...field} />
+                <Input 
+                  type="datetime-local" 
+                  {...field}
+                  onChange={(e) => {
+                    const date = new Date(e.target.value);
+                    field.onChange(format(date, "yyyy-MM-dd'T'HH:mm"));
+                  }}
+                />
               </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
 
         <FormField
           control={form.control}
-          name="notes"
+          name="week"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes</FormLabel>
+              <FormLabel>Week</FormLabel>
               <FormControl>
-                <Textarea {...field} />
+                <Input {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="backupId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Backup Inspector</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a backup inspector" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {users?.map((user) => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
             </FormItem>
           )}
         />

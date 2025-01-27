@@ -12,6 +12,14 @@ export default function ShiftCalendar({ userId }: ShiftCalendarProps) {
     queryKey: [userId ? "/api/shifts" : "/api/admin/shifts"],
   });
 
+  const { data: users } = useQuery<any[]>({
+    queryKey: ["/api/admin/users"],
+  });
+
+  const { data: roles } = useQuery<any[]>({
+    queryKey: ["/api/admin/roles"],
+  });
+
   if (isLoading) {
     return (
       <div className="flex justify-center p-4">
@@ -19,6 +27,16 @@ export default function ShiftCalendar({ userId }: ShiftCalendarProps) {
       </div>
     );
   }
+
+  const getInspectorName = (id: number) => {
+    const user = users?.find(u => u.id === id);
+    return user?.fullName || 'Unknown';
+  };
+
+  const getRoleName = (id: number) => {
+    const role = roles?.find(r => r.id === id);
+    return role?.name || 'Unknown';
+  };
 
   return (
     <div className="grid gap-4">
@@ -28,16 +46,24 @@ export default function ShiftCalendar({ userId }: ShiftCalendarProps) {
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-medium">
-                  {format(new Date(shift.startTime), "PPP")}
+                  Inspector: {getInspectorName(shift.inspectorId)}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {format(new Date(shift.startTime), "p")} -{" "}
-                  {format(new Date(shift.endTime), "p")}
+                  Role: {getRoleName(shift.roleId)}
                 </p>
+                <p className="text-sm text-gray-500">
+                  {format(new Date(shift.startTime), "h:mm a")} -{" "}
+                  {format(new Date(shift.endTime), "h:mm a")}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Week: {shift.week}
+                </p>
+                {shift.backupId && (
+                  <p className="text-sm text-gray-500">
+                    Backup: {getInspectorName(shift.backupId)}
+                  </p>
+                )}
               </div>
-              {shift.notes && (
-                <p className="text-sm text-gray-600">{shift.notes}</p>
-              )}
             </div>
           </CardContent>
         </Card>

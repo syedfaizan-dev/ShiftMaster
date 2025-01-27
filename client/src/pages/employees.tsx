@@ -14,19 +14,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-import type { User, Role } from "@db/schema";
+import type { User } from "@db/schema";
 
 const employeeSchema = z.object({
   username: z.string().email("Invalid email format"),
   fullName: z.string().min(1, "Full name is required"),
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
-  roleId: z.string().min(1, "Role is required"),
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -44,19 +42,14 @@ function EmployeesPage() {
       username: "",
       fullName: "",
       password: "",
-      roleId: "",
     },
   });
 
-  const { data: employees = [], isLoading: isLoadingEmployees } = useQuery<User[]>({
+  const { data: employees = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
     enabled: user?.isAdmin,
   });
 
-  const { data: roles = [], isLoading: isLoadingRoles } = useQuery<Role[]>({
-    queryKey: ["/api/admin/roles"],
-    enabled: user?.isAdmin,
-  });
 
   const createEmployee = useMutation({
     mutationFn: async (data: EmployeeFormData) => {
@@ -66,7 +59,6 @@ function EmployeesPage() {
         body: JSON.stringify({
           ...data,
           isAdmin: false,
-          roleId: parseInt(data.roleId),
         }),
         credentials: "include",
       });
@@ -94,10 +86,7 @@ function EmployeesPage() {
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...updateData,
-          roleId: parseInt(updateData.roleId),
-        }),
+        body: JSON.stringify(updateData),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -130,7 +119,6 @@ function EmployeesPage() {
     );
   }
 
-  const isLoading = isLoadingEmployees || isLoadingRoles;
 
   const handleSubmit = (data: EmployeeFormData) => {
     if (editingEmployee) {
@@ -164,7 +152,6 @@ function EmployeesPage() {
               <TableRow>
                 <TableHead>Full Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -174,9 +161,6 @@ function EmployeesPage() {
                   <TableCell>{employee.fullName}</TableCell>
                   <TableCell>{employee.username}</TableCell>
                   <TableCell>
-                    {roles.find(r => r.id === employee.roleId)?.name || 'No Role'}
-                  </TableCell>
-                  <TableCell>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -185,7 +169,6 @@ function EmployeesPage() {
                         form.reset({
                           username: employee.username,
                           fullName: employee.fullName,
-                          roleId: employee.roleId?.toString() || "",
                         });
                         setIsDialogOpen(true);
                       }}
@@ -247,30 +230,6 @@ function EmployeesPage() {
                     )}
                   />
                 )}
-                <FormField
-                  control={form.control}
-                  name="roleId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {roles.map((role) => (
-                            <SelectItem key={role.id} value={role.id.toString()}>
-                              {role.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <Button type="submit" disabled={createEmployee.isPending || updateEmployee.isPending}>
                   {editingEmployee ? 'Update Employee' : 'Add Employee'}
                 </Button>

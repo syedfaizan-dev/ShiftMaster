@@ -8,7 +8,6 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   fullName: text("full_name").notNull(),
-  roleId: integer("role_id").references(() => roles.id),
 });
 
 export const roles = pgTable("roles", {
@@ -21,24 +20,30 @@ export const roles = pgTable("roles", {
 
 export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
+  inspectorId: integer("inspector_id").references(() => users.id).notNull(),
+  roleId: integer("role_id").references(() => roles.id).notNull(),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time").notNull(),
-  notes: text("notes"),
+  week: text("week").notNull(),
+  backupId: integer("backup_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
 });
 
 // Define relationships
-export const usersRelations = relations(users, ({ one }) => ({
+export const shiftsRelations = relations(shifts, ({ one }) => ({
+  inspector: one(users, {
+    fields: [shifts.inspectorId],
+    references: [users.id],
+  }),
+  backup: one(users, {
+    fields: [shifts.backupId],
+    references: [users.id],
+  }),
   role: one(roles, {
-    fields: [users.roleId],
+    fields: [shifts.roleId],
     references: [roles.id],
   }),
-}));
-
-export const rolesRelations = relations(roles, ({ many }) => ({
-  users: many(users),
 }));
 
 export const insertUserSchema = createInsertSchema(users);

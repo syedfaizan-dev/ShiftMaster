@@ -27,7 +27,7 @@ export function registerRoutes(app: Express): Server {
 
     const userShifts = await db.select()
       .from(shifts)
-      .where(eq(shifts.userId, req.user.id));
+      .where(eq(shifts.inspectorId, req.user.id));
 
     res.json(userShifts);
   });
@@ -40,14 +40,16 @@ export function registerRoutes(app: Express): Server {
 
   // Admin: Create shift
   app.post("/api/admin/shifts", requireAdmin, async (req, res) => {
-    const { userId, startTime, endTime, notes } = req.body;
+    const { inspectorId, roleId, startTime, endTime, week, backupId } = req.body;
 
     const [newShift] = await db.insert(shifts)
       .values({
-        userId,
+        inspectorId,
+        roleId,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
-        notes,
+        week,
+        backupId,
         createdBy: req.user.id,
       })
       .returning();
@@ -64,7 +66,7 @@ export function registerRoutes(app: Express): Server {
   // Admin: Update user
   app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const { username, fullName, password, roleId } = req.body;
+    const { username, fullName } = req.body;
 
     // Check if email already exists
     const [existingUser] = await db
@@ -78,15 +80,12 @@ export function registerRoutes(app: Express): Server {
     }
 
     // Update user
-    const updateData: any = {
-      username,
-      fullName,
-      roleId,
-    };
-
     const [updatedUser] = await db
       .update(users)
-      .set(updateData)
+      .set({
+        username,
+        fullName,
+      })
       .where(eq(users.id, parseInt(id)))
       .returning();
 
