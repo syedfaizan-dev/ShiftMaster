@@ -11,9 +11,9 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
       {/* Top Navbar with dual colors - Full Width */}
       <div className="h-16 flex relative">
         {/* Primary color (30%) */}
-        <div className="absolute inset-0 w-[30%] bg-primary" />
+        <div className="absolute inset-0 w-64 bg-primary" />
         {/* Secondary color (70%) */}
-        <div className="absolute inset-0 left-[30%] right-0 bg-secondary" />
+        <div className="absolute inset-0 left-64 right-0 bg-secondary" />
         {/* Content */}
         <div className="relative flex items-center justify-between px-6 w-full">
           <h2 className="text-xl font-bold text-primary-foreground">
