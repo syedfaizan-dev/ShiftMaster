@@ -29,7 +29,7 @@ const roleSchema = z.object({
 
 type RoleFormData = z.infer<typeof roleSchema>;
 
-export default function Roles() {
+function RolesPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -181,3 +181,5 @@ export default function Roles() {
     </Navbar>
   );
 }
+
+export default RolesPage;
