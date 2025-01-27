@@ -109,16 +109,16 @@ function EmployeesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
                 <TableHead>Full Name</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {employees.map((employee) => (
                 <TableRow key={employee.id}>
-                  <TableCell>{employee.username}</TableCell>
                   <TableCell>{employee.fullName}</TableCell>
+                  <TableCell>{employee.username}</TableCell>
                   <TableCell>
                     {employee.isAdmin ? "Admin" : "Employee"}
                   </TableCell>

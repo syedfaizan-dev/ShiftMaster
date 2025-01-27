@@ -27,16 +27,16 @@ export default function UserTable() {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Username</TableHead>
           <TableHead>Full Name</TableHead>
+          <TableHead>Username</TableHead>
           <TableHead>Role</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {users?.map((user) => (
           <TableRow key={user.id}>
-            <TableCell>{user.username}</TableCell>
             <TableCell>{user.fullName}</TableCell>
+            <TableCell>{user.username}</TableCell>
             <TableCell>
               <Badge variant={user.isAdmin ? "default" : "secondary"}>
                 {user.isAdmin ? "Admin" : "Worker"}
