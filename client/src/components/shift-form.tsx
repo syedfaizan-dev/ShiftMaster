@@ -44,6 +44,8 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
           inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           backupId: data.backupId ? parseInt(data.backupId) : null,
+          startTime: new Date(data.startTime).toISOString(),
+          endTime: new Date(data.endTime).toISOString(),
         }),
         credentials: "include",
       });
@@ -125,12 +127,14 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
           <FormField
             control={form.control}
             name="startTime"
-            render={({ field }) => (
+            render={({ field: { value, onChange, ...field } }) => (
               <FormItem>
                 <FormLabel>Start Time</FormLabel>
                 <FormControl>
                   <Input 
-                    type="datetime-local" 
+                    type="datetime-local"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
                     {...field}
                   />
                 </FormControl>
@@ -142,12 +146,14 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
           <FormField
             control={form.control}
             name="endTime"
-            render={({ field }) => (
+            render={({ field: { value, onChange, ...field } }) => (
               <FormItem>
                 <FormLabel>End Time</FormLabel>
                 <FormControl>
                   <Input 
-                    type="datetime-local" 
+                    type="datetime-local"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
                     {...field}
                   />
                 </FormControl>

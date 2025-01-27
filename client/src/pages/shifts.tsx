@@ -66,6 +66,7 @@ export default function Shifts() {
               <TableRow>
                 <TableHead>Inspector Name</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Week</TableHead>
                 <TableHead>Backup Inspector</TableHead>
@@ -76,6 +77,7 @@ export default function Shifts() {
                 <TableRow key={shift.id}>
                   <TableCell>{getInspectorName(shift.inspectorId)}</TableCell>
                   <TableCell>{getRoleName(shift.roleId)}</TableCell>
+                  <TableCell>{format(new Date(shift.startTime), "MMM d, yyyy")}</TableCell>
                   <TableCell>
                     {format(new Date(shift.startTime), "h:mm a")} - {format(new Date(shift.endTime), "h:mm a")}
                   </TableCell>
