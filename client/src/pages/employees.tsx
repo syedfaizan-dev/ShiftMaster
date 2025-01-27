@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { User, Role } from "@db/schema";
@@ -25,7 +25,7 @@ import type { User, Role } from "@db/schema";
 const employeeSchema = z.object({
   username: z.string().email("Invalid email format"),
   fullName: z.string().min(1, "Full name is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").optional(),
   roleId: z.string().min(1, "Role is required"),
 });
 
@@ -36,6 +36,7 @@ function EmployeesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -87,6 +88,37 @@ function EmployeesPage() {
     },
   });
 
+  const updateEmployee = useMutation({
+    mutationFn: async (data: EmployeeFormData & { id: number }) => {
+      const { id, ...updateData } = data;
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...updateData,
+          roleId: parseInt(updateData.roleId),
+        }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Employee updated successfully" });
+      setIsDialogOpen(false);
+      setEditingEmployee(null);
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -100,12 +132,21 @@ function EmployeesPage() {
 
   const isLoading = isLoadingEmployees || isLoadingRoles;
 
+  const handleSubmit = (data: EmployeeFormData) => {
+    if (editingEmployee) {
+      updateEmployee.mutate({ ...data, id: editingEmployee.id });
+    } else {
+      createEmployee.mutate(data);
+    }
+  };
+
   return (
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Employees</h1>
           <Button onClick={() => {
+            setEditingEmployee(null);
             form.reset();
             setIsDialogOpen(true);
           }}>
@@ -124,6 +165,7 @@ function EmployeesPage() {
                 <TableHead>Full Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -134,6 +176,23 @@ function EmployeesPage() {
                   <TableCell>
                     {roles.find(r => r.id === employee.roleId)?.name || 'No Role'}
                   </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setEditingEmployee(employee);
+                        form.reset({
+                          username: employee.username,
+                          fullName: employee.fullName,
+                          roleId: employee.roleId?.toString() || "",
+                        });
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -143,10 +202,10 @@ function EmployeesPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogTitle>
-              Add New Employee
+              {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
             </DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createEmployee.mutate(data))} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -173,19 +232,21 @@ function EmployeesPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {!editingEmployee && (
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="roleId"
@@ -210,8 +271,8 @@ function EmployeesPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={createEmployee.isPending}>
-                  Add Employee
+                <Button type="submit" disabled={createEmployee.isPending || updateEmployee.isPending}>
+                  {editingEmployee ? 'Update Employee' : 'Add Employee'}
                 </Button>
               </form>
             </Form>

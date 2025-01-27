@@ -61,6 +61,38 @@ export function registerRoutes(app: Express): Server {
     res.json(allUsers);
   });
 
+  // Admin: Update user
+  app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { username, fullName, password, roleId } = req.body;
+
+    // Check if email already exists
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+
+    if (existingUser && existingUser.id !== parseInt(id)) {
+      return res.status(400).send("Email already exists");
+    }
+
+    // Update user
+    const updateData: any = {
+      username,
+      fullName,
+      roleId,
+    };
+
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, parseInt(id)))
+      .returning();
+
+    res.json(updatedUser);
+  });
+
   // Admin: Get all roles
   app.get("/api/admin/roles", requireAdmin, async (req, res) => {
     const allRoles = await db.select().from(roles);
