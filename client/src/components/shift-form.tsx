@@ -6,7 +6,6 @@ import { DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 
 type ShiftFormProps = {
   onSuccess: () => void;
@@ -126,11 +125,7 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
                 <FormControl>
                   <Input 
                     type="datetime-local" 
-                    {...field} 
-                    onChange={(e) => {
-                      const date = new Date(e.target.value);
-                      field.onChange(format(date, "yyyy-MM-dd'T'HH:mm"));
-                    }}
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -148,10 +143,6 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
                   <Input 
                     type="datetime-local" 
                     {...field}
-                    onChange={(e) => {
-                      const date = new Date(e.target.value);
-                      field.onChange(format(date, "yyyy-MM-dd'T'HH:mm"));
-                    }}
                   />
                 </FormControl>
                 <FormMessage />
