@@ -2,7 +2,7 @@ import { type Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { shifts, users } from "@db/schema";
+import { shifts, users, roles } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
@@ -59,6 +59,44 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
     const allUsers = await db.select().from(users);
     res.json(allUsers);
+  });
+
+  // Admin: Get all roles
+  app.get("/api/admin/roles", requireAdmin, async (req, res) => {
+    const allRoles = await db.select().from(roles);
+    res.json(allRoles);
+  });
+
+  // Admin: Create role
+  app.post("/api/admin/roles", requireAdmin, async (req, res) => {
+    const { name, description } = req.body;
+
+    const [newRole] = await db.insert(roles)
+      .values({
+        name,
+        description,
+        createdBy: req.user.id,
+      })
+      .returning();
+
+    res.json(newRole);
+  });
+
+  // Admin: Update role
+  app.put("/api/admin/roles/:id", requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    const [updatedRole] = await db
+      .update(roles)
+      .set({
+        name,
+        description,
+      })
+      .where(eq(roles.id, parseInt(id)))
+      .returning();
+
+    res.json(updatedRole);
   });
 
   const httpServer = createServer(app);
