@@ -10,35 +10,47 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil } from "lucide-react";
 import Navbar from "@/components/navbar";
+import * as z from "zod";
+import type { Role } from "@db/schema";
+
+const roleSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+});
+
+type RoleFormData = z.infer<typeof roleSchema>;
 
 export default function Roles() {
   const { user } = useUser();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<any>(null);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
 
-  const form = useForm({
+  const form = useForm<RoleFormData>({
+    resolver: zodResolver(roleSchema),
     defaultValues: {
       name: "",
       description: "",
     },
   });
 
-  const { data: roles, isLoading } = useQuery({
+  const { data: roles = [], isLoading } = useQuery<Role[]>({
     queryKey: ["/api/admin/roles"],
     enabled: user?.isAdmin,
   });
 
   const createRole = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: RoleFormData) => {
       const res = await fetch("/api/admin/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,6 +64,7 @@ export default function Roles() {
       toast({ title: "Success", description: "Role created successfully" });
       setIsDialogOpen(false);
       form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
     },
     onError: (error: Error) => {
       toast({
@@ -101,7 +114,7 @@ export default function Roles() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roles?.map((role: any) => (
+              {roles.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell>{role.name}</TableCell>
                   <TableCell>{role.description}</TableCell>
@@ -113,7 +126,7 @@ export default function Roles() {
                         setEditingRole(role);
                         form.reset({
                           name: role.name,
-                          description: role.description,
+                          description: role.description || "",
                         });
                         setIsDialogOpen(true);
                       }}
@@ -140,6 +153,7 @@ export default function Roles() {
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -152,6 +166,7 @@ export default function Roles() {
                       <FormControl>
                         <Textarea {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
