@@ -97,9 +97,8 @@ export default function RequestsPage() {
             <TableHead>Reason</TableHead>
             <TableHead>Dates</TableHead>
             <TableHead>Created At</TableHead>
-            {showActions && (
-              <TableHead>Actions</TableHead>
-            )}
+            {!showActions && <TableHead>Reviewed By</TableHead>}
+            {showActions && <TableHead>Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -128,6 +127,15 @@ export default function RequestsPage() {
               <TableCell>
                 {format(new Date(request.createdAt), "MMM d, yyyy h:mm a")}
               </TableCell>
+              {!showActions && (
+                <TableCell>
+                  {request.reviewer?.fullName && request.reviewedAt ? (
+                    <>{request.reviewer.fullName} ({format(new Date(request.reviewedAt), "MMM d, yyyy")})</>
+                  ) : (
+                    "-"
+                  )}
+                </TableCell>
+              )}
               {showActions && request.status === 'pending' && (
                 <TableCell>
                   <div className="flex gap-2">

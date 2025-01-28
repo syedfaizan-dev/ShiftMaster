@@ -199,8 +199,15 @@ export function registerRoutes(app: Express): Server {
       startDate: requests.startDate,
       endDate: requests.endDate,
       createdAt: requests.createdAt,
+      reviewedBy: requests.reviewedBy,
+      reviewedAt: requests.reviewedAt,
+      reviewer: {
+        id: users.id,
+        fullName: users.fullName,
+      },
     })
       .from(requests)
+      .leftJoin(users, eq(requests.reviewedBy, users.id))
       .where(eq(requests.requesterId, req.user!.id));
 
     res.json(userRequests);
