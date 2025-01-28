@@ -68,7 +68,7 @@ export function registerRoutes(app: Express): Server {
         ])
         .returning();
 
-      res.json({ 
+      res.json({
         message: "Roles setup completed successfully",
         credentials: {
           supervisor: {
@@ -321,7 +321,7 @@ export function registerRoutes(app: Express): Server {
       status: requests.status,
       reason: requests.reason,
       startDate: requests.startDate,
-      endTime: requests.endTime,
+      endDate: requests.endDate,
       createdAt: requests.createdAt,
       escalatedTo: requests.escalatedTo,
       requester: {
@@ -337,17 +337,11 @@ export function registerRoutes(app: Express): Server {
           eq(requests.status, 'pending'),
           or(
             // For supervisors: show non-escalated requests
-            and(
-              isNull(requests.escalatedTo),
-              Boolean(req.user?.isSupervisor)
-            ),
+            req.user?.isSupervisor ? isNull(requests.escalatedTo) : undefined,
             // For managers: show requests escalated to them
-            and(
-              eq(requests.escalatedTo, req.user?.id ?? 0),
-              Boolean(req.user?.isManager)
-            ),
+            req.user?.isManager ? eq(requests.escalatedTo, req.user.id) : undefined,
             // For admins: show all
-            Boolean(req.user?.isAdmin)
+            req.user?.isAdmin
           )
         )
       );
