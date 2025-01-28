@@ -176,7 +176,22 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    let requestsQuery = db
+    let whereClause;
+
+    // Determine the where clause based on user role
+    if (req.user.isAdmin) {
+      // Admin sees all requests
+      whereClause = undefined;
+    } else if (req.user.isManager) {
+      // Managers only see requests assigned to them
+      whereClause = eq(requests.managerId, req.user.id);
+    } else {
+      // Regular users only see their own requests
+      whereClause = eq(requests.requesterId, req.user.id);
+    }
+
+    // Build the base query
+    const requestsQuery = db
       .select({
         request: requests,
         requester: {
@@ -188,24 +203,12 @@ export function registerRoutes(app: Express): Server {
       .from(requests)
       .leftJoin(users, eq(requests.requesterId, users.id));
 
-    // Filter requests based on user role and ownership
-    if (!req.user.isAdmin) {
-      if (req.user.isManager) {
-        // Managers only see requests assigned to them
-        requestsQuery = requestsQuery.where(and(
-          eq(requests.managerId, req.user.id),
-          isNull(requests.managerId).not()
-        ));
-      } else {
-        // Regular users only see their own requests
-        requestsQuery = requestsQuery.where(eq(requests.requesterId, req.user.id));
-      }
-    }
-    // Admin sees all requests - no filter needed
+    // Apply the where clause if it exists
+    const userRequests = whereClause 
+      ? await requestsQuery.where(whereClause)
+      : await requestsQuery;
 
-    const userRequests = await requestsQuery;
-
-    // Separate query for reviewer and manager information
+    // Get additional details (reviewer and manager information)
     const requestsWithDetails = await Promise.all(
       userRequests.map(async ({ request }) => {
         let reviewer = null;
