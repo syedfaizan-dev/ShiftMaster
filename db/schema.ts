@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
+import { type InferSelectModel } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -30,7 +31,6 @@ export const shifts = pgTable("shifts", {
   createdBy: integer("created_by").references(() => users.id),
 });
 
-// New tables for request management
 export const requests = pgTable("requests", {
   id: serial("id").primaryKey(),
   requesterId: integer("requester_id").references(() => users.id).notNull(),
@@ -48,21 +48,6 @@ export const requests = pgTable("requests", {
 });
 
 // Define relationships
-export const shiftsRelations = relations(shifts, ({ one }) => ({
-  inspector: one(users, {
-    fields: [shifts.inspectorId],
-    references: [users.id],
-  }),
-  backup: one(users, {
-    fields: [shifts.backupId],
-    references: [users.id],
-  }),
-  role: one(roles, {
-    fields: [shifts.roleId],
-    references: [roles.id],
-  }),
-}));
-
 export const requestsRelations = relations(requests, ({ one }) => ({
   requester: one(users, {
     fields: [requests.requesterId],
@@ -79,6 +64,21 @@ export const requestsRelations = relations(requests, ({ one }) => ({
   targetShift: one(shifts, {
     fields: [requests.targetShiftId],
     references: [shifts.id],
+  }),
+}));
+
+export const shiftsRelations = relations(shifts, ({ one }) => ({
+  inspector: one(users, {
+    fields: [shifts.inspectorId],
+    references: [users.id],
+  }),
+  backup: one(users, {
+    fields: [shifts.backupId],
+    references: [users.id],
+  }),
+  role: one(roles, {
+    fields: [shifts.roleId],
+    references: [roles.id],
   }),
 }));
 
@@ -101,3 +101,9 @@ export type Role = typeof roles.$inferSelect;
 export type InsertRole = typeof roles.$inferInsert;
 export type Request = typeof requests.$inferSelect;
 export type InsertRequest = typeof requests.$inferInsert;
+
+// Extended types with relations
+export type RequestWithRelations = Request & {
+  requester?: User;
+  reviewer?: User | null;
+};

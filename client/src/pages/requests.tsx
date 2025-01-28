@@ -22,7 +22,7 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-import type { Request, Shift } from "@db/schema";
+import type { RequestWithRelations, Shift } from "@db/schema";
 
 const requestSchema = z.object({
   type: z.enum(["SHIFT_SWAP", "LEAVE"]),
@@ -49,7 +49,7 @@ function RequestsPage() {
     },
   });
 
-  const { data: requests = [], isLoading } = useQuery<Request[]>({
+  const { data: requests = [], isLoading } = useQuery<RequestWithRelations[]>({
     queryKey: [user?.isAdmin ? "/api/admin/requests" : "/api/requests"],
   });
 
