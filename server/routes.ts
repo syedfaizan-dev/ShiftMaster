@@ -68,7 +68,6 @@ export function registerRoutes(app: Express): Server {
     const { id } = req.params;
     const { username, fullName } = req.body;
 
-    // Check if email already exists
     const [existingUser] = await db
       .select()
       .from(users)
@@ -79,7 +78,6 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).send("Email already exists");
     }
 
-    // Update user
     const [updatedUser] = await db
       .update(users)
       .set({
@@ -142,14 +140,20 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const userRequests = await db.select({
-      request: requests,
-      requester: users,
-      reviewer: users,
-    })
-    .from(requests)
-    .leftJoin(users, eq(requests.requesterId, users.id))
-    .leftJoin(users, eq(requests.reviewerId, users.id), 'reviewer');
+    const userRequests = await db
+      .select({
+        request: requests,
+        requester: users,
+        reviewer: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+        },
+      })
+      .from(requests)
+      .leftJoin(users, eq(requests.requesterId, users.id))
+      .leftJoin(users, eq(requests.reviewerId, users.id), { as: "reviewer" })
+      .where(eq(requests.requesterId, req.user.id));
 
     res.json(userRequests.map(({ request, requester, reviewer }) => ({
       ...request,
@@ -158,24 +162,25 @@ export function registerRoutes(app: Express): Server {
         fullName: requester.fullName,
         username: requester.username,
       },
-      reviewer: reviewer ? {
-        id: reviewer.id,
-        fullName: reviewer.fullName,
-        username: reviewer.username,
-      } : null,
+      reviewer,
     })));
   });
 
   // Admin: Get all requests
   app.get("/api/admin/requests", requireAdmin, async (req, res) => {
-    const allRequests = await db.select({
-      request: requests,
-      requester: users,
-      reviewer: users,
-    })
-    .from(requests)
-    .leftJoin(users, eq(requests.requesterId, users.id))
-    .leftJoin(users, eq(requests.reviewerId, users.id), 'reviewer');
+    const allRequests = await db
+      .select({
+        request: requests,
+        requester: users,
+        reviewer: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+        },
+      })
+      .from(requests)
+      .leftJoin(users, eq(requests.requesterId, users.id))
+      .leftJoin(users, eq(requests.reviewerId, users.id), { as: "reviewer" });
 
     res.json(allRequests.map(({ request, requester, reviewer }) => ({
       ...request,
@@ -184,11 +189,7 @@ export function registerRoutes(app: Express): Server {
         fullName: requester.fullName,
         username: requester.username,
       },
-      reviewer: reviewer ? {
-        id: reviewer.id,
-        fullName: reviewer.fullName,
-        username: reviewer.username,
-      } : null,
+      reviewer,
     })));
   });
 
