@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import RequestForm from "@/components/request-form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -37,8 +38,15 @@ export default function RequestsPage() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: requests = [], isLoading: isLoadingRequests } = useQuery<any[]>({
-    queryKey: [user?.isSupervisor || user?.isManager ? "/api/requests/review" : "/api/requests"],
+  // Query for user's own requests
+  const { data: myRequests = [], isLoading: isLoadingMyRequests } = useQuery<any[]>({
+    queryKey: ["/api/requests"],
+  });
+
+  // Query for requests to review (only for supervisors/admins)
+  const { data: reviewRequests = [], isLoading: isLoadingReviewRequests } = useQuery<any[]>({
+    queryKey: ["/api/requests/review"],
+    enabled: !!(user?.isSupervisor || user?.isManager || user?.isAdmin),
   });
 
   const handleRequest = useMutation({
@@ -66,88 +74,115 @@ export default function RequestsPage() {
     },
   });
 
+  const RequestsTable = ({ requests, isLoading, showActions = false }) => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center p-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      );
+    }
+
+    if (!requests.length) {
+      return <p className="text-center text-gray-500">No requests found</p>;
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Type</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Reason</TableHead>
+            <TableHead>Dates</TableHead>
+            <TableHead>Created At</TableHead>
+            {showActions && (
+              <TableHead>Actions</TableHead>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {requests.map((request) => (
+            <TableRow key={request.id}>
+              <TableCell className="capitalize">{request.type.replace('_', ' ')}</TableCell>
+              <TableCell>
+                <Badge variant={getStatusColor(request.status)}>
+                  {request.status}
+                </Badge>
+              </TableCell>
+              <TableCell>{request.reason}</TableCell>
+              <TableCell>
+                {request.startDate && (
+                  <>
+                    {format(new Date(request.startDate), "MMM d, yyyy")}
+                    {request.endDate && (
+                      <> - {format(new Date(request.endDate), "MMM d, yyyy")}</>
+                    )}
+                  </>
+                )}
+              </TableCell>
+              <TableCell>
+                {format(new Date(request.createdAt), "MMM d, yyyy h:mm a")}
+              </TableCell>
+              {showActions && request.status === 'pending' && (
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleRequest.mutate({ id: request.id, status: 'approved' })}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleRequest.mutate({ id: request.id, status: 'rejected' })}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   return (
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">
-            {user?.isSupervisor || user?.isManager ? "Review Requests" : "My Requests"}
-          </h1>
-          {!user?.isSupervisor && !user?.isManager && (
-            <Button onClick={() => setIsDialogOpen(true)}>
-              New Request
-            </Button>
-          )}
+          <h1 className="text-3xl font-bold">Requests</h1>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            New Request
+          </Button>
         </div>
 
-        {isLoadingRequests ? (
-          <div className="flex justify-center p-4">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : requests.length === 0 ? (
-          <p className="text-center text-gray-500">No requests found</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead>Created At</TableHead>
-                {(user?.isSupervisor || user?.isManager) && (
-                  <TableHead>Actions</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell className="capitalize">{request.type.replace('_', ' ')}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusColor(request.status)}>
-                      {request.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{request.reason}</TableCell>
-                  <TableCell>
-                    {request.startDate && (
-                      <>
-                        {format(new Date(request.startDate), "MMM d, yyyy")}
-                        {request.endDate && (
-                          <> - {format(new Date(request.endDate), "MMM d, yyyy")}</>
-                        )}
-                      </>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(request.createdAt), "MMM d, yyyy h:mm a")}
-                  </TableCell>
-                  {(user?.isSupervisor || user?.isManager) && request.status === 'pending' && (
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => handleRequest.mutate({ id: request.id, status: 'approved' })}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleRequest.mutate({ id: request.id, status: 'rejected' })}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <Tabs defaultValue="my-requests" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="my-requests">My Requests</TabsTrigger>
+            {(user?.isSupervisor || user?.isManager || user?.isAdmin) && (
+              <TabsTrigger value="approvals">Approvals</TabsTrigger>
+            )}
+          </TabsList>
+
+          <TabsContent value="my-requests">
+            <RequestsTable requests={myRequests} isLoading={isLoadingMyRequests} />
+          </TabsContent>
+
+          {(user?.isSupervisor || user?.isManager || user?.isAdmin) && (
+            <TabsContent value="approvals">
+              <RequestsTable 
+                requests={reviewRequests} 
+                isLoading={isLoadingReviewRequests} 
+                showActions={true} 
+              />
+            </TabsContent>
+          )}
+        </Tabs>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
