@@ -189,15 +189,16 @@ export function registerRoutes(app: Express): Server {
       .leftJoin(users, eq(requests.requesterId, users.id));
 
     // Filter requests based on user role and ownership
-    if (req.user.isAdmin) {
-      // Admins see all requests - no filter needed
-    } else if (req.user.isManager) {
-      // Managers only see requests assigned to them
-      requestsQuery = requestsQuery.where(eq(requests.managerId, req.user.id));
-    } else {
-      // Regular users only see their own requests
-      requestsQuery = requestsQuery.where(eq(requests.requesterId, req.user.id));
+    if (!req.user.isAdmin) {
+      if (req.user.isManager) {
+        // Managers only see requests assigned to them
+        requestsQuery = requestsQuery.where(eq(requests.managerId, req.user.id));
+      } else {
+        // Regular users only see their own requests
+        requestsQuery = requestsQuery.where(eq(requests.requesterId, req.user.id));
+      }
     }
+    // Admin sees all requests - no filter needed
 
     const userRequests = await requestsQuery;
 
@@ -243,47 +244,6 @@ export function registerRoutes(app: Express): Server {
     );
 
     res.json(requestsWithDetails);
-  });
-
-  // Admin: Get all requests
-  app.get("/api/admin/requests", requireAdmin, async (req, res) => {
-    const allRequests = await db
-      .select({
-        request: requests,
-        requester: {
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-        }
-      })
-      .from(requests)
-      .leftJoin(users, eq(requests.requesterId, users.id));
-
-    // Separate query for reviewer information
-    const requestsWithReviewers = await Promise.all(
-      allRequests.map(async ({ request }) => {
-        let reviewer = null;
-        if (request.reviewerId) {
-          const [reviewerData] = await db
-            .select({
-              id: users.id,
-              username: users.username,
-              fullName: users.fullName,
-            })
-            .from(users)
-            .where(eq(users.id, request.reviewerId))
-            .limit(1);
-          reviewer = reviewerData;
-        }
-        return {
-          ...request,
-          requester: allRequests.find(r => r.request.id === request.id)?.requester,
-          reviewer,
-        };
-      })
-    );
-
-    res.json(requestsWithReviewers);
   });
 
   // Manager/Admin: Review request (approve/reject)
