@@ -54,7 +54,6 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Shift created successfully" });
-      // Invalidate both admin and user shift queries
       queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
       form.reset();
@@ -71,141 +70,147 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
 
   return (
     <>
-      <DialogTitle>Create New Shift</DialogTitle>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => createShift.mutate(data))} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="inspectorId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Inspector</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+      <div className="flex-none">
+        <DialogTitle>Create New Shift</DialogTitle>
+      </div>
+      <div className="overflow-y-auto flex-1 px-6 py-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => createShift.mutate(data))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="inspectorId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Inspector</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an inspector" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {users?.map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="roleId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {roles?.map((role) => (
+                        <SelectItem key={role.id} value={role.id.toString()}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="startTime"
+              render={({ field: { value, onChange, ...field } }) => (
+                <FormItem>
+                  <FormLabel>Start Time</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an inspector" />
-                    </SelectTrigger>
+                    <Input 
+                      type="datetime-local"
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                      {...field}
+                    />
                   </FormControl>
-                  <SelectContent>
-                    {users?.map((user) => (
-                      <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="roleId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Role</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+            <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field: { value, onChange, ...field } }) => (
+                <FormItem>
+                  <FormLabel>End Time</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
+                    <Input 
+                      type="datetime-local"
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                      {...field}
+                    />
                   </FormControl>
-                  <SelectContent>
-                    {roles?.map((role) => (
-                      <SelectItem key={role.id} value={role.id.toString()}>
-                        {role.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="startTime"
-            render={({ field: { value, onChange, ...field } }) => (
-              <FormItem>
-                <FormLabel>Start Time</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="datetime-local"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="endTime"
-            render={({ field: { value, onChange, ...field } }) => (
-              <FormItem>
-                <FormLabel>End Time</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="datetime-local"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="week"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Week</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="backupId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Backup Inspector</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+            <FormField
+              control={form.control}
+              name="week"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Week</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a backup inspector" />
-                    </SelectTrigger>
+                    <Input {...field} />
                   </FormControl>
-                  <SelectContent>
-                    {users?.map((user) => (
-                      <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <Button type="submit" disabled={createShift.isPending}>
-            Create Shift
-          </Button>
-        </form>
-      </Form>
+            <FormField
+              control={form.control}
+              name="backupId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Backup Inspector</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a backup inspector" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {users?.map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="sticky bottom-0 bg-white pb-4 pt-2">
+              <Button type="submit" disabled={createShift.isPending}>
+                Create Shift
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
     </>
   );
 }

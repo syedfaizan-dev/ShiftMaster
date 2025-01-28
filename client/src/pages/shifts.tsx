@@ -92,7 +92,7 @@ export default function Shifts() {
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col">
             <ShiftForm onSuccess={() => setIsDialogOpen(false)} />
           </DialogContent>
         </Dialog>
