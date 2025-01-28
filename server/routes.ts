@@ -113,23 +113,6 @@ export function registerRoutes(app: Express): Server {
     res.json(newRole);
   });
 
-  // Admin: Update role
-  app.put("/api/admin/roles/:id", requireAdmin, async (req, res) => {
-    const { id } = req.params;
-    const { name, description } = req.body;
-
-    const [updatedRole] = await db
-      .update(roles)
-      .set({
-        name,
-        description,
-      })
-      .where(eq(roles.id, parseInt(id)))
-      .returning();
-
-    res.json(updatedRole);
-  });
-
   // Request Management Routes
 
   // Create a new request (shift swap or leave)
@@ -161,20 +144,41 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const userRequests = await db.select()
-      .from(requests)
-      .where(eq(requests.requesterId, req.user.id));
+    const userRequests = await db.select({
+      request: requests,
+      requester: users,
+    })
+    .from(requests)
+    .leftJoin(users, eq(requests.requesterId, users.id))
+    .where(eq(requests.requesterId, req.user.id));
 
-    res.json(userRequests);
+    res.json(userRequests.map(({ request, requester }) => ({
+      ...request,
+      requester: {
+        id: requester.id,
+        fullName: requester.fullName,
+        username: requester.username,
+      },
+    })));
   });
 
   // Admin: Get all requests
   app.get("/api/admin/requests", requireAdmin, async (req, res) => {
-    const allRequests = await db.select()
-      .from(requests)
-      .leftJoin(users, eq(requests.requesterId, users.id));
+    const allRequests = await db.select({
+      request: requests,
+      requester: users,
+    })
+    .from(requests)
+    .leftJoin(users, eq(requests.requesterId, users.id));
 
-    res.json(allRequests);
+    res.json(allRequests.map(({ request, requester }) => ({
+      ...request,
+      requester: {
+        id: requester.id,
+        fullName: requester.fullName,
+        username: requester.username,
+      },
+    })));
   });
 
   // Admin: Review request (approve/reject)

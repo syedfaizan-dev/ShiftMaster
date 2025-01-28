@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { Request, Shift } from "@db/schema";
@@ -82,8 +83,8 @@ function RequestsPage() {
     },
   });
 
-  const updateRequest = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+  const updateRequestStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: 'APPROVED' | 'REJECTED' }) => {
       const res = await fetch(`/api/admin/requests/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +95,7 @@ function RequestsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Request updated successfully" });
+      toast({ title: "Success", description: "Request status updated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/requests"] });
     },
     onError: (error: Error) => {
@@ -110,8 +111,15 @@ function RequestsPage() {
     createRequest.mutate(data);
   };
 
-  const handleStatusUpdate = (id: number, status: string) => {
-    updateRequest.mutate({ id, status });
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800';
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-yellow-100 text-yellow-800';
+    }
   };
 
   return (
@@ -128,6 +136,15 @@ function RequestsPage() {
           <div className="flex justify-center p-4">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
+        ) : requests.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Requests Found</AlertTitle>
+            <AlertDescription>
+              {user?.isAdmin 
+                ? "There are no pending requests to review."
+                : "You haven't submitted any requests yet."}
+            </AlertDescription>
+          </Alert>
         ) : (
           <Table>
             <TableHeader>
@@ -135,6 +152,7 @@ function RequestsPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Reason</TableHead>
+                {user?.isAdmin && <TableHead>Requester</TableHead>}
                 <TableHead>Dates</TableHead>
                 {user?.isAdmin && <TableHead>Actions</TableHead>}
               </TableRow>
@@ -142,9 +160,18 @@ function RequestsPage() {
             <TableBody>
               {requests.map((request) => (
                 <TableRow key={request.id}>
-                  <TableCell className="capitalize">{request.type.toLowerCase().replace('_', ' ')}</TableCell>
-                  <TableCell className="capitalize">{request.status.toLowerCase()}</TableCell>
+                  <TableCell className="capitalize">
+                    {request.type.toLowerCase().replace('_', ' ')}
+                  </TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(request.status)}`}>
+                      {request.status}
+                    </span>
+                  </TableCell>
                   <TableCell>{request.reason}</TableCell>
+                  {user?.isAdmin && (
+                    <TableCell>{request.requester?.fullName || 'Unknown'}</TableCell>
+                  )}
                   <TableCell>
                     {request.type === 'LEAVE' ? (
                       <>
@@ -160,14 +187,17 @@ function RequestsPage() {
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          onClick={() => handleStatusUpdate(request.id, 'APPROVED')}
+                          variant="default"
+                          onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'APPROVED' })}
+                          disabled={updateRequestStatus.isPending}
                         >
                           Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleStatusUpdate(request.id, 'REJECTED')}
+                          onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'REJECTED' })}
+                          disabled={updateRequestStatus.isPending}
                         >
                           Reject
                         </Button>
