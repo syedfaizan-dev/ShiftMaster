@@ -25,10 +25,22 @@ import * as z from "zod";
 const requestSchema = z.object({
   type: z.enum(['shift_swap', 'leave']),
   reason: z.string().min(1, "Reason is required"),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  startDate: z.string().refine(val => val !== "", {
+    message: "Start date is required for leave requests",
+  }),
+  endDate: z.string().refine(val => val !== "", {
+    message: "End date is required for leave requests",
+  }),
   shiftId: z.string().optional(),
   targetShiftId: z.string().optional(),
+}).refine((data) => {
+  if (data.type === 'leave') {
+    return data.startDate && data.endDate;
+  }
+  return true;
+}, {
+  message: "Start and end dates are required for leave requests",
+  path: ["startDate"],
 });
 
 type RequestFormData = z.infer<typeof requestSchema>;
@@ -53,13 +65,25 @@ export default function RequestForm({ onSuccess }: RequestFormProps) {
 
   const createRequest = useMutation({
     mutationFn: async (data: RequestFormData) => {
+      // Convert dates to ISO strings for the server
+      const payload = {
+        ...data,
+        startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
+        endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
+      };
+
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to create request");
+      }
+
       return res.json();
     },
     onSuccess: () => {
@@ -77,9 +101,37 @@ export default function RequestForm({ onSuccess }: RequestFormProps) {
     },
   });
 
+  const onSubmit = (data: RequestFormData) => {
+    // Validate dates for leave requests
+    if (data.type === 'leave') {
+      const startDate = new Date(data.startDate);
+      const endDate = new Date(data.endDate);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please enter valid dates",
+        });
+        return;
+      }
+
+      if (endDate < startDate) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "End date cannot be before start date",
+        });
+        return;
+      }
+    }
+
+    createRequest.mutate(data);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => createRequest.mutate(data))} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="type"
@@ -125,7 +177,7 @@ export default function RequestForm({ onSuccess }: RequestFormProps) {
                 <FormItem>
                   <FormLabel>Start Date</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input type="date" {...field} required />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -139,7 +191,7 @@ export default function RequestForm({ onSuccess }: RequestFormProps) {
                 <FormItem>
                   <FormLabel>End Date</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input type="date" {...field} required />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
