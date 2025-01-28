@@ -47,8 +47,9 @@ function EmployeesPage() {
 
   const { data: employees = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
-    enabled: user?.isSupervisor,
+    enabled: user?.isAdmin,
   });
+
 
   const createEmployee = useMutation({
     mutationFn: async (data: EmployeeFormData) => {
@@ -57,8 +58,7 @@ function EmployeesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          isSupervisor: false,
-          isManager: false,
+          isAdmin: false,
         }),
         credentials: "include",
       });
@@ -108,7 +108,7 @@ function EmployeesPage() {
     },
   });
 
-  if (!user?.isSupervisor) {
+  if (!user?.isAdmin) {
     return (
       <Navbar>
         <div className="p-6">
@@ -118,6 +118,7 @@ function EmployeesPage() {
       </Navbar>
     );
   }
+
 
   const handleSubmit = (data: EmployeeFormData) => {
     if (editingEmployee) {

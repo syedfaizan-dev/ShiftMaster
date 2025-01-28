@@ -1,11 +1,11 @@
 import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import { type Express, type Request, type Response, type NextFunction } from "express";
+import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
+import { type Express } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type SelectUser } from "@db/schema";
+import { users, insertUserSchema, type User as SelectUser } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 
@@ -97,8 +97,71 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req: Request, res: Response, next: NextFunction) => {
-    passport.authenticate("local", (err: any, user: Express.User | false, info: { message?: string }) => {
+  app.post("/api/register", async (req, res, next) => {
+    try {
+      const result = insertUserSchema.safeParse(req.body);
+      if (!result.success) {
+        return res
+          .status(400)
+          .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+      }
+
+      const { username, password, isAdmin } = result.data;
+
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
+      }
+
+      const hashedPassword = await crypto.hash(password);
+
+      // Create the new user with isAdmin if provided
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          ...result.data,
+          password: hashedPassword,
+          isAdmin: isAdmin || false,
+        })
+        .returning();
+
+      // Only log in if not being created by an admin
+      if (!req.user?.isAdmin) {
+        req.login(newUser, (err) => {
+          if (err) {
+            return next(err);
+          }
+          return res.json({
+            message: "Registration successful",
+            user: { id: newUser.id, username: newUser.username },
+          });
+        });
+      } else {
+        // If created by admin, just return success
+        return res.json({
+          message: "Employee created successfully",
+          user: { id: newUser.id, username: newUser.username },
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/login", (req, res, next) => {
+    const result = insertUserSchema.safeParse(req.body);
+    if (!result.success) {
+      return res
+        .status(400)
+        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+    }
+
+    const cb = (err: any, user: Express.User, info: IVerifyOptions) => {
       if (err) {
         return next(err);
       }
@@ -114,19 +177,14 @@ export function setupAuth(app: Express) {
 
         return res.json({
           message: "Login successful",
-          user: {
-            id: user.id,
-            username: user.username,
-            fullName: user.fullName,
-            isSupervisor: user.isSupervisor,
-            isManager: user.isManager,
-          },
+          user: { id: user.id, username: user.username },
         });
       });
-    })(req, res, next);
+    };
+    passport.authenticate("local", cb)(req, res, next);
   });
 
-  app.post("/api/logout", (req: Request, res: Response) => {
+  app.post("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
         return res.status(500).send("Logout failed");
@@ -136,7 +194,7 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req: Request, res: Response) => {
+  app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
       return res.json(req.user);
     }

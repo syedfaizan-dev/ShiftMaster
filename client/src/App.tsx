@@ -10,7 +10,6 @@ import Dashboard from "@/pages/dashboard";
 import Shifts from "@/pages/shifts";
 import Roles from "@/pages/roles";
 import Employees from "@/pages/employees";
-import Requests from "@/pages/requests";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -31,7 +30,6 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/shifts" component={Shifts} />
-      <Route path="/requests" component={Requests} />
       <Route path="/roles" component={Roles} />
       <Route path="/employees" component={Employees} />
       <Route component={NotFound} />

@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, LogOut, Users, User, FileText } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, User } from "lucide-react";
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
@@ -10,8 +10,11 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col">
       {/* Top Navbar with dual colors - Full Width */}
       <div className="h-16 flex relative">
+        {/* Primary color (30%) */}
         <div className="absolute inset-0 w-64 bg-primary" />
+        {/* Secondary color (70%) */}
         <div className="absolute inset-0 left-64 right-0" style={{ backgroundColor: '#04a3e0' }} />
+        {/* Content */}
         <div className="relative flex items-center justify-between px-6 w-full">
           <h2 className="text-xl font-bold text-primary-foreground">
             Shift Management
@@ -39,13 +42,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 <span>Shifts</span>
               </button>
             </Link>
-            <Link href="/requests">
-              <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
-                <FileText className="w-5 h-5" />
-                <span>Requests</span>
-              </button>
-            </Link>
-            {user?.isSupervisor && (
+            {user?.isAdmin && (
               <>
                 <Link href="/employees">
                   <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">

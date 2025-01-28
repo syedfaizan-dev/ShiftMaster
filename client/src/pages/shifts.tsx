@@ -21,17 +21,15 @@ export default function Shifts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<any[]>({
-    queryKey: [user?.isSupervisor ? "/api/admin/shifts" : "/api/shifts"],
+    queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
 
   const { data: users } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
-    enabled: user?.isSupervisor,
   });
 
   const { data: roles } = useQuery<any[]>({
     queryKey: ["/api/admin/roles"],
-    enabled: user?.isSupervisor,
   });
 
   const getInspectorName = (id: number) => {
@@ -49,7 +47,7 @@ export default function Shifts() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shifts</h1>
-          {user?.isSupervisor && (
+          {user?.isAdmin && (
             <Button onClick={() => setIsDialogOpen(true)}>
               Create New Shift
             </Button>
