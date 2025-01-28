@@ -188,15 +188,14 @@ export function registerRoutes(app: Express): Server {
       .from(requests)
       .leftJoin(users, eq(requests.requesterId, users.id));
 
-    // Filter requests based on user role
+    // Filter requests based on user role and ownership
     if (req.user.isAdmin) {
-      // Admins see all requests
-      requestsQuery = requestsQuery;
+      // Admins see all requests - no filter needed
     } else if (req.user.isManager) {
-      // Managers see requests assigned to them
+      // Managers only see requests assigned to them
       requestsQuery = requestsQuery.where(eq(requests.managerId, req.user.id));
     } else {
-      // Regular users see only their own requests
+      // Regular users only see their own requests
       requestsQuery = requestsQuery.where(eq(requests.requesterId, req.user.id));
     }
 
