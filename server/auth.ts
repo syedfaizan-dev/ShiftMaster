@@ -24,7 +24,7 @@ const crypto = {
       salt,
       64
     )) as Buffer;
-    return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+    return hashedPasswordBuf.length === suppliedPasswordBuf.length && timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
   },
 };
 
