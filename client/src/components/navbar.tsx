@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, LogOut, Users, User } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, User, FileText } from "lucide-react";
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
@@ -40,6 +40,12 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
               <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
                 <Calendar className="w-5 h-5" />
                 <span>Shifts</span>
+              </button>
+            </Link>
+            <Link href="/requests">
+              <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
+                <FileText className="w-5 h-5" />
+                <span>Requests</span>
               </button>
             </Link>
             {user?.isAdmin && (

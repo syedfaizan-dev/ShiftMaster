@@ -2,8 +2,8 @@ import { type Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { shifts, users, roles } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { shifts, users, roles, requests } from "@db/schema";
+import { eq, and, or } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -128,6 +128,71 @@ export function registerRoutes(app: Express): Server {
       .returning();
 
     res.json(updatedRole);
+  });
+
+  // Request Management Routes
+
+  // Create a new request (shift swap or leave)
+  app.post("/api/requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { type, shiftId, targetShiftId, startDate, endDate, reason } = req.body;
+
+    const [newRequest] = await db.insert(requests)
+      .values({
+        requesterId: req.user.id,
+        type,
+        shiftId,
+        targetShiftId,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        reason,
+      })
+      .returning();
+
+    res.json(newRequest);
+  });
+
+  // Get requests for the current user
+  app.get("/api/requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const userRequests = await db.select()
+      .from(requests)
+      .where(eq(requests.requesterId, req.user.id));
+
+    res.json(userRequests);
+  });
+
+  // Admin: Get all requests
+  app.get("/api/admin/requests", requireAdmin, async (req, res) => {
+    const allRequests = await db.select()
+      .from(requests)
+      .leftJoin(users, eq(requests.requesterId, users.id));
+
+    res.json(allRequests);
+  });
+
+  // Admin: Review request (approve/reject)
+  app.put("/api/admin/requests/:id", requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const [updatedRequest] = await db
+      .update(requests)
+      .set({
+        status,
+        reviewerId: req.user.id,
+        reviewedAt: new Date(),
+      })
+      .where(eq(requests.id, parseInt(id)))
+      .returning();
+
+    res.json(updatedRequest);
   });
 
   const httpServer = createServer(app);
