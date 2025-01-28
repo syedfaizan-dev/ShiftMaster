@@ -153,10 +153,25 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      const { startDate, endDate, ...otherData } = req.body;
+
+      // Parse dates if they exist
+      const parsedStartDate = startDate ? new Date(startDate) : undefined;
+      const parsedEndDate = endDate ? new Date(endDate) : undefined;
+
+      // Validate dates
+      if ((parsedStartDate && isNaN(parsedStartDate.getTime())) ||
+          (parsedEndDate && isNaN(parsedEndDate.getTime()))) {
+        return res.status(400).json({ message: "Invalid date format" });
+      }
+
       const autoEscalateAt = addDays(new Date(), 2); // Auto-escalate after 2 days
+
       const [newRequest] = await db.insert(requests)
         .values({
-          ...req.body,
+          ...otherData,
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
           requesterId: req.user!.id,
           status: 'pending',
           autoEscalateAt,
