@@ -18,6 +18,13 @@ import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import RequestForm from "@/components/request-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -26,7 +33,7 @@ const getStatusColor = (status: string) => {
     case 'rejected':
       return 'destructive';
     case 'escalated':
-      return 'destructive';
+      return 'secondary';
     default:
       return 'secondary';
   }
@@ -43,18 +50,24 @@ export default function RequestsPage() {
     queryKey: ["/api/requests"],
   });
 
-  // Query for requests to review (only for supervisors/admins)
+  // Query for requests to review (only for supervisors/managers)
   const { data: reviewRequests = [], isLoading: isLoadingReviewRequests } = useQuery<any[]>({
     queryKey: ["/api/requests/review"],
     enabled: !!(user?.isSupervisor || user?.isManager || user?.isAdmin),
   });
 
+  // Query for managers (for reassignment)
+  const { data: managers = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/managers"],
+    enabled: !!(user?.isSupervisor || user?.isAdmin),
+  });
+
   const handleRequest = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: number; status: string; notes?: string }) => {
+    mutationFn: async ({ id, status, notes, escalatedTo }: { id: number; status: string; notes?: string; escalatedTo?: number }) => {
       const res = await fetch(`/api/requests/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, notes }),
+        body: JSON.stringify({ status, notes, escalatedTo }),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -153,6 +166,28 @@ export default function RequestsPage() {
                     >
                       Reject
                     </Button>
+                    {user?.isSupervisor && !request.escalatedTo && (
+                      <Select
+                        onValueChange={(value) => {
+                          handleRequest.mutate({
+                            id: request.id,
+                            status: 'escalated',
+                            escalatedTo: parseInt(value),
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue placeholder="Reassign to..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {managers.map((manager) => (
+                            <SelectItem key={manager.id} value={manager.id.toString()}>
+                              {manager.fullName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </TableCell>
               )}

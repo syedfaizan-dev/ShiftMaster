@@ -146,6 +146,18 @@ export function registerRoutes(app: Express): Server {
 
   // Request Management Routes
 
+  // Get all managers (for reassignment)
+  app.get("/api/admin/managers", requireSupervisorOrManager, async (_req: Request, res: Response) => {
+    const managers = await db.select({
+      id: users.id,
+      fullName: users.fullName,
+    })
+      .from(users)
+      .where(eq(users.isManager, true));
+
+    res.json(managers);
+  });
+
   // Create a new request
   app.post("/api/requests", async (req: Request, res: Response) => {
     if (!req.isAuthenticated()) {
@@ -223,6 +235,7 @@ export function registerRoutes(app: Express): Server {
       startDate: requests.startDate,
       endDate: requests.endDate,
       createdAt: requests.createdAt,
+      escalatedTo: requests.escalatedTo,
       requester: {
         id: users.id,
         username: users.username,
@@ -235,8 +248,18 @@ export function registerRoutes(app: Express): Server {
         and(
           eq(requests.status, 'pending'),
           or(
-            isNull(requests.escalatedTo),
-            eq(requests.escalatedTo, req.user!.id)
+            // Show to supervisors if not escalated
+            and(
+              eq(requests.escalatedTo, null),
+              eq(req.user!.isSupervisor, true)
+            ),
+            // Show to managers if escalated to them
+            and(
+              eq(requests.escalatedTo, req.user!.id),
+              eq(req.user!.isManager, true)
+            ),
+            // Show to admins regardless
+            eq(req.user!.isAdmin, true)
           )
         )
       );
@@ -247,7 +270,7 @@ export function registerRoutes(app: Express): Server {
   // Update request status
   app.put("/api/requests/:id", requireSupervisorOrManager, async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, escalatedTo } = req.body;
 
     try {
       const [updatedRequest] = await db.update(requests)
@@ -256,6 +279,10 @@ export function registerRoutes(app: Express): Server {
           notes,
           reviewedBy: req.user!.id,
           reviewedAt: new Date(),
+          ...(escalatedTo ? {
+            escalatedTo,
+            escalatedAt: new Date(),
+          } : {}),
         })
         .where(eq(requests.id, parseInt(id)))
         .returning();
