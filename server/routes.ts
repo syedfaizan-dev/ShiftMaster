@@ -192,7 +192,10 @@ export function registerRoutes(app: Express): Server {
     if (!req.user.isAdmin) {
       if (req.user.isManager) {
         // Managers only see requests assigned to them
-        requestsQuery = requestsQuery.where(eq(requests.managerId, req.user.id));
+        requestsQuery = requestsQuery.where(and(
+          eq(requests.managerId, req.user.id),
+          isNull(requests.managerId).not()
+        ));
       } else {
         // Regular users only see their own requests
         requestsQuery = requestsQuery.where(eq(requests.requesterId, req.user.id));
