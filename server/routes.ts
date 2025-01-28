@@ -161,7 +161,7 @@ export function registerRoutes(app: Express): Server {
 
       // Validate dates
       if ((parsedStartDate && isNaN(parsedStartDate.getTime())) ||
-          (parsedEndDate && isNaN(parsedEndDate.getTime()))) {
+        (parsedEndDate && isNaN(parsedEndDate.getTime()))) {
         return res.status(400).json({ message: "Invalid date format" });
       }
 
@@ -191,7 +191,15 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    const userRequests = await db.select()
+    const userRequests = await db.select({
+      id: requests.id,
+      type: requests.type,
+      status: requests.status,
+      reason: requests.reason,
+      startDate: requests.startDate,
+      endDate: requests.endDate,
+      createdAt: requests.createdAt,
+    })
       .from(requests)
       .where(eq(requests.requesterId, req.user!.id));
 
@@ -200,8 +208,22 @@ export function registerRoutes(app: Express): Server {
 
   // Get requests to review (for supervisors and managers)
   app.get("/api/requests/review", requireSupervisorOrManager, async (req: Request, res: Response) => {
-    const pendingRequests = await db.select()
+    const pendingRequests = await db.select({
+      id: requests.id,
+      type: requests.type,
+      status: requests.status,
+      reason: requests.reason,
+      startDate: requests.startDate,
+      endDate: requests.endDate,
+      createdAt: requests.createdAt,
+      requester: {
+        id: users.id,
+        username: users.username,
+        fullName: users.fullName,
+      },
+    })
       .from(requests)
+      .leftJoin(users, eq(requests.requesterId, users.id))
       .where(
         and(
           eq(requests.status, 'pending'),

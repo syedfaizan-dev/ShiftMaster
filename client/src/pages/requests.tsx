@@ -22,11 +22,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'approved':
-      return 'success';
+      return 'default';
     case 'rejected':
       return 'destructive';
     case 'escalated':
-      return 'warning';
+      return 'destructive';
     default:
       return 'secondary';
   }
@@ -91,6 +91,7 @@ export default function RequestsPage() {
       <Table>
         <TableHeader>
           <TableRow>
+            {showActions && <TableHead>Employee</TableHead>}
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Reason</TableHead>
@@ -104,6 +105,9 @@ export default function RequestsPage() {
         <TableBody>
           {requests.map((request) => (
             <TableRow key={request.id}>
+              {showActions && (
+                <TableCell>{request.requester?.fullName}</TableCell>
+              )}
               <TableCell className="capitalize">{request.type.replace('_', ' ')}</TableCell>
               <TableCell>
                 <Badge variant={getStatusColor(request.status)}>
