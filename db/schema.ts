@@ -93,20 +93,23 @@ export const requestsRelations = relations(requests, ({ one }) => ({
   }),
 }));
 
+// Schemas for validation and type inference
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
+export type SelectUser = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
 export const insertShiftSchema = createInsertSchema(shifts);
 export const selectShiftSchema = createSelectSchema(shifts);
-export const insertRoleSchema = createInsertSchema(roles);
-export const selectRoleSchema = createSelectSchema(roles);
-export const insertRequestSchema = createInsertSchema(requests);
-export const selectRequestSchema = createSelectSchema(requests);
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
 export type Shift = typeof shifts.$inferSelect;
 export type InsertShift = typeof shifts.$inferInsert;
+
+export const insertRoleSchema = createInsertSchema(roles);
+export const selectRoleSchema = createSelectSchema(roles);
 export type Role = typeof roles.$inferSelect;
 export type InsertRole = typeof roles.$inferInsert;
+
+export const insertRequestSchema = createInsertSchema(requests);
+export const selectRequestSchema = createSelectSchema(requests);
 export type Request = typeof requests.$inferSelect;
 export type InsertRequest = typeof requests.$inferInsert;
