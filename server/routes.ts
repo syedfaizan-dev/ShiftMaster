@@ -3,11 +3,99 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { shifts, users, roles, requests } from "@db/schema";
-import { eq, and, or, isNull, lt } from "drizzle-orm";
-import { addDays } from "date-fns";
+import { eq, and, or, isNull } from "drizzle-orm";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(scrypt);
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // Create initial supervisor and managers
+  app.post("/api/setup-roles", async (_req: Request, res: Response) => {
+    try {
+      // Delete existing data
+      await db.delete(requests);
+      await db.delete(shifts);
+      await db.delete(roles);
+      await db.delete(users);
+
+      // Hash password for all users
+      const salt = randomBytes(16).toString("hex");
+      const passwordBuf = (await scryptAsync("password123", salt, 64)) as Buffer;
+      const hashedPassword = `${passwordBuf.toString("hex")}.${salt}`;
+
+      // Create supervisor
+      const [supervisor] = await db.insert(users)
+        .values({
+          username: "supervisor@company.com",
+          password: hashedPassword,
+          fullName: "John Supervisor",
+          isSupervisor: true,
+          isManager: false,
+          isAdmin: false,
+        })
+        .returning();
+
+      // Create managers
+      const managers = await db.insert(users)
+        .values([
+          {
+            username: "manager1@company.com",
+            password: hashedPassword,
+            fullName: "Alice Manager",
+            isManager: true,
+            isSupervisor: false,
+            isAdmin: false,
+          },
+          {
+            username: "manager2@company.com",
+            password: hashedPassword,
+            fullName: "Bob Manager",
+            isManager: true,
+            isSupervisor: false,
+            isAdmin: false,
+          },
+          {
+            username: "manager3@company.com",
+            password: hashedPassword,
+            fullName: "Carol Manager",
+            isManager: true,
+            isSupervisor: false,
+            isAdmin: false,
+          },
+        ])
+        .returning();
+
+      res.json({ 
+        message: "Roles setup completed successfully",
+        credentials: {
+          supervisor: {
+            email: "supervisor@company.com",
+            password: "password123"
+          },
+          managers: [
+            {
+              email: "manager1@company.com",
+              password: "password123"
+            },
+            {
+              email: "manager2@company.com",
+              password: "password123"
+            },
+            {
+              email: "manager3@company.com",
+              password: "password123"
+            }
+          ]
+        }
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to setup roles";
+      res.status(500).json({ message });
+    }
+  });
 
   // Middleware to check if user is authenticated and is admin
   const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
@@ -319,7 +407,7 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(requests.status, 'pending'),
-            lt(requests.autoEscalateAt, now)
+            // lt(requests.autoEscalateAt, now)
           )
         )
         .returning();
@@ -333,4 +421,10 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+function addDays(date: Date, days: number): Date {
+  const newDate = new Date(date);
+  newDate.setDate(newDate.getDate() + days);
+  return newDate;
 }
