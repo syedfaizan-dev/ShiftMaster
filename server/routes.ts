@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { shifts, users, roles, requests } from "@db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, isNull } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -18,6 +18,42 @@ export function registerRoutes(app: Express): Server {
     }
     next();
   };
+
+  // Middleware to check if user is authenticated and is manager or admin
+  const requireManagerOrAdmin = (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    if (!req.user.isManager && !req.user.isAdmin) {
+      return res.status(403).send("Not authorized");
+    }
+    next();
+  };
+
+  // Get all managers
+  app.get("/api/admin/managers", requireAdmin, async (req, res) => {
+    const managers = await db
+      .select()
+      .from(users)
+      .where(eq(users.isManager, true));
+    res.json(managers);
+  });
+
+  // Admin: Assign request to manager
+  app.post("/api/admin/requests/:id/assign", requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { managerId } = req.body;
+
+    const [updatedRequest] = await db
+      .update(requests)
+      .set({
+        managerId,
+      })
+      .where(eq(requests.id, parseInt(id)))
+      .returning();
+
+    res.json(updatedRequest);
+  });
 
   // Get all shifts for a user
   app.get("/api/shifts", async (req, res) => {
@@ -134,13 +170,13 @@ export function registerRoutes(app: Express): Server {
     res.json(newRequest);
   });
 
-  // Get requests for the current user
+  // Get requests based on user role
   app.get("/api/requests", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
-    const userRequests = await db
+    let requestsQuery = db
       .select({
         request: requests,
         requester: {
@@ -150,13 +186,28 @@ export function registerRoutes(app: Express): Server {
         }
       })
       .from(requests)
-      .leftJoin(users, eq(requests.requesterId, users.id))
-      .where(eq(requests.requesterId, req.user.id));
+      .leftJoin(users, eq(requests.requesterId, users.id));
 
-    // Separate query for reviewer information
-    const requestsWithReviewers = await Promise.all(
+    // Filter requests based on user role
+    if (req.user.isAdmin) {
+      // Admins see all requests
+      requestsQuery = requestsQuery;
+    } else if (req.user.isManager) {
+      // Managers see requests assigned to them
+      requestsQuery = requestsQuery.where(eq(requests.managerId, req.user.id));
+    } else {
+      // Regular users see only their own requests
+      requestsQuery = requestsQuery.where(eq(requests.requesterId, req.user.id));
+    }
+
+    const userRequests = await requestsQuery;
+
+    // Separate query for reviewer and manager information
+    const requestsWithDetails = await Promise.all(
       userRequests.map(async ({ request }) => {
         let reviewer = null;
+        let manager = null;
+
         if (request.reviewerId) {
           const [reviewerData] = await db
             .select({
@@ -169,15 +220,30 @@ export function registerRoutes(app: Express): Server {
             .limit(1);
           reviewer = reviewerData;
         }
+
+        if (request.managerId) {
+          const [managerData] = await db
+            .select({
+              id: users.id,
+              username: users.username,
+              fullName: users.fullName,
+            })
+            .from(users)
+            .where(eq(users.id, request.managerId))
+            .limit(1);
+          manager = managerData;
+        }
+
         return {
           ...request,
-          requester: userRequests[0].requester,
+          requester: userRequests.find(r => r.request.id === request.id)?.requester,
           reviewer,
+          manager,
         };
       })
     );
 
-    res.json(requestsWithReviewers);
+    res.json(requestsWithDetails);
   });
 
   // Admin: Get all requests
@@ -221,10 +287,25 @@ export function registerRoutes(app: Express): Server {
     res.json(requestsWithReviewers);
   });
 
-  // Admin: Review request (approve/reject)
-  app.put("/api/admin/requests/:id", requireAdmin, async (req, res) => {
+  // Manager/Admin: Review request (approve/reject)
+  app.put("/api/admin/requests/:id", requireManagerOrAdmin, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
+
+    // Check if the user has permission to review this request
+    const [request] = await db
+      .select()
+      .from(requests)
+      .where(eq(requests.id, parseInt(id)))
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).send("Request not found");
+    }
+
+    if (!req.user.isAdmin && request.managerId !== req.user.id) {
+      return res.status(403).send("Not authorized to review this request");
+    }
 
     const [updatedRequest] = await db
       .update(requests)

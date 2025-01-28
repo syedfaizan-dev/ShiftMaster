@@ -22,7 +22,7 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-import type { RequestWithRelations, Shift } from "@db/schema";
+import type { RequestWithRelations, Shift, User } from "@db/schema";
 
 const requestSchema = z.object({
   type: z.enum(["SHIFT_SWAP", "LEAVE"]),
@@ -40,6 +40,8 @@ function RequestsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [assignManagerDialogOpen, setAssignManagerDialogOpen] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
@@ -50,7 +52,12 @@ function RequestsPage() {
   });
 
   const { data: requests = [], isLoading } = useQuery<RequestWithRelations[]>({
-    queryKey: [user?.isAdmin ? "/api/admin/requests" : "/api/requests"],
+    queryKey: ["/api/requests"],
+  });
+
+  const { data: managers = [] } = useQuery<User[]>({
+    queryKey: ["/api/admin/managers"],
+    enabled: user?.isAdmin,
   });
 
   const { data: shifts = [] } = useQuery<Shift[]>({
@@ -83,6 +90,31 @@ function RequestsPage() {
     },
   });
 
+  const assignManager = useMutation({
+    mutationFn: async ({ requestId, managerId }: { requestId: number; managerId: number }) => {
+      const res = await fetch(`/api/admin/requests/${requestId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerId }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Request assigned successfully" });
+      setAssignManagerDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
   const updateRequestStatus = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: 'APPROVED' | 'REJECTED' }) => {
       const res = await fetch(`/api/admin/requests/${id}`, {
@@ -96,7 +128,6 @@ function RequestsPage() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Request status updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
     },
     onError: (error: Error) => {
@@ -108,8 +139,13 @@ function RequestsPage() {
     },
   });
 
-  const onSubmit = (data: RequestFormData) => {
-    createRequest.mutate(data);
+  const handleManagerAssign = (managerId: string) => {
+    if (selectedRequestId) {
+      assignManager.mutate({
+        requestId: selectedRequestId,
+        managerId: parseInt(managerId),
+      });
+    }
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -128,9 +164,11 @@ function RequestsPage() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Requests</h1>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            New Request
-          </Button>
+          {!user?.isAdmin && !user?.isManager && (
+            <Button onClick={() => setIsDialogOpen(true)}>
+              New Request
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
@@ -153,10 +191,11 @@ function RequestsPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Reason</TableHead>
-                {user?.isAdmin && <TableHead>Requester</TableHead>}
+                {(user?.isAdmin || user?.isManager) && <TableHead>Requester</TableHead>}
                 <TableHead>Dates</TableHead>
+                <TableHead>Assigned To</TableHead>
                 <TableHead>Review Info</TableHead>
-                {user?.isAdmin && <TableHead>Actions</TableHead>}
+                {(user?.isAdmin || user?.isManager) && <TableHead>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -171,7 +210,7 @@ function RequestsPage() {
                     </span>
                   </TableCell>
                   <TableCell>{request.reason}</TableCell>
-                  {user?.isAdmin && (
+                  {(user?.isAdmin || user?.isManager) && (
                     <TableCell>{request.requester?.fullName || 'Unknown'}</TableCell>
                   )}
                   <TableCell>
@@ -182,6 +221,15 @@ function RequestsPage() {
                       </>
                     ) : (
                       format(new Date(shifts.find(s => s.id === request.shiftId)?.startTime || ''), "MMM d, yyyy")
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {request.manager ? (
+                      <span className="text-sm font-medium">
+                        {request.manager.fullName}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">-</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -196,25 +244,41 @@ function RequestsPage() {
                       <span className="text-gray-500">-</span>
                     )}
                   </TableCell>
-                  {user?.isAdmin && request.status === 'PENDING' && (
+                  {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === 'PENDING' && (
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'APPROVED' })}
-                          disabled={updateRequestStatus.isPending}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'REJECTED' })}
-                          disabled={updateRequestStatus.isPending}
-                        >
-                          Reject
-                        </Button>
+                        {user.isAdmin && !request.managerId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedRequestId(request.id);
+                              setAssignManagerDialogOpen(true);
+                            }}
+                          >
+                            Assign Manager
+                          </Button>
+                        )}
+                        {(user.isAdmin || (user.isManager && request.managerId === user.id)) && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'APPROVED' })}
+                              disabled={updateRequestStatus.isPending}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'REJECTED' })}
+                              disabled={updateRequestStatus.isPending}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   )}
@@ -224,11 +288,12 @@ function RequestsPage() {
           </Table>
         )}
 
+        {/* New Request Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogTitle>Create New Request</DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(createRequest.mutate)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="type"
@@ -354,6 +419,32 @@ function RequestsPage() {
                 </Button>
               </form>
             </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Manager Dialog */}
+        <Dialog open={assignManagerDialogOpen} onOpenChange={setAssignManagerDialogOpen}>
+          <DialogContent>
+            <DialogTitle>Assign Manager</DialogTitle>
+            <div className="space-y-4">
+              <FormItem>
+                <FormLabel>Select Manager</FormLabel>
+                <Select onValueChange={handleManagerAssign}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a manager" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {managers.map((manager) => (
+                      <SelectItem key={manager.id} value={manager.id.toString()}>
+                        {manager.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

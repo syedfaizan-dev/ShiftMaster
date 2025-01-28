@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  isManager: boolean("is_manager").default(false).notNull(),
   fullName: text("full_name").notNull(),
 });
 
@@ -42,6 +43,7 @@ export const requests = pgTable("requests", {
   endDate: timestamp("end_date"), // For leave requests
   reason: text("reason"),
   reviewerId: integer("reviewer_id").references(() => users.id),
+  managerId: integer("manager_id").references(() => users.id), // New: For request assignment to managers
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   metadata: jsonb("metadata"), // Additional data specific to request type
@@ -55,6 +57,10 @@ export const requestsRelations = relations(requests, ({ one }) => ({
   }),
   reviewer: one(users, {
     fields: [requests.reviewerId],
+    references: [users.id],
+  }),
+  manager: one(users, {
+    fields: [requests.managerId],
     references: [users.id],
   }),
   shift: one(shifts, {
@@ -106,4 +112,5 @@ export type InsertRequest = typeof requests.$inferInsert;
 export type RequestWithRelations = Request & {
   requester?: User;
   reviewer?: User | null;
+  manager?: User | null;
 };
