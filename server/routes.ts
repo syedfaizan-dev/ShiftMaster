@@ -143,27 +143,41 @@ export function registerRoutes(app: Express): Server {
     const userRequests = await db
       .select({
         request: requests,
-        requester: users,
-        reviewer: {
+        requester: {
           id: users.id,
-          fullName: users.fullName,
           username: users.username,
-        },
+          fullName: users.fullName,
+        }
       })
       .from(requests)
       .leftJoin(users, eq(requests.requesterId, users.id))
-      .leftJoin(users, eq(requests.reviewerId, users.id), { as: "reviewer" })
       .where(eq(requests.requesterId, req.user.id));
 
-    res.json(userRequests.map(({ request, requester, reviewer }) => ({
-      ...request,
-      requester: {
-        id: requester.id,
-        fullName: requester.fullName,
-        username: requester.username,
-      },
-      reviewer,
-    })));
+    // Separate query for reviewer information
+    const requestsWithReviewers = await Promise.all(
+      userRequests.map(async ({ request }) => {
+        let reviewer = null;
+        if (request.reviewerId) {
+          const [reviewerData] = await db
+            .select({
+              id: users.id,
+              username: users.username,
+              fullName: users.fullName,
+            })
+            .from(users)
+            .where(eq(users.id, request.reviewerId))
+            .limit(1);
+          reviewer = reviewerData;
+        }
+        return {
+          ...request,
+          requester: userRequests[0].requester,
+          reviewer,
+        };
+      })
+    );
+
+    res.json(requestsWithReviewers);
   });
 
   // Admin: Get all requests
@@ -171,26 +185,40 @@ export function registerRoutes(app: Express): Server {
     const allRequests = await db
       .select({
         request: requests,
-        requester: users,
-        reviewer: {
+        requester: {
           id: users.id,
-          fullName: users.fullName,
           username: users.username,
-        },
+          fullName: users.fullName,
+        }
       })
       .from(requests)
-      .leftJoin(users, eq(requests.requesterId, users.id))
-      .leftJoin(users, eq(requests.reviewerId, users.id), { as: "reviewer" });
+      .leftJoin(users, eq(requests.requesterId, users.id));
 
-    res.json(allRequests.map(({ request, requester, reviewer }) => ({
-      ...request,
-      requester: {
-        id: requester.id,
-        fullName: requester.fullName,
-        username: requester.username,
-      },
-      reviewer,
-    })));
+    // Separate query for reviewer information
+    const requestsWithReviewers = await Promise.all(
+      allRequests.map(async ({ request }) => {
+        let reviewer = null;
+        if (request.reviewerId) {
+          const [reviewerData] = await db
+            .select({
+              id: users.id,
+              username: users.username,
+              fullName: users.fullName,
+            })
+            .from(users)
+            .where(eq(users.id, request.reviewerId))
+            .limit(1);
+          reviewer = reviewerData;
+        }
+        return {
+          ...request,
+          requester: allRequests.find(r => r.request.id === request.id)?.requester,
+          reviewer,
+        };
+      })
+    );
+
+    res.json(requestsWithReviewers);
   });
 
   // Admin: Review request (approve/reject)
