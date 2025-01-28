@@ -53,13 +53,13 @@ export default function RequestsPage() {
   // Query for requests to review (only for supervisors/managers)
   const { data: reviewRequests = [], isLoading: isLoadingReviewRequests } = useQuery<any[]>({
     queryKey: ["/api/requests/review"],
-    enabled: !!(user?.isSupervisor || user?.isManager || user?.isAdmin),
+    enabled: !!(user?.isSupervisor || user?.isManager),
   });
 
   // Query for managers (for reassignment)
   const { data: managers = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/managers"],
-    enabled: !!(user?.isSupervisor || user?.isAdmin),
+    enabled: !!(user?.isSupervisor),
   });
 
   const handleRequest = useMutation({
@@ -211,7 +211,7 @@ export default function RequestsPage() {
         <Tabs defaultValue="my-requests" className="space-y-4">
           <TabsList>
             <TabsTrigger value="my-requests">My Requests</TabsTrigger>
-            {(user?.isSupervisor || user?.isManager || user?.isAdmin) && (
+            {(user?.isSupervisor || user?.isManager) && (
               <TabsTrigger value="approvals">Approvals</TabsTrigger>
             )}
           </TabsList>
@@ -220,7 +220,7 @@ export default function RequestsPage() {
             <RequestsTable requests={myRequests} isLoading={isLoadingMyRequests} />
           </TabsContent>
 
-          {(user?.isSupervisor || user?.isManager || user?.isAdmin) && (
+          {(user?.isSupervisor || user?.isManager) && (
             <TabsContent value="approvals">
               <RequestsTable 
                 requests={reviewRequests} 

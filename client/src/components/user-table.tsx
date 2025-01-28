@@ -38,8 +38,8 @@ export default function UserTable() {
             <TableCell>{user.fullName}</TableCell>
             <TableCell>{user.username}</TableCell>
             <TableCell>
-              <Badge variant={user.isAdmin ? "default" : "secondary"}>
-                {user.isAdmin ? "Admin" : "Worker"}
+              <Badge variant={user.isSupervisor ? "default" : "secondary"}>
+                {user.isSupervisor ? "Supervisor" : user.isManager ? "Manager" : "Employee"}
               </Badge>
             </TableCell>
           </TableRow>

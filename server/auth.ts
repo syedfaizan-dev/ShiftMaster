@@ -97,7 +97,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  app.post("/api/register", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
@@ -106,7 +106,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, isAdmin, fullName, isSupervisor, isManager } = result.data;
+      const { username, password, fullName, isSupervisor, isManager } = result.data;
 
       const [existingUser] = await db
         .select()
@@ -120,21 +120,20 @@ export function setupAuth(app: Express) {
 
       const hashedPassword = await crypto.hash(password);
 
-      // Create the new user with all roles if provided
+      // Create the new user with supervisor or manager role if provided
       const [newUser] = await db
         .insert(users)
         .values({
           username,
           password: hashedPassword,
           fullName,
-          isAdmin: isAdmin || false,
           isSupervisor: isSupervisor || false,
           isManager: isManager || false,
         })
         .returning();
 
-      // Only log in if not being created by an admin
-      if (!req.user?.isAdmin) {
+      // Only log in if not being created by a supervisor
+      if (!req.user?.isSupervisor) {
         req.login(newUser, (err) => {
           if (err) {
             return next(err);
@@ -145,7 +144,7 @@ export function setupAuth(app: Express) {
           });
         });
       } else {
-        // If created by admin, just return success
+        // If created by supervisor, just return success
         return res.json({
           message: "User created successfully",
           user: { id: newUser.id, username: newUser.username },
@@ -156,7 +155,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", (req: Request, res: Response, next: NextFunction) => {
     const result = insertUserSchema.safeParse(req.body);
     if (!result.success) {
       return res
@@ -187,7 +186,7 @@ export function setupAuth(app: Express) {
     passport.authenticate("local", cb)(req, res, next);
   });
 
-  app.post("/api/logout", (req, res) => {
+  app.post("/api/logout", (req: Request, res: Response) => {
     req.logout((err) => {
       if (err) {
         return res.status(500).send("Logout failed");
@@ -197,7 +196,7 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", (req: Request, res: Response) => {
     if (req.isAuthenticated()) {
       return res.json(req.user);
     }

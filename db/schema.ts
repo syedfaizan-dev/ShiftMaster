@@ -6,7 +6,6 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
-  isAdmin: boolean("is_admin").default(false).notNull(),
   fullName: text("full_name").notNull(),
   isSupervisor: boolean("is_supervisor").default(false),
   isManager: boolean("is_manager").default(false),

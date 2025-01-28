@@ -45,7 +45,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 <span>Requests</span>
               </button>
             </Link>
-            {user?.isAdmin && (
+            {user?.isSupervisor && (
               <>
                 <Link href="/employees">
                   <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">

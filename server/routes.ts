@@ -12,7 +12,7 @@ const scryptAsync = promisify(scrypt);
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Create initial supervisor and managers
+  // Create initial supervisors and managers
   app.post("/api/setup-roles", async (_req: Request, res: Response) => {
     try {
       // Delete existing data
@@ -26,66 +26,68 @@ export function registerRoutes(app: Express): Server {
       const passwordBuf = (await scryptAsync("password123", salt, 64)) as Buffer;
       const hashedPassword = `${passwordBuf.toString("hex")}.${salt}`;
 
-      // Create supervisor
-      const [supervisor] = await db.insert(users)
+      // Create supervisors
+      const [supervisor1] = await db.insert(users)
         .values({
           username: "supervisor@company.com",
           password: hashedPassword,
           fullName: "John Supervisor",
           isSupervisor: true,
           isManager: false,
-          isAdmin: false,
+        })
+        .returning();
+
+      const [supervisor2] = await db.insert(users)
+        .values({
+          username: "supervisor2@company.com",
+          password: hashedPassword,
+          fullName: "Jane Supervisor",
+          isSupervisor: true,
+          isManager: false,
         })
         .returning();
 
       // Create managers
-      const managers = await db.insert(users)
-        .values([
-          {
-            username: "manager1@company.com",
-            password: hashedPassword,
-            fullName: "Alice Manager",
-            isManager: true,
-            isSupervisor: false,
-            isAdmin: false,
-          },
-          {
-            username: "manager2@company.com",
-            password: hashedPassword,
-            fullName: "Bob Manager",
-            isManager: true,
-            isSupervisor: false,
-            isAdmin: false,
-          },
-          {
-            username: "manager3@company.com",
-            password: hashedPassword,
-            fullName: "Carol Manager",
-            isManager: true,
-            isSupervisor: false,
-            isAdmin: false,
-          },
-        ])
+      const [manager1] = await db.insert(users)
+        .values({
+          username: "manager@company.com",
+          password: hashedPassword,
+          fullName: "Alice Manager",
+          isManager: true,
+          isSupervisor: false,
+        })
+        .returning();
+
+      const [manager2] = await db.insert(users)
+        .values({
+          username: "manager2@company.com",
+          password: hashedPassword,
+          fullName: "Bob Manager",
+          isManager: true,
+          isSupervisor: false,
+        })
         .returning();
 
       res.json({
         message: "Roles setup completed successfully",
         credentials: {
-          supervisor: {
-            email: "supervisor@company.com",
-            password: "password123"
-          },
+          supervisors: [
+            {
+              email: "supervisor@company.com",
+              password: "password123"
+            },
+            {
+              email: "supervisor2@company.com",
+              password: "password123"
+            }
+          ],
           managers: [
             {
-              email: "manager1@company.com",
+              email: "manager@company.com",
               password: "password123"
             },
             {
               email: "manager2@company.com",
-              password: "password123"
-            },
-            {
-              email: "manager3@company.com",
               password: "password123"
             }
           ]
@@ -97,12 +99,12 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Middleware to check if user is authenticated and is admin
-  const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  // Middleware to check if user is authenticated and is supervisor
+  const requireSupervisor = (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    if (!req.user?.isAdmin) {
+    if (!req.user?.isSupervisor) {
       return res.status(403).json({ message: "Not authorized" });
     }
     next();
@@ -114,7 +116,7 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    if (req.user?.isSupervisor || req.user?.isManager || req.user?.isAdmin) {
+    if (req.user?.isSupervisor || req.user?.isManager) {
       return next();
     }
 
@@ -134,14 +136,14 @@ export function registerRoutes(app: Express): Server {
     res.json(userShifts);
   });
 
-  // Admin: Get all shifts
-  app.get("/api/admin/shifts", requireAdmin, async (_req: Request, res: Response) => {
+  // Supervisor: Get all shifts
+  app.get("/api/admin/shifts", requireSupervisor, async (_req: Request, res: Response) => {
     const allShifts = await db.select().from(shifts);
     res.json(allShifts);
   });
 
-  // Admin: Create shift
-  app.post("/api/admin/shifts", requireAdmin, async (req: Request, res: Response) => {
+  // Supervisor: Create shift
+  app.post("/api/admin/shifts", requireSupervisor, async (req: Request, res: Response) => {
     const { inspectorId, roleId, startTime, endTime, week, backupId } = req.body;
 
     const [newShift] = await db.insert(shifts)
@@ -159,18 +161,17 @@ export function registerRoutes(app: Express): Server {
     res.json(newShift);
   });
 
-  // Admin: Get all users
-  app.get("/api/admin/users", requireAdmin, async (_req: Request, res: Response) => {
+  // Supervisor: Get all users
+  app.get("/api/admin/users", requireSupervisor, async (_req: Request, res: Response) => {
     const allUsers = await db.select().from(users);
     res.json(allUsers);
   });
 
-  // Admin: Update user
-  app.put("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
+  // Supervisor: Update user
+  app.put("/api/admin/users/:id", requireSupervisor, async (req: Request, res: Response) => {
     const { id } = req.params;
     const { username, fullName } = req.body;
 
-    // Check if email already exists
     const [existingUser] = await db
       .select()
       .from(users)
@@ -181,7 +182,6 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    // Update user
     const [updatedUser] = await db
       .update(users)
       .set({
@@ -194,14 +194,14 @@ export function registerRoutes(app: Express): Server {
     res.json(updatedUser);
   });
 
-  // Admin: Get all roles
-  app.get("/api/admin/roles", requireAdmin, async (_req: Request, res: Response) => {
+  // Supervisor: Get all roles
+  app.get("/api/admin/roles", requireSupervisor, async (_req: Request, res: Response) => {
     const allRoles = await db.select().from(roles);
     res.json(allRoles);
   });
 
-  // Admin: Create role
-  app.post("/api/admin/roles", requireAdmin, async (req: Request, res: Response) => {
+  // Supervisor: Create role
+  app.post("/api/admin/roles", requireSupervisor, async (req: Request, res: Response) => {
     const { name, description } = req.body;
 
     const [newRole] = await db.insert(roles)
@@ -215,8 +215,8 @@ export function registerRoutes(app: Express): Server {
     res.json(newRole);
   });
 
-  // Admin: Update role
-  app.put("/api/admin/roles/:id", requireAdmin, async (req: Request, res: Response) => {
+  // Supervisor: Update role
+  app.put("/api/admin/roles/:id", requireSupervisor, async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, description } = req.body;
 
@@ -231,8 +231,6 @@ export function registerRoutes(app: Express): Server {
 
     res.json(updatedRole);
   });
-
-  // Request Management Routes
 
   // Get all managers (for reassignment)
   app.get("/api/admin/managers", requireSupervisorOrManager, async (_req: Request, res: Response) => {
@@ -339,9 +337,7 @@ export function registerRoutes(app: Express): Server {
             // For supervisors: show non-escalated requests
             req.user?.isSupervisor ? isNull(requests.escalatedTo) : undefined,
             // For managers: show requests escalated to them
-            req.user?.isManager ? eq(requests.escalatedTo, req.user.id) : undefined,
-            // For admins: show all
-            req.user?.isAdmin
+            req.user?.isManager ? eq(requests.escalatedTo, req.user.id) : undefined
           )
         )
       );
@@ -377,7 +373,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Auto-escalation check endpoint (to be called by a scheduled task)
-  app.post("/api/requests/check-escalations", requireAdmin, async (_req: Request, res: Response) => {
+  app.post("/api/requests/check-escalations", requireSupervisor, async (_req: Request, res: Response) => {
     const now = new Date();
 
     try {
