@@ -113,8 +113,6 @@ export function registerRoutes(app: Express): Server {
     res.json(newRole);
   });
 
-  // Request Management Routes
-
   // Create a new request (shift swap or leave)
   app.post("/api/requests", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -147,18 +145,24 @@ export function registerRoutes(app: Express): Server {
     const userRequests = await db.select({
       request: requests,
       requester: users,
+      reviewer: users,
     })
     .from(requests)
     .leftJoin(users, eq(requests.requesterId, users.id))
-    .where(eq(requests.requesterId, req.user.id));
+    .leftJoin(users, eq(requests.reviewerId, users.id), 'reviewer');
 
-    res.json(userRequests.map(({ request, requester }) => ({
+    res.json(userRequests.map(({ request, requester, reviewer }) => ({
       ...request,
       requester: {
         id: requester.id,
         fullName: requester.fullName,
         username: requester.username,
       },
+      reviewer: reviewer ? {
+        id: reviewer.id,
+        fullName: reviewer.fullName,
+        username: reviewer.username,
+      } : null,
     })));
   });
 
@@ -167,17 +171,24 @@ export function registerRoutes(app: Express): Server {
     const allRequests = await db.select({
       request: requests,
       requester: users,
+      reviewer: users,
     })
     .from(requests)
-    .leftJoin(users, eq(requests.requesterId, users.id));
+    .leftJoin(users, eq(requests.requesterId, users.id))
+    .leftJoin(users, eq(requests.reviewerId, users.id), 'reviewer');
 
-    res.json(allRequests.map(({ request, requester }) => ({
+    res.json(allRequests.map(({ request, requester, reviewer }) => ({
       ...request,
       requester: {
         id: requester.id,
         fullName: requester.fullName,
         username: requester.username,
       },
+      reviewer: reviewer ? {
+        id: reviewer.id,
+        fullName: reviewer.fullName,
+        username: reviewer.username,
+      } : null,
     })));
   });
 

@@ -97,6 +97,7 @@ function RequestsPage() {
     onSuccess: () => {
       toast({ title: "Success", description: "Request status updated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
     },
     onError: (error: Error) => {
       toast({
@@ -154,6 +155,7 @@ function RequestsPage() {
                 <TableHead>Reason</TableHead>
                 {user?.isAdmin && <TableHead>Requester</TableHead>}
                 <TableHead>Dates</TableHead>
+                <TableHead>Review Info</TableHead>
                 {user?.isAdmin && <TableHead>Actions</TableHead>}
               </TableRow>
             </TableHeader>
@@ -180,6 +182,18 @@ function RequestsPage() {
                       </>
                     ) : (
                       format(new Date(shifts.find(s => s.id === request.shiftId)?.startTime || ''), "MMM d, yyyy")
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {request.reviewer ? (
+                      <div className="text-sm">
+                        <p>By: {request.reviewer.fullName}</p>
+                        <p className="text-gray-500">
+                          {format(new Date(request.reviewedAt!), "MMM d, yyyy h:mm a")}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500">-</span>
                     )}
                   </TableCell>
                   {user?.isAdmin && request.status === 'PENDING' && (
