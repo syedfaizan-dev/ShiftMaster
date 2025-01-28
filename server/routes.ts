@@ -2,8 +2,9 @@ import { type Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { shifts, users, roles } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { shifts, users, roles, requests } from "@db/schema";
+import { eq, and, or, isNull, gte, lt } from "drizzle-orm";
+import { addDays } from "date-fns";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -17,6 +18,19 @@ export function registerRoutes(app: Express): Server {
       return res.status(403).send("Not authorized");
     }
     next();
+  };
+
+  // Middleware to check if user is supervisor or manager
+  const requireSupervisorOrManager = async (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    if (req.user.isSupervisor || req.user.isManager || req.user.isAdmin) {
+      return next();
+    }
+
+    return res.status(403).send("Not authorized");
   };
 
   // Get all shifts for a user
@@ -128,6 +142,115 @@ export function registerRoutes(app: Express): Server {
       .returning();
 
     res.json(updatedRole);
+  });
+
+  // Request Management Routes
+
+  // Create a new request
+  app.post("/api/requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const autoEscalateAt = addDays(new Date(), 2); // Auto-escalate after 2 days
+      const [newRequest] = await db.insert(requests)
+        .values({
+          ...req.body,
+          requesterId: req.user.id,
+          status: 'pending',
+          autoEscalateAt,
+        })
+        .returning();
+
+      res.json(newRequest);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get requests for the current user
+  app.get("/api/requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const userRequests = await db.select()
+      .from(requests)
+      .where(eq(requests.requesterId, req.user.id));
+
+    res.json(userRequests);
+  });
+
+  // Get requests to review (for supervisors and managers)
+  app.get("/api/requests/review", requireSupervisorOrManager, async (req, res) => {
+    const pendingRequests = await db.select()
+      .from(requests)
+      .where(
+        and(
+          eq(requests.status, 'pending'),
+          or(
+            isNull(requests.escalatedTo),
+            eq(requests.escalatedTo, req.user.id)
+          )
+        )
+      );
+
+    res.json(pendingRequests);
+  });
+
+  // Update request status
+  app.put("/api/requests/:id", requireSupervisorOrManager, async (req, res) => {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+
+    try {
+      const [updatedRequest] = await db.update(requests)
+        .set({
+          status,
+          notes,
+          reviewedBy: req.user.id,
+          reviewedAt: new Date(),
+        })
+        .where(eq(requests.id, parseInt(id)))
+        .returning();
+
+      res.json(updatedRequest);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Auto-escalation check endpoint (to be called by a scheduled task)
+  app.post("/api/requests/check-escalations", requireAdmin, async (req, res) => {
+    const now = new Date();
+
+    try {
+      const [escalatedRequests] = await db.update(requests)
+        .set({
+          status: 'escalated',
+          escalatedAt: now,
+          escalatedTo: (request) => {
+            // Escalate to manager if not already escalated
+            return request.escalatedTo ?? db
+              .select({ id: users.id })
+              .from(users)
+              .where(eq(users.isManager, true))
+              .limit(1);
+          },
+        })
+        .where(
+          and(
+            eq(requests.status, 'pending'),
+            lt(requests.autoEscalateAt, now)
+          )
+        )
+        .returning();
+
+      res.json(escalatedRequests);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
   });
 
   const httpServer = createServer(app);
