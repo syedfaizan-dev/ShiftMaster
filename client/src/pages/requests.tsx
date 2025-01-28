@@ -33,7 +33,12 @@ const requestSchema = z.object({
   reason: z.string().min(1, "Reason is required"),
 });
 
+const assignManagerSchema = z.object({
+  managerId: z.string().min(1, "Please select a manager"),
+});
+
 type RequestFormData = z.infer<typeof requestSchema>;
+type AssignManagerFormData = z.infer<typeof assignManagerSchema>;
 
 function RequestsPage() {
   const { user } = useUser();
@@ -49,6 +54,10 @@ function RequestsPage() {
       type: "SHIFT_SWAP",
       reason: "",
     },
+  });
+
+  const assignManagerForm = useForm<AssignManagerFormData>({
+    resolver: zodResolver(assignManagerSchema),
   });
 
   const { data: requests = [], isLoading } = useQuery<RequestWithRelations[]>({
@@ -91,11 +100,13 @@ function RequestsPage() {
   });
 
   const assignManager = useMutation({
-    mutationFn: async ({ requestId, managerId }: { requestId: number; managerId: number }) => {
-      const res = await fetch(`/api/admin/requests/${requestId}/assign`, {
+    mutationFn: async (data: AssignManagerFormData) => {
+      if (!selectedRequestId) throw new Error("No request selected");
+
+      const res = await fetch(`/api/admin/requests/${selectedRequestId}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ managerId }),
+        body: JSON.stringify({ managerId: parseInt(data.managerId) }),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -104,6 +115,7 @@ function RequestsPage() {
     onSuccess: () => {
       toast({ title: "Success", description: "Request assigned successfully" });
       setAssignManagerDialogOpen(false);
+      assignManagerForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
     },
     onError: (error: Error) => {
@@ -138,15 +150,6 @@ function RequestsPage() {
       });
     },
   });
-
-  const handleManagerAssign = (managerId: string) => {
-    if (selectedRequestId) {
-      assignManager.mutate({
-        requestId: selectedRequestId,
-        managerId: parseInt(managerId),
-      });
-    }
-  };
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -426,25 +429,37 @@ function RequestsPage() {
         <Dialog open={assignManagerDialogOpen} onOpenChange={setAssignManagerDialogOpen}>
           <DialogContent>
             <DialogTitle>Assign Manager</DialogTitle>
-            <div className="space-y-4">
-              <FormItem>
-                <FormLabel>Select Manager</FormLabel>
-                <Select onValueChange={handleManagerAssign}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a manager" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {managers.map((manager) => (
-                      <SelectItem key={manager.id} value={manager.id.toString()}>
-                        {manager.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            </div>
+            <Form {...assignManagerForm}>
+              <form onSubmit={assignManagerForm.handleSubmit(assignManager.mutate)} className="space-y-4">
+                <FormField
+                  control={assignManagerForm.control}
+                  name="managerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Manager</FormLabel>
+                      <Select onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a manager" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {managers.map((manager) => (
+                            <SelectItem key={manager.id} value={manager.id.toString()}>
+                              {manager.fullName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={assignManager.isPending}>
+                  Assign Manager
+                </Button>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
