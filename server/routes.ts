@@ -233,7 +233,7 @@ export function registerRoutes(app: Express): Server {
       status: requests.status,
       reason: requests.reason,
       startDate: requests.startDate,
-      endDate: requests.endDate,
+      endTime: requests.endTime,
       createdAt: requests.createdAt,
       escalatedTo: requests.escalatedTo,
       requester: {
@@ -248,18 +248,18 @@ export function registerRoutes(app: Express): Server {
         and(
           eq(requests.status, 'pending'),
           or(
-            // Show to supervisors if not escalated
+            // For supervisors: show non-escalated requests
             and(
-              eq(requests.escalatedTo, null),
-              eq(req.user!.isSupervisor, true)
+              isNull(requests.escalatedTo),
+              Boolean(req.user?.isSupervisor)
             ),
-            // Show to managers if escalated to them
+            // For managers: show requests escalated to them
             and(
-              eq(requests.escalatedTo, req.user!.id),
-              eq(req.user!.isManager, true)
+              eq(requests.escalatedTo, req.user?.id ?? 0),
+              Boolean(req.user?.isManager)
             ),
-            // Show to admins regardless
-            eq(req.user!.isAdmin, true)
+            // For admins: show all
+            Boolean(req.user?.isAdmin)
           )
         )
       );

@@ -106,7 +106,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username, password, isAdmin } = result.data;
+      const { username, password, isAdmin, fullName, isSupervisor, isManager } = result.data;
 
       const [existingUser] = await db
         .select()
@@ -120,13 +120,16 @@ export function setupAuth(app: Express) {
 
       const hashedPassword = await crypto.hash(password);
 
-      // Create the new user with isAdmin if provided
+      // Create the new user with all roles if provided
       const [newUser] = await db
         .insert(users)
         .values({
-          ...result.data,
+          username,
           password: hashedPassword,
+          fullName,
           isAdmin: isAdmin || false,
+          isSupervisor: isSupervisor || false,
+          isManager: isManager || false,
         })
         .returning();
 
@@ -144,7 +147,7 @@ export function setupAuth(app: Express) {
       } else {
         // If created by admin, just return success
         return res.json({
-          message: "Employee created successfully",
+          message: "User created successfully",
           user: { id: newUser.id, username: newUser.username },
         });
       }
