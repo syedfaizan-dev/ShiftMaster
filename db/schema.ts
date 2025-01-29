@@ -88,6 +88,39 @@ export const shiftsRelations = relations(shifts, ({ one }) => ({
   }),
 }));
 
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(), // 'SHIFT_ASSIGNED', 'REQUEST_UPDATE', etc.
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  metadata: jsonb("metadata"), // Additional data like shiftId, requestId, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Add notification relations
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+// Add notification schemas
+export const insertNotificationSchema = createInsertSchema(notifications);
+export const selectNotificationSchema = createSelectSchema(notifications);
+
+// Add notification types
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+// Export notification with relations type
+export type NotificationWithUser = Notification & {
+  user?: User;
+};
+
+
 // Schema exports
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
