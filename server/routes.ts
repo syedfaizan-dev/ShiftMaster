@@ -393,7 +393,8 @@ export function registerRoutes(app: Express): Server {
         with: {
           inspector: true,
           assignedEmployee: true,
-          shiftType: true
+          shiftType: true,
+          taskType: true
         }
       });
 
@@ -414,7 +415,7 @@ export function registerRoutes(app: Express): Server {
   // Create task (admin only)
   app.post("/api/admin/tasks", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const { inspectorId, shiftTypeId, taskType, description, status, date, isFollowupNeeded, assignedTo } = req.body;
+      const { inspectorId, shiftTypeId, taskTypeId, status, date, isFollowupNeeded, assignedTo } = req.body;
 
       // Verify that the assigned user is an employee (not admin, manager, or inspector)
       const [assignedUser] = await db
@@ -434,13 +435,23 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: "Invalid assigned user. Must be an employee." });
       }
 
+      // Verify that the task type exists
+      const [taskType] = await db
+        .select()
+        .from(taskTypes)
+        .where(eq(taskTypes.id, taskTypeId))
+        .limit(1);
+
+      if (!taskType) {
+        return res.status(400).json({ message: "Invalid task type" });
+      }
+
       const [newTask] = await db
         .insert(tasks)
         .values({
           inspectorId,
           shiftTypeId,
-          taskType,
-          description,
+          taskTypeId,
           status,
           date: new Date(date),
           isFollowupNeeded,

@@ -154,12 +154,19 @@ export type RequestWithRelations = Request & {
   manager?: User | null;
 };
 
+export const taskTypes = pgTable("task_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").unique().notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
   shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
-  taskType: text("task_type").notNull(),
-  description: text("description").notNull(),
+  taskTypeId: integer("task_type_id").references(() => taskTypes.id).notNull(),
   status: text("status").default("PENDING").notNull(),
   date: timestamp("date").notNull(),
   isFollowupNeeded: boolean("is_followup_needed").default(false).notNull(),
@@ -181,27 +188,11 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.shiftTypeId],
     references: [shiftTypes.id],
   }),
+  taskType: one(taskTypes, {
+    fields: [tasks.taskTypeId],
+    references: [taskTypes.id],
+  }),
 }));
-
-export const insertTaskSchema = createInsertSchema(tasks);
-export const selectTaskSchema = createSelectSchema(tasks);
-
-export type Task = typeof tasks.$inferSelect;
-export type InsertTask = typeof tasks.$inferInsert;
-
-export type TaskWithRelations = Task & {
-  inspector?: User;
-  assignedEmployee?: User;
-  shiftType?: typeof shiftTypes.$inferSelect;
-};
-
-export const taskTypes = pgTable("task_types", {
-  id: serial("id").primaryKey(),
-  name: text("name").unique().notNull(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-  createdBy: integer("created_by").references(() => users.id),
-});
 
 export const taskTypesRelations = relations(taskTypes, ({ one }) => ({
   creator: one(users, {
@@ -215,3 +206,13 @@ export const selectTaskTypeSchema = createSelectSchema(taskTypes);
 
 export type TaskType = typeof taskTypes.$inferSelect;
 export type InsertTaskType = typeof taskTypes.$inferInsert;
+
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = typeof tasks.$inferInsert;
+
+export type TaskWithRelations = Task & {
+  inspector?: User;
+  assignedEmployee?: User;
+  shiftType?: typeof shiftTypes.$inferSelect;
+  taskType?: TaskType;
+};
