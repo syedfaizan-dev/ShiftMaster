@@ -74,7 +74,7 @@ export default function Tasks() {
     },
   });
 
-  const { data: tasks = [], isLoading: isLoadingTasks } = useQuery<TaskWithRelations[]>({
+  const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useQuery<TaskWithRelations[]>({
     queryKey: ["/api/admin/tasks"],
   });
 
@@ -136,6 +136,21 @@ export default function Tasks() {
             <AlertTitle>Access Denied</AlertTitle>
             <AlertDescription>
               You don't have permission to access this page.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Navbar>
+    );
+  }
+
+  if (tasksError) {
+    return (
+      <Navbar>
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Failed to load tasks. Please try again later.
             </AlertDescription>
           </Alert>
         </div>

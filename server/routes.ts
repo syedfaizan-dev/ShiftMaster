@@ -425,9 +425,11 @@ export function registerRoutes(app: Express): Server {
         .from(tasks)
         .leftJoin(inspector, eq(tasks.inspectorId, inspector.id))
         .leftJoin(assignedEmployee, eq(tasks.assignedTo, assignedEmployee.id))
-        .leftJoin(shiftTypes, eq(tasks.shiftTypeId, shiftTypes.id));
+        .leftJoin(shiftTypes, eq(tasks.shiftTypeId, shiftTypes.id))
+        .orderBy(tasks.date);
 
-      res.json(allTasks);
+      // Even if no tasks are found, we'll return an empty array
+      res.json(allTasks || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       res.status(500).json({ message: 'Error fetching tasks' });
