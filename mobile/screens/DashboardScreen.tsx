@@ -38,8 +38,12 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
-    fetchShifts();
+    const initializeData = async () => {
+      await loadUser();
+      await fetchShifts();
+    };
+
+    initializeData();
   }, []);
 
   const loadUser = async () => {
@@ -122,13 +126,6 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
-        style={styles.shiftsButton}
-        onPress={() => navigation.navigate('Shifts')}
-      >
-        <Text style={styles.shiftsButtonText}>View All Shifts</Text>
-      </TouchableOpacity>
-
       <ScrollView style={styles.shiftsContainer}>
         <Text style={styles.sectionTitle}>Recent Shifts</Text>
         {shifts.length === 0 ? (
@@ -155,6 +152,13 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
           ))
         )}
       </ScrollView>
+
+      <TouchableOpacity 
+        style={styles.shiftsButton}
+        onPress={() => navigation.navigate('Shifts')}
+      >
+        <Text style={styles.shiftsButtonText}>View All Shifts</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -190,18 +194,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
-  shiftsButton: {
-    backgroundColor: '#01843d',
-    margin: 20,
-    padding: 15,
-    borderRadius: 5,
-  },
-  shiftsButtonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
   shiftsContainer: {
+    flex: 1,
     padding: 20,
   },
   sectionTitle: {
@@ -213,6 +207,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     marginTop: 20,
+  },
+  shiftsButton: {
+    backgroundColor: '#01843d',
+    margin: 20,
+    padding: 15,
+    borderRadius: 5,
+  },
+  shiftsButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   shiftCard: {
     backgroundColor: 'white',
