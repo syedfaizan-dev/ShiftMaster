@@ -45,18 +45,18 @@ export const shifts = pgTable("shifts", {
 export const requests = pgTable("requests", {
   id: serial("id").primaryKey(),
   requesterId: integer("requester_id").references(() => users.id).notNull(),
-  type: text("type").notNull(), 
-  status: text("status").default('PENDING').notNull(), 
+  type: text("type").notNull(),
+  status: text("status").default('PENDING').notNull(),
   shiftId: integer("shift_id").references(() => shifts.id),
-  targetShiftId: integer("target_shift_id").references(() => shifts.id), 
-  startDate: timestamp("start_date"), 
-  endDate: timestamp("end_date"), 
+  targetShiftId: integer("target_shift_id").references(() => shifts.id),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
   reason: text("reason"),
   reviewerId: integer("reviewer_id").references(() => users.id),
-  managerId: integer("manager_id").references(() => users.id), 
+  managerId: integer("manager_id").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  metadata: jsonb("metadata"), 
+  metadata: jsonb("metadata"),
 });
 
 export const requestsRelations = relations(requests, ({ one }) => ({
@@ -104,11 +104,11 @@ export const shiftsRelations = relations(shifts, ({ one }) => ({
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  type: text("type").notNull(), 
+  type: text("type").notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
-  metadata: jsonb("metadata"), 
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -160,7 +160,7 @@ export const tasks = pgTable("tasks", {
   shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   taskType: text("task_type").notNull(),
   description: text("description").notNull(),
-  status: text("status").default("PENDING").notNull(), 
+  status: text("status").default("PENDING").notNull(),
   date: timestamp("date").notNull(),
   isFollowupNeeded: boolean("is_followup_needed").default(false).notNull(),
   assignedTo: integer("assigned_to").references(() => users.id).notNull(),
@@ -194,3 +194,24 @@ export type TaskWithRelations = Task & {
   assignedEmployee?: User;
   shiftType?: typeof shiftTypes.$inferSelect;
 };
+
+export const taskTypes = pgTable("task_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").unique().notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+export const taskTypesRelations = relations(taskTypes, ({ one }) => ({
+  creator: one(users, {
+    fields: [taskTypes.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const insertTaskTypeSchema = createInsertSchema(taskTypes);
+export const selectTaskTypeSchema = createSelectSchema(taskTypes);
+
+export type TaskType = typeof taskTypes.$inferSelect;
+export type InsertTaskType = typeof taskTypes.$inferInsert;

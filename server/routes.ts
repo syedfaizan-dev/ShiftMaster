@@ -2,7 +2,7 @@ import { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { shifts, users, roles, requests, shiftTypes, tasks } from "@db/schema";
+import { shifts, users, roles, requests, shiftTypes, tasks, taskTypes } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
 import { getShifts } from "./routes/shifts";
@@ -386,7 +386,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
   // Get all tasks (admin only)
   app.get("/api/admin/tasks", requireAdmin, async (req: Request, res: Response) => {
     try {
@@ -510,6 +509,87 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: 'Error fetching inspectors' });
     }
   });
+
+  // Get all task types
+  app.get("/api/task-types", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const allTaskTypes = await db.select().from(taskTypes);
+      res.json(allTaskTypes);
+    } catch (error) {
+      console.error('Error fetching task types:', error);
+      res.status(500).json({ message: 'Error fetching task types' });
+    }
+  });
+
+  // Admin: Create task type
+  app.post("/api/admin/task-types", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { name, description } = req.body;
+
+      // Check if task type already exists
+      const [existingType] = await db
+        .select()
+        .from(taskTypes)
+        .where(eq(taskTypes.name, name))
+        .limit(1);
+
+      if (existingType) {
+        return res.status(400).json({ message: "Task type with this name already exists" });
+      }
+
+      const [newTaskType] = await db.insert(taskTypes)
+        .values({
+          name,
+          description,
+          createdBy: req.user?.id,
+        })
+        .returning();
+
+      res.json(newTaskType);
+    } catch (error) {
+      console.error('Error creating task type:', error);
+      res.status(500).json({ message: 'Error creating task type' });
+    }
+  });
+
+  // Admin: Update task type
+  app.put("/api/admin/task-types/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, description } = req.body;
+
+      const [updatedTaskType] = await db
+        .update(taskTypes)
+        .set({
+          name,
+          description,
+        })
+        .where(eq(taskTypes.id, parseInt(id)))
+        .returning();
+
+      res.json(updatedTaskType);
+    } catch (error) {
+      console.error('Error updating task type:', error);
+      res.status(500).json({ message: 'Error updating task type' });
+    }
+  });
+
+  // Admin: Delete task type
+  app.delete("/api/admin/task-types/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      await db
+        .delete(taskTypes)
+        .where(eq(taskTypes.id, parseInt(id)));
+
+      res.json({ message: "Task type deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting task type:', error);
+      res.status(500).json({ message: 'Error deleting task type' });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;
