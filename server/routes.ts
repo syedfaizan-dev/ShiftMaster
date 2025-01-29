@@ -117,7 +117,7 @@ export function registerRoutes(app: Express): Server {
   // Admin: Update user
   app.put("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { username, fullName } = req.body;
+    const { username, fullName, isAdmin, isManager, isInspector } = req.body;
 
     const [existingUser] = await db
       .select()
@@ -126,19 +126,27 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (existingUser && existingUser.id !== parseInt(id)) {
-      return res.status(400).send("Email already exists");
+      return res.status(400).send("Username already exists");
     }
 
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        username,
-        fullName,
-      })
-      .where(eq(users.id, parseInt(id)))
-      .returning();
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          username,
+          fullName,
+          isAdmin: isAdmin || false,
+          isManager: isManager || false,
+          isInspector: isInspector || false,
+        })
+        .where(eq(users.id, parseInt(id)))
+        .returning();
 
-    res.json(updatedUser);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ message: 'Error updating user' });
+    }
   });
 
   // Get all shifts for a user (now using the getShifts handler)
