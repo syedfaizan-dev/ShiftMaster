@@ -420,8 +420,8 @@ export function registerRoutes(app: Express): Server {
           },
         })
         .from(tasks)
-        .leftJoin(users, eq(tasks.inspectorId, users.id))
-        .leftJoin(users, eq(tasks.assignedTo, users.id))
+        .leftJoin(users.as('inspector'), eq(tasks.inspectorId, 'inspector.id'))
+        .leftJoin(users.as('assignedEmployee'), eq(tasks.assignedTo, 'assignedEmployee.id'))
         .leftJoin(shiftTypes, eq(tasks.shiftTypeId, shiftTypes.id));
 
       res.json(allTasks);
