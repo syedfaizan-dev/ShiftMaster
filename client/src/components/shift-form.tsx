@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
@@ -17,8 +16,7 @@ type ShiftFormProps = {
 const shiftSchema = z.object({
   inspectorId: z.string().min(1, "Inspector is required"),
   roleId: z.string().min(1, "Role is required"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
+  shiftTypeId: z.string().min(1, "Shift type is required"),
   week: z.string().min(1, "Week is required"),
   backupId: z.string().optional(),
 });
@@ -33,8 +31,7 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
     defaultValues: {
       inspectorId: "",
       roleId: "",
-      startTime: "",
-      endTime: "",
+      shiftTypeId: "",
       week: "",
       backupId: "",
     },
@@ -48,6 +45,10 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
     queryKey: [user?.isAdmin ? "/api/admin/roles" : "/api/roles"],
   });
 
+  const { data: shiftTypes } = useQuery<any[]>({
+    queryKey: ["/api/shift-types"],
+  });
+
   const createShift = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch("/api/admin/shifts", {
@@ -57,9 +58,8 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
           ...data,
           inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
+          shiftTypeId: parseInt(data.shiftTypeId),
           backupId: data.backupId ? parseInt(data.backupId) : null,
-          startTime: new Date(data.startTime).toISOString(),
-          endTime: new Date(data.endTime).toISOString(),
         }),
         credentials: "include",
       });
@@ -94,7 +94,6 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
     try {
       await createShift.mutateAsync(data);
     } catch (error) {
-      // Error is handled by mutation's onError
       console.error('Shift creation failed:', error);
     }
   };
@@ -159,33 +158,24 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
 
             <FormField
               control={form.control}
-              name="startTime"
+              name="shiftTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Start Time</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="datetime-local"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="endTime"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>End Time</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="datetime-local"
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormLabel>Shift Type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a shift type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shiftTypes?.map((type) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          {type.name} ({type.startTime} - {type.endTime})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -197,9 +187,20 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Week</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select week" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Array.from({ length: 52 }, (_, i) => i + 1).map((week) => (
+                        <SelectItem key={week} value={week.toString()}>
+                          Week {week}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

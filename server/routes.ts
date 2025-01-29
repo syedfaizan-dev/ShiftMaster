@@ -2,10 +2,43 @@ import { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { shifts, users, roles, requests } from "@db/schema";
+import { shifts, users, roles, requests, shiftTypes } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
-import { getShifts, createShift } from "./routes/shifts";
+import { getShifts } from "./routes/shifts";
+
+export const createShift = async (req: Request, res: Response) => {
+  try {
+    const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
+
+    // Validate that the shift type exists
+    const [shiftType] = await db
+      .select()
+      .from(shiftTypes)
+      .where(eq(shiftTypes.id, shiftTypeId))
+      .limit(1);
+
+    if (!shiftType) {
+      return res.status(400).json({ message: "Invalid shift type" });
+    }
+
+    const [newShift] = await db.insert(shifts)
+      .values({
+        inspectorId,
+        roleId,
+        shiftTypeId,
+        week,
+        backupId,
+        createdBy: req.user.id,
+      })
+      .returning();
+
+    res.json(newShift);
+  } catch (error) {
+    console.error('Error creating shift:', error);
+    res.status(500).json({ message: 'Error creating shift' });
+  }
+};
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -285,6 +318,74 @@ export function registerRoutes(app: Express): Server {
 
     res.json(updatedRequest);
   });
+
+  // Get all shift types
+  app.get("/api/shift-types", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const allShiftTypes = await db.select().from(shiftTypes);
+      res.json(allShiftTypes);
+    } catch (error) {
+      console.error('Error fetching shift types:', error);
+      res.status(500).json({ message: 'Error fetching shift types' });
+    }
+  });
+
+  // Admin: Create shift type
+  app.post("/api/admin/shift-types", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { name, startTime, endTime, description } = req.body;
+
+      const [existingType] = await db
+        .select()
+        .from(shiftTypes)
+        .where(eq(shiftTypes.name, name))
+        .limit(1);
+
+      if (existingType) {
+        return res.status(400).json({ message: "Shift type with this name already exists" });
+      }
+
+      const [newShiftType] = await db.insert(shiftTypes)
+        .values({
+          name,
+          startTime,
+          endTime,
+          description,
+          createdBy: req.user.id,
+        })
+        .returning();
+
+      res.json(newShiftType);
+    } catch (error) {
+      console.error('Error creating shift type:', error);
+      res.status(500).json({ message: 'Error creating shift type' });
+    }
+  });
+
+  // Admin: Update shift type
+  app.put("/api/admin/shift-types/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, startTime, endTime, description } = req.body;
+
+      const [updatedShiftType] = await db
+        .update(shiftTypes)
+        .set({
+          name,
+          startTime,
+          endTime,
+          description,
+        })
+        .where(eq(shiftTypes.id, parseInt(id)))
+        .returning();
+
+      res.json(updatedShiftType);
+    } catch (error) {
+      console.error('Error updating shift type:', error);
+      res.status(500).json({ message: 'Error updating shift type' });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

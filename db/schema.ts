@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, time } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { type InferSelectModel } from "drizzle-orm";
@@ -20,12 +20,21 @@ export const roles = pgTable("roles", {
   createdBy: integer("created_by").references(() => users.id),
 });
 
+export const shiftTypes = pgTable("shift_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").unique().notNull(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
 export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
   roleId: integer("role_id").references(() => roles.id).notNull(),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
+  shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   week: text("week").notNull(),
   backupId: integer("backup_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -85,6 +94,10 @@ export const shiftsRelations = relations(shifts, ({ one }) => ({
   role: one(roles, {
     fields: [shifts.roleId],
     references: [roles.id],
+  }),
+  shiftType: one(shiftTypes, {
+    fields: [shifts.shiftTypeId],
+    references: [shiftTypes.id],
   }),
 }));
 
