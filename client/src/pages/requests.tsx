@@ -82,7 +82,7 @@ function RequestsPage() {
       startTime: shift.shiftType.startTime,
       endTime: shift.shiftType.endTime
     }))
-    .filter((value, index, self) => 
+    .filter((value, index, self) =>
       self.findIndex(v => v.id === value.id) === index
     );
 
@@ -94,7 +94,7 @@ function RequestsPage() {
       startTime: shift.shiftType.startTime,
       endTime: shift.shiftType.endTime
     }))
-    .filter((value, index, self) => 
+    .filter((value, index, self) =>
       self.findIndex(v => v.id === value.id) === index
     );
 
@@ -200,10 +200,10 @@ function RequestsPage() {
         return null;
       }
 
-      const weekStart = new Date(2025, 0, 1); //Corrected to use new Date instead of startOfWeek
-      weekStart.setDate(weekStart.getDate() + (weekNum - 1) * 7); //Simplified week calculation
+      const weekStart = new Date(2025, 0, 1); 
+      weekStart.setDate(weekStart.getDate() + (weekNum - 1) * 7); 
 
-      const timeObj = new Date(`2000-01-01T${shift.shiftType.startTime}`); //Corrected parsing to use new Date
+      const timeObj = new Date(`2000-01-01T${shift.shiftType.startTime}`); 
 
       const shiftDateTime = new Date(
         weekStart.getFullYear(),
@@ -414,11 +414,13 @@ function RequestsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {allShiftTypes.map((shiftType) => (
-                                <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
-                                  {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
-                                </SelectItem>
-                              ))}
+                              {allShiftTypes
+                                .filter(shiftType => !userShiftTypes.some(userType => userType.id === shiftType.id))
+                                .map((shiftType) => (
+                                  <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
+                                    {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
