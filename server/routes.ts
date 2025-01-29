@@ -229,6 +229,33 @@ export function registerRoutes(app: Express): Server {
     await updateShift(req, res);
   });
 
+  // Admin: Delete shift
+  app.delete("/api/admin/shifts/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Check if shift exists
+      const [existingShift] = await db
+        .select()
+        .from(shifts)
+        .where(eq(shifts.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingShift) {
+        return res.status(404).json({ message: "Shift not found" });
+      }
+
+      await db
+        .delete(shifts)
+        .where(eq(shifts.id, parseInt(id)));
+
+      res.json({ message: "Shift deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting shift:', error);
+      res.status(500).json({ message: 'Error deleting shift' });
+    }
+  });
+
   // Admin: Get all roles
   app.get("/api/admin/roles", requireAdmin, async (req: Request, res: Response) => {
     const allRoles = await db.select().from(roles);

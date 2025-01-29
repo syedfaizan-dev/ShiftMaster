@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,11 +9,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import ShiftForm from "@/components/shift-form";
-import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, Pencil } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/navbar";
 
 type ShiftWithRelations = {
@@ -30,11 +41,38 @@ type ShiftWithRelations = {
 
 export default function Shifts() {
   const { user } = useUser();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(null);
+  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
 
   const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
     queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
+  });
+
+  const deleteShift = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/admin/shifts/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Shift deleted successfully" });
+      setShiftToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
   });
 
   const handleEdit = (shift: ShiftWithRelations) => {
@@ -90,13 +128,20 @@ export default function Shifts() {
                     {shift.backup?.fullName || "-"}
                   </TableCell>
                   {user?.isAdmin && (
-                    <TableCell>
+                    <TableCell className="space-x-2">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(shift)}
                       >
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShiftToDelete(shift)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
                   )}
@@ -118,6 +163,34 @@ export default function Shifts() {
             />
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!shiftToDelete} onOpenChange={(open) => !open && setShiftToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Shift</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this shift? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => shiftToDelete && deleteShift.mutate(shiftToDelete.id)}
+                disabled={deleteShift.isPending}
+              >
+                {deleteShift.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Navbar>
   );
