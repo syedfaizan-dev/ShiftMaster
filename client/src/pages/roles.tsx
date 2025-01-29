@@ -57,8 +57,12 @@ function RolesPage() {
         body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const responseText = await res.text();
+      if (!res.ok) {
+        console.error('Create role failed:', responseText);
+        throw new Error(responseText);
+      }
+      return JSON.parse(responseText);
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Role created successfully" });
@@ -67,10 +71,11 @@ function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
     },
     onError: (error: Error) => {
+      console.error('Create role error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create role",
       });
     },
   });
@@ -78,6 +83,8 @@ function RolesPage() {
   const updateRole = useMutation({
     mutationFn: async (data: RoleFormData & { id: number }) => {
       const { id, ...updateData } = data;
+      console.log('Updating role with data:', { id, ...updateData });
+
       const res = await fetch(`/api/admin/roles/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -85,13 +92,20 @@ function RolesPage() {
         credentials: "include",
       });
 
+      const responseText = await res.text();
+      console.log('Update role response:', responseText);
+
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Update failed:', errorText);
-        throw new Error(errorText);
+        console.error('Update role failed:', responseText);
+        throw new Error(responseText);
       }
 
-      return res.json();
+      try {
+        return JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+        throw new Error('Invalid server response');
+      }
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Role updated successfully" });
@@ -101,11 +115,11 @@ function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
     },
     onError: (error: Error) => {
-      console.error('Update error:', error);
+      console.error('Update role error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update role",
       });
     },
   });
@@ -122,10 +136,14 @@ function RolesPage() {
   }
 
   const handleSubmit = async (data: RoleFormData) => {
-    if (editingRole) {
-      await updateRole.mutateAsync({ ...data, id: editingRole.id });
-    } else {
-      await createRole.mutateAsync(data);
+    try {
+      if (editingRole) {
+        await updateRole.mutateAsync({ ...data, id: editingRole.id });
+      } else {
+        await createRole.mutateAsync(data);
+      }
+    } catch (error) {
+      console.error('Form submission error:', error);
     }
   };
 
@@ -223,7 +241,14 @@ function RolesPage() {
                   type="submit" 
                   disabled={createRole.isPending || updateRole.isPending}
                 >
-                  {editingRole ? 'Update Role' : 'Create Role'}
+                  {createRole.isPending || updateRole.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {editingRole ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    editingRole ? 'Update Role' : 'Create Role'
+                  )}
                 </Button>
               </form>
             </Form>
