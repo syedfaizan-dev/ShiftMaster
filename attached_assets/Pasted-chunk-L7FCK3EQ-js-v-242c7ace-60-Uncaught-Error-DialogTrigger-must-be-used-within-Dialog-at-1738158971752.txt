@@ -1,0 +1,50 @@
+chunk-L7FCK3EQ.js?v=242c7ace:60 Uncaught Error: `DialogTrigger` must be used within `Dialog`
+    at useContext2 (chunk-L7FCK3EQ.js?v=242c7ace:60:13)
+    at @radix-ui_react-dial…js?v=242c7ace:84:21
+    at renderWithHooks (chunk-RPCDYKBN.js?v=242c7ace:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=242c7ace:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=242c7ace:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=242c7ace:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=242c7ace:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=242c7ace:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=242c7ace:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=242c7ace:19198:20)
+use-user.ts:72 The above error occurred in the <DialogTrigger> component:
+
+    at https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…rkspace/node_modules/.vite/deps/@radix-ui_react-dialog.js?v=242c7ace:83:13
+    at div
+    at div
+    at main
+    at div
+    at div
+    at Navbar (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/navbar.tsx:23:34)
+    at Tasks (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/pages/tasks.tsx:63:20)
+    at Route (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=242c7ace:323:16)
+    at Switch (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=242c7ace:379:17)
+    at Router (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/App.tsx?v=w3k5TiqzpQXiotpOOJHw1:35:31)
+    at QueryClientProvider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=242c7ace:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=242c7ace:9129 Uncaught Error: `DialogTrigger` must be used within `Dialog`
+    at useContext2 (chunk-L7FCK3EQ.js?v=242c7ace:60:13)
+    at @radix-ui_react-dial…js?v=242c7ace:84:21
+    at renderWithHooks (chunk-RPCDYKBN.js?v=242c7ace:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=242c7ace:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=242c7ace:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=242c7ace:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=242c7ace:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=242c7ace:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=242c7ace:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=242c7ace:18736:28)
+﻿
+
+AI assistance for Network, Performance, and Sources
+In the AI assistance panel, you can now chat with Gemini about network requests, source files, and performance traces.
+
+AI chat history
+While DevTools is open, you can now create and view several chats with AI.
+
+Interaction phases in live metrics
+The Interactions tab in live metrics in the Performance panel now shows you phases and their timings.

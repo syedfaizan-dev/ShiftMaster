@@ -138,17 +138,6 @@ export default function Tasks() {
     },
   });
 
-  // Handle dialog open
-  const handleOpenDialog = () => {
-    console.log('Opening dialog');
-    setIsDialogOpen(true);
-  };
-
-  // Handle dialog close
-  const handleCloseDialog = () => {
-    console.log('Closing dialog');
-    setIsDialogOpen(false);
-  };
 
   if (!user?.isAdmin) {
     return (
@@ -198,11 +187,207 @@ export default function Tasks() {
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold">Tasks</h1>
-            <DialogTrigger asChild>
-              <Button onClick={handleOpenDialog}>
-                Create Task
-              </Button>
-            </DialogTrigger>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => setIsDialogOpen(true)}>Create Task</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Create New Task</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details below to create a new task.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <Form {...form}>
+                    <form
+                      id="task-form"
+                      onSubmit={form.handleSubmit(async (data) => {
+                        console.log('Form submitted', data);
+                        await createTask.mutateAsync(data);
+                      })}
+                      className="space-y-4"
+                    >
+                      <FormField
+                        control={form.control}
+                        name="shiftTypeId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Shift Type</FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedShiftType(value);
+                              }}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select shift type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {shiftTypes?.map((type) => (
+                                  <SelectItem key={type.id} value={type.id.toString()}>
+                                    {type.name} ({type.startTime} - {type.endTime})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="inspectorId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Inspector</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              disabled={!selectedShiftType}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={selectedShiftType ? "Select inspector" : "Select a shift type first"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {inspectors?.map((inspector) => (
+                                  <SelectItem key={inspector.id} value={inspector.id.toString()}>
+                                    {inspector.fullName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="taskType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Task Type</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter task type" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder="Enter task description" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="PENDING">Pending</SelectItem>
+                                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                                <SelectItem value="COMPLETED">Completed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="isFollowupNeeded"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-2">
+                            <FormLabel>Follow-up Needed</FormLabel>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="assignedTo"
+                        render={({ field }) => (
+                          <FormItem className="mb-6">
+                            <FormLabel>Assign To</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select employee" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {employees?.map((employee) => (
+                                  <SelectItem key={employee.id} value={employee.id.toString()}>
+                                    {employee.fullName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex justify-end gap-4 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          form="task-form"
+                          disabled={createTask.isPending}
+                        >
+                          {createTask.isPending ? "Creating..." : "Create Task"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
           <Alert>
             <AlertTitle>No Tasks Found</AlertTitle>
@@ -220,11 +405,207 @@ export default function Tasks() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Tasks</h1>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpenDialog}>
-              Create Task
-            </Button>
-          </DialogTrigger>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setIsDialogOpen(true)}>Create Task</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Create New Task</DialogTitle>
+                <DialogDescription>
+                  Fill in the details below to create a new task.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Form {...form}>
+                  <form
+                    id="task-form"
+                    onSubmit={form.handleSubmit(async (data) => {
+                      console.log('Form submitted', data);
+                      await createTask.mutateAsync(data);
+                    })}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="shiftTypeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Shift Type</FormLabel>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setSelectedShiftType(value);
+                            }}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select shift type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {shiftTypes?.map((type) => (
+                                <SelectItem key={type.id} value={type.id.toString()}>
+                                  {type.name} ({type.startTime} - {type.endTime})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="inspectorId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Inspector</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={!selectedShiftType}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={selectedShiftType ? "Select inspector" : "Select a shift type first"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {inspectors?.map((inspector) => (
+                                <SelectItem key={inspector.id} value={inspector.id.toString()}>
+                                  {inspector.fullName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="taskType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Task Type</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Enter task type" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Enter task description" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="PENDING">Pending</SelectItem>
+                              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                              <SelectItem value="COMPLETED">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="isFollowupNeeded"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-2">
+                          <FormLabel>Follow-up Needed</FormLabel>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="assignedTo"
+                      render={({ field }) => (
+                        <FormItem className="mb-6">
+                          <FormLabel>Assign To</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select employee" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {employees?.map((employee) => (
+                                <SelectItem key={employee.id} value={employee.id.toString()}>
+                                  {employee.fullName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end gap-4 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        form="task-form"
+                        disabled={createTask.isPending}
+                      >
+                        {createTask.isPending ? "Creating..." : "Create Task"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Table>
@@ -255,209 +636,6 @@ export default function Tasks() {
             ))}
           </TableBody>
         </Table>
-
-        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-          <DialogContent 
-            className="fixed inset-0 z-50 max-w-[600px] mx-auto mt-20 bg-background rounded-lg shadow-lg border"
-            aria-labelledby="dialog-title"
-            aria-describedby="dialog-description"
-          >
-            <DialogHeader>
-              <DialogTitle id="dialog-title">Create New Task</DialogTitle>
-              <DialogDescription id="dialog-description">
-                Fill in the details below to create a new task.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <Form {...form}>
-                <form 
-                  id="task-form" 
-                  onSubmit={form.handleSubmit(async (data) => {
-                    console.log('Form submitted', data);
-                    await createTask.mutateAsync(data);
-                  })} 
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="shiftTypeId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Shift Type</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setSelectedShiftType(value);
-                          }}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select shift type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {shiftTypes?.map((type) => (
-                              <SelectItem key={type.id} value={type.id.toString()}>
-                                {type.name} ({type.startTime} - {type.endTime})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="inspectorId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Inspector</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={!selectedShiftType}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={selectedShiftType ? "Select inspector" : "Select a shift type first"} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {inspectors?.map((inspector) => (
-                              <SelectItem key={inspector.id} value={inspector.id.toString()}>
-                                {inspector.fullName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="taskType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Task Type</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter task type" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} placeholder="Enter task description" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="PENDING">Pending</SelectItem>
-                            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                            <SelectItem value="COMPLETED">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="isFollowupNeeded"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2">
-                        <FormLabel>Follow-up Needed</FormLabel>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="assignedTo"
-                    render={({ field }) => (
-                      <FormItem className="mb-6">
-                        <FormLabel>Assign To</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select employee" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {employees?.map((employee) => (
-                              <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {employee.fullName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
-            </div>
-            <div className="flex justify-end gap-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCloseDialog}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                form="task-form"
-                disabled={createTask.isPending}
-              >
-                {createTask.isPending ? "Creating..." : "Create Task"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </Navbar>
   );
