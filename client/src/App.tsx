@@ -11,6 +11,7 @@ import Shifts from "@/pages/shifts";
 import Roles from "@/pages/roles";
 import Employees from "@/pages/employees";
 import Requests from "@/pages/requests";
+import ShiftTypes from "@/pages/shift-types";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -41,6 +42,7 @@ function Router() {
         <>
           <Route path="/roles" component={Roles} />
           <Route path="/employees" component={Employees} />
+          <Route path="/shift-types" component={ShiftTypes} />
         </>
       )}
       <Route path="/requests" component={Requests} />
