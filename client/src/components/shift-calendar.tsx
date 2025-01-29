@@ -12,14 +12,6 @@ export default function ShiftCalendar({ userId }: ShiftCalendarProps) {
     queryKey: [userId ? "/api/shifts" : "/api/admin/shifts"],
   });
 
-  const { data: users } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
-  });
-
-  const { data: roles } = useQuery<any[]>({
-    queryKey: ["/api/admin/roles"],
-  });
-
   if (isLoading) {
     return (
       <div className="flex justify-center p-4">
@@ -27,16 +19,6 @@ export default function ShiftCalendar({ userId }: ShiftCalendarProps) {
       </div>
     );
   }
-
-  const getInspectorName = (id: number) => {
-    const user = users?.find(u => u.id === id);
-    return user?.fullName || 'Unknown';
-  };
-
-  const getRoleName = (id: number) => {
-    const role = roles?.find(r => r.id === id);
-    return role?.name || 'Unknown';
-  };
 
   return (
     <div className="grid gap-4">
@@ -46,21 +28,20 @@ export default function ShiftCalendar({ userId }: ShiftCalendarProps) {
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-medium">
-                  Inspector: {getInspectorName(shift.inspectorId)}
+                  Inspector: {shift.inspector?.fullName || 'Unknown'}
                 </p>
                 <p className="text-sm text-gray-500">
-                  Role: {getRoleName(shift.roleId)}
+                  Role: {shift.role?.name || 'Unknown'}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {format(new Date(shift.startTime), "h:mm a")} -{" "}
-                  {format(new Date(shift.endTime), "h:mm a")}
+                  {shift.shiftType?.name || 'Unknown'} ({shift.shiftType?.startTime || 'N/A'} - {shift.shiftType?.endTime || 'N/A'})
                 </p>
                 <p className="text-sm text-gray-500">
                   Week: {shift.week}
                 </p>
-                {shift.backupId && (
+                {shift.backup && (
                   <p className="text-sm text-gray-500">
-                    Backup: {getInspectorName(shift.backupId)}
+                    Backup: {shift.backup.fullName}
                   </p>
                 )}
               </div>
