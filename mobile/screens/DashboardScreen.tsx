@@ -56,17 +56,36 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
   const fetchShifts = async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching shifts from:', `${API_BASE_URL}/api/shifts`);
+
       const response = await fetch(`${API_BASE_URL}/api/shifts`, {
         credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
       });
+
+      console.log('Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        // Only show the most recent shifts on dashboard
-        setShifts(data.slice(0, 5));
+        console.log('Received shifts data:', data);
+
+        if (Array.isArray(data) && data.length > 0) {
+          // Only show the most recent shifts on dashboard
+          setShifts(data.slice(0, 5));
+        } else {
+          console.log('No shifts data received or empty array');
+          setShifts([]);
+        }
       } else {
-        throw new Error('Failed to fetch shifts');
+        const errorText = await response.text();
+        console.error('Failed to fetch shifts:', errorText);
+        throw new Error(`Failed to fetch shifts: ${errorText}`);
       }
     } catch (error) {
+      console.error('Error in fetchShifts:', error);
       Alert.alert('Error', 'Failed to fetch shifts');
     } finally {
       setIsLoading(false);
@@ -120,11 +139,8 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
               <Text style={styles.shiftRole}>
                 {shift.role?.name || 'Unknown Role'}
               </Text>
-              <Text style={styles.shiftDate}>
-                {new Date(shift.startTime).toLocaleDateString()}
-              </Text>
               <Text style={styles.shiftTime}>
-                {new Date(shift.startTime).toLocaleTimeString()} - 
+                {new Date(shift.startTime).toLocaleDateString()} {new Date(shift.startTime).toLocaleTimeString()} - 
                 {new Date(shift.endTime).toLocaleTimeString()}
               </Text>
               <Text style={styles.shiftInspector}>
@@ -212,16 +228,11 @@ const styles = StyleSheet.create({
     color: '#01843d',
     marginBottom: 5,
   },
-  shiftDate: {
-    fontSize: 14,
-    color: '#444',
-  },
   shiftTime: {
     color: '#666',
-    marginTop: 2,
+    marginBottom: 5,
   },
   shiftInspector: {
-    marginTop: 5,
     color: '#444',
     fontWeight: '500',
   },
