@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -197,9 +198,11 @@ export default function Tasks() {
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold">Tasks</h1>
-            <Button onClick={handleOpenDialog}>
-              Create Task
-            </Button>
+            <DialogTrigger asChild>
+              <Button onClick={handleOpenDialog}>
+                Create Task
+              </Button>
+            </DialogTrigger>
           </div>
           <Alert>
             <AlertTitle>No Tasks Found</AlertTitle>
@@ -217,9 +220,11 @@ export default function Tasks() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Tasks</h1>
-          <Button onClick={handleOpenDialog}>
-            Create Task
-          </Button>
+          <DialogTrigger asChild>
+            <Button onClick={handleOpenDialog}>
+              Create Task
+            </Button>
+          </DialogTrigger>
         </div>
 
         <Table>
@@ -252,9 +257,16 @@ export default function Tasks() {
         </Table>
 
         <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-          <DialogContent className="sm:max-w-[600px] bg-background z-50">
+          <DialogContent 
+            className="fixed inset-0 z-50 max-w-[600px] mx-auto mt-20 bg-background rounded-lg shadow-lg border"
+            aria-labelledby="dialog-title"
+            aria-describedby="dialog-description"
+          >
             <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
+              <DialogTitle id="dialog-title">Create New Task</DialogTitle>
+              <DialogDescription id="dialog-description">
+                Fill in the details below to create a new task.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <Form {...form}>
