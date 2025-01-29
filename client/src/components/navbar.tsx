@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Calendar, LogOut, Users, User, FileText } from "lucide-react";
+import { NotificationBell } from "./notification-bell";
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
@@ -19,9 +20,12 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
           <h2 className="text-xl font-bold text-primary-foreground">
             Shift Management
           </h2>
-          <span className="text-white font-medium">
-            Welcome, {user?.fullName}
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-white font-medium">
+              Welcome, {user?.fullName}
+            </span>
+            <NotificationBell />
+          </div>
         </div>
       </div>
 

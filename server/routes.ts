@@ -4,6 +4,8 @@ import { setupAuth } from "./auth";
 import { db } from "@db";
 import { shifts, users, roles, requests } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
+import { getNotifications, markNotificationAsRead } from "./routes/notifications";
+import { createShift } from "./routes/shifts";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -18,6 +20,10 @@ export function registerRoutes(app: Express): Server {
     }
     next();
   };
+
+  // Notification routes
+  app.get("/api/notifications", getNotifications);
+  app.post("/api/notifications/:id/read", markNotificationAsRead);
 
   // Get all managers
   app.get("/api/admin/managers", requireAdmin, async (req, res) => {
@@ -81,23 +87,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Admin: Create shift
-  app.post("/api/admin/shifts", requireAdmin, async (req, res) => {
-    const { inspectorId, roleId, startTime, endTime, week, backupId } = req.body;
-
-    const [newShift] = await db.insert(shifts)
-      .values({
-        inspectorId,
-        roleId,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        week,
-        backupId,
-        createdBy: req.user.id,
-      })
-      .returning();
-
-    res.json(newShift);
-  });
+  app.post("/api/admin/shifts", requireAdmin, createShift);
 
   // Admin: Get all roles
   app.get("/api/admin/roles", requireAdmin, async (req, res) => {
