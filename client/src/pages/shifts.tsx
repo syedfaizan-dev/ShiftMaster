@@ -33,7 +33,8 @@ export default function Shifts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
-    queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
+    // If user is admin or manager, show all shifts. If inspector, show only their shifts
+    queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
   });
 
   return (
@@ -41,6 +42,7 @@ export default function Shifts() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shifts</h1>
+          {/* Only admin can create shifts */}
           {user?.isAdmin && (
             <Button onClick={() => setIsDialogOpen(true)}>
               Create New Shift

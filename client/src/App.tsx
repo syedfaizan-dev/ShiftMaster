@@ -38,6 +38,7 @@ function Router() {
         )}
       </Route>
       <Route path="/shifts" component={Shifts} />
+      {/* Only admin can access these routes */}
       {user.isAdmin && (
         <>
           <Route path="/roles" component={Roles} />
@@ -45,7 +46,10 @@ function Router() {
           <Route path="/shift-types" component={ShiftTypes} />
         </>
       )}
-      <Route path="/requests" component={Requests} />
+      {/* Both managers and inspectors can access requests */}
+      {(user.isManager || user.isInspector) && (
+        <Route path="/requests" component={Requests} />
+      )}
       <Route component={NotFound} />
     </Switch>
   );

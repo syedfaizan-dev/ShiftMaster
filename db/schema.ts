@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   isManager: boolean("is_manager").default(false).notNull(),
+  isInspector: boolean("is_inspector").default(false).notNull(), // New field
   fullName: text("full_name").notNull(),
 });
 
