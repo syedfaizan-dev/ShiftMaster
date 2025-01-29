@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, LogOut, Users, User, FileText, Clock, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, User, FileText, Clock, CheckSquare, List } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
@@ -46,6 +46,12 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
                     <CheckSquare className="w-5 h-5" />
                     <span>Tasks</span>
+                  </button>
+                </Link>
+                <Link href="/task-types">
+                  <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
+                    <List className="w-5 h-5" />
+                    <span>Task Types</span>
                   </button>
                 </Link>
               </>
