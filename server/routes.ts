@@ -5,7 +5,7 @@ import { db } from "@db";
 import { shifts, users, roles, requests } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
-import { createShift } from "./routes/shifts";
+import { getShifts, createShift } from "./routes/shifts";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -67,24 +67,11 @@ export function registerRoutes(app: Express): Server {
     res.json(updatedUser);
   });
 
-  // Get all shifts for a user
-  app.get("/api/shifts", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
+  // Get all shifts for a user (now using the getShifts handler)
+  app.get("/api/shifts", getShifts);
 
-    const userShifts = await db.select()
-      .from(shifts)
-      .where(eq(shifts.inspectorId, req.user.id));
-
-    res.json(userShifts);
-  });
-
-  // Admin: Get all shifts
-  app.get("/api/admin/shifts", requireAdmin, async (req, res) => {
-    const allShifts = await db.select().from(shifts);
-    res.json(allShifts);
-  });
+  // Admin: Get all shifts (also using the same getShifts handler)
+  app.get("/api/admin/shifts", requireAdmin, getShifts);
 
   // Admin: Create shift
   app.post("/api/admin/shifts", requireAdmin, createShift);
