@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil } from "lucide-react";
@@ -27,9 +28,7 @@ const userSchema = z.object({
   username: z.string().email("Invalid email format"),
   fullName: z.string().min(1, "Full name is required"),
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
-  isAdmin: z.boolean().default(false),
-  isManager: z.boolean().default(false),
-  isInspector: z.boolean().default(false),
+  role: z.enum(["admin", "manager", "inspector", "employee"]),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -47,9 +46,7 @@ function UsersPage() {
       username: "",
       fullName: "",
       password: "",
-      isAdmin: false,
-      isManager: false,
-      isInspector: false,
+      role: "employee",
     },
   });
 
@@ -60,10 +57,16 @@ function UsersPage() {
 
   const createUser = useMutation({
     mutationFn: async (data: UserFormData) => {
+      const { role, ...userData } = data;
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...userData,
+          isAdmin: role === "admin",
+          isManager: role === "manager",
+          isInspector: role === "inspector",
+        }),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -86,11 +89,16 @@ function UsersPage() {
 
   const updateUser = useMutation({
     mutationFn: async (data: UserFormData & { id: number }) => {
-      const { id, ...updateData } = data;
+      const { id, role, ...updateData } = data;
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify({
+          ...updateData,
+          isAdmin: role === "admin",
+          isManager: role === "manager",
+          isInspector: role === "inspector",
+        }),
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
@@ -127,23 +135,17 @@ function UsersPage() {
     );
   }
 
-  const getRoleLabel = (user: User) => {
-    if (user.isAdmin) return "Admin";
-    if (user.isManager) return "Manager";
-    if (user.isInspector) return "Inspector";
-    return "Employee";
+  const getRoleDetails = (user: User): { label: string; variant: "default" | "destructive" | "outline" | "secondary" } => {
+    if (user.isAdmin) return { label: "Admin", variant: "destructive" };
+    if (user.isManager) return { label: "Manager", variant: "secondary" };
+    if (user.isInspector) return { label: "Inspector", variant: "outline" };
+    return { label: "Employee", variant: "default" };
   };
 
-  const handleRoleChange = (value: string) => {
-    form.setValue("isAdmin", value === "admin");
-    form.setValue("isManager", value === "manager");
-    form.setValue("isInspector", value === "inspector");
-  };
-
-  const getCurrentRole = (formValues: UserFormData) => {
-    if (formValues.isAdmin) return "admin";
-    if (formValues.isManager) return "manager";
-    if (formValues.isInspector) return "inspector";
+  const getUserRole = (user: User): UserFormData["role"] => {
+    if (user.isAdmin) return "admin";
+    if (user.isManager) return "manager";
+    if (user.isInspector) return "inspector";
     return "employee";
   };
 
@@ -154,7 +156,12 @@ function UsersPage() {
           <h1 className="text-3xl font-bold">Users</h1>
           <Button onClick={() => {
             setEditingUser(null);
-            form.reset();
+            form.reset({
+              username: "",
+              fullName: "",
+              password: "",
+              role: "employee"
+            });
             setIsDialogOpen(true);
           }}>
             Add New User
@@ -176,32 +183,37 @@ function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.fullName}</TableCell>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{getRoleLabel(user)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingUser(user);
-                        form.reset({
-                          username: user.username,
-                          fullName: user.fullName,
-                          isAdmin: user.isAdmin,
-                          isManager: user.isManager,
-                          isInspector: user.isInspector,
-                        });
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {users.map((user) => {
+                const roleDetails = getRoleDetails(user);
+                return (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.fullName}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>
+                      <Badge variant={roleDetails.variant}>
+                        {roleDetails.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingUser(user);
+                          form.reset({
+                            username: user.username,
+                            fullName: user.fullName,
+                            role: getUserRole(user),
+                          });
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
@@ -260,25 +272,32 @@ function UsersPage() {
                     )}
                   />
                 )}
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={handleRoleChange}
-                    value={getCurrentRole(form.getValues())}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="inspector">Inspector</SelectItem>
-                      <SelectItem value="employee">Employee</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="inspector">Inspector</SelectItem>
+                          <SelectItem value="employee">Employee</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button type="submit" disabled={createUser.isPending || updateUser.isPending}>
                   {editingUser ? 'Update User' : 'Add User'}
                 </Button>
