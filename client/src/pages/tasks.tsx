@@ -191,7 +191,7 @@ export default function Tasks() {
               <DialogTrigger asChild>
                 <Button onClick={() => setIsDialogOpen(true)}>Create Task</Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="max-h-[90vh] w-[90vw] max-w-[600px] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Task</DialogTitle>
                   <DialogDescription>
@@ -367,7 +367,7 @@ export default function Tasks() {
                           </FormItem>
                         )}
                       />
-                      <div className="flex justify-end gap-4 pt-4">
+                      <div className="flex justify-end gap-4 pt-4 sticky bottom-0 bg-background pb-2">
                         <Button
                           type="button"
                           variant="outline"
@@ -409,7 +409,7 @@ export default function Tasks() {
             <DialogTrigger asChild>
               <Button onClick={() => setIsDialogOpen(true)}>Create Task</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="max-h-[90vh] w-[90vw] max-w-[600px] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Task</DialogTitle>
                 <DialogDescription>
@@ -585,7 +585,7 @@ export default function Tasks() {
                         </FormItem>
                       )}
                     />
-                    <div className="flex justify-end gap-4 pt-4">
+                    <div className="flex justify-end gap-4 pt-4 sticky bottom-0 bg-background pb-2">
                       <Button
                         type="button"
                         variant="outline"
