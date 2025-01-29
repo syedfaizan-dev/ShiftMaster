@@ -76,6 +76,12 @@ export default function Tasks() {
 
   const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useQuery<TaskWithRelations[]>({
     queryKey: ["/api/admin/tasks"],
+    // Add retry configuration and error handling
+    retry: 1,
+    retryDelay: 1000,
+    onError: (error) => {
+      console.error('Error fetching tasks:', error);
+    }
   });
 
   const { data: shiftTypes = [] } = useQuery<any[]>({
@@ -143,6 +149,18 @@ export default function Tasks() {
     );
   }
 
+  if (isLoadingTasks) {
+    return (
+      <Navbar>
+        <div className="p-6">
+          <div className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
+      </Navbar>
+    );
+  }
+
   if (tasksError) {
     return (
       <Navbar>
@@ -151,6 +169,27 @@ export default function Tasks() {
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
               Failed to load tasks. Please try again later.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Navbar>
+    );
+  }
+
+  if (!tasks || tasks.length === 0) {
+    return (
+      <Navbar>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">Tasks</h1>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              Create Task
+            </Button>
+          </div>
+          <Alert>
+            <AlertTitle>No Tasks Found</AlertTitle>
+            <AlertDescription>
+              Create your first task to start managing work.
             </AlertDescription>
           </Alert>
         </div>
@@ -168,47 +207,34 @@ export default function Tasks() {
           </Button>
         </div>
 
-        {isLoadingTasks ? (
-          <div className="flex justify-center p-4">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : tasks.length === 0 ? (
-          <Alert>
-            <AlertTitle>No Tasks Found</AlertTitle>
-            <AlertDescription>
-              Create your first task to start managing work.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Inspector</TableHead>
-                <TableHead>Shift Type</TableHead>
-                <TableHead>Task Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Followup</TableHead>
-                <TableHead>Assigned To</TableHead>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Inspector</TableHead>
+              <TableHead>Shift Type</TableHead>
+              <TableHead>Task Type</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Followup</TableHead>
+              <TableHead>Assigned To</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tasks.map((task) => (
+              <TableRow key={task.id}>
+                <TableCell>{format(new Date(task.date), "MMM d, yyyy")}</TableCell>
+                <TableCell>{task.inspector?.fullName || "Unknown"}</TableCell>
+                <TableCell>{task.shiftType?.name || "Unknown"}</TableCell>
+                <TableCell>{task.taskType}</TableCell>
+                <TableCell>{task.description}</TableCell>
+                <TableCell>{task.status}</TableCell>
+                <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
+                <TableCell>{task.assignedEmployee?.fullName || "Unknown"}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell>{format(new Date(task.date), "MMM d, yyyy")}</TableCell>
-                  <TableCell>{task.inspector?.fullName || "Unknown"}</TableCell>
-                  <TableCell>{task.shiftType?.name || "Unknown"}</TableCell>
-                  <TableCell>{task.taskType}</TableCell>
-                  <TableCell>{task.description}</TableCell>
-                  <TableCell>{task.status}</TableCell>
-                  <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
-                  <TableCell>{task.assignedEmployee?.fullName || "Unknown"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+            ))}
+          </TableBody>
+        </Table>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col p-0">
@@ -224,11 +250,11 @@ export default function Tasks() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Shift Type</FormLabel>
-                        <Select 
+                        <Select
                           onValueChange={(value) => {
                             field.onChange(value);
                             setSelectedShiftType(value);
-                          }} 
+                          }}
                           value={field.value}
                         >
                           <FormControl>
@@ -255,8 +281,8 @@ export default function Tasks() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Inspector</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           value={field.value}
                           disabled={!selectedShiftType}
                         >

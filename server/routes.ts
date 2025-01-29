@@ -431,6 +431,14 @@ export function registerRoutes(app: Express): Server {
       res.json(allTasks || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      // Add more detailed error logging
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
       res.status(500).json({ message: 'Error fetching tasks' });
     }
   });
