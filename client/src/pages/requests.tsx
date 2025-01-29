@@ -2,14 +2,6 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -162,18 +154,33 @@ function RequestsPage() {
     }
   };
 
-  const formatShiftDateTime = (shift: Shift & { shiftType: { startTime: string } }) => {
-    const weekStart = startOfWeek(new Date(2025, 0, 1));
-    const shiftDate = new Date(weekStart.getTime() + (parseInt(shift.week) - 1) * 7 * 24 * 60 * 60 * 1000);
-    const timeObj = parse(shift.shiftType.startTime, "HH:mm:ss", new Date());
-    const shiftDateTime = new Date(
-      shiftDate.getFullYear(),
-      shiftDate.getMonth(),
-      shiftDate.getDate(),
-      timeObj.getHours(),
-      timeObj.getMinutes()
-    );
-    return format(shiftDateTime, "MMM d, yyyy h:mm a");
+  const formatShiftDateTime = (shift: Shift & { shiftType?: { startTime: string; endTime: string } }) => {
+    if (!shift?.shiftType?.startTime || !shift.week) {
+      return "Invalid shift time";
+    }
+
+    try {
+      const weekStart = startOfWeek(new Date(2025, 0, 1));
+      const shiftDate = new Date(weekStart.getTime() + (parseInt(shift.week.toString()) - 1) * 7 * 24 * 60 * 60 * 1000);
+      const timeObj = parse(shift.shiftType.startTime, "HH:mm:ss", new Date());
+
+      if (isNaN(timeObj.getTime())) {
+        return "Invalid time format";
+      }
+
+      const shiftDateTime = new Date(
+        shiftDate.getFullYear(),
+        shiftDate.getMonth(),
+        shiftDate.getDate(),
+        timeObj.getHours(),
+        timeObj.getMinutes()
+      );
+
+      return format(shiftDateTime, "MMM d, yyyy h:mm a");
+    } catch (error) {
+      console.error("Error formatting shift date:", error);
+      return "Invalid date";
+    }
   };
 
   return (
@@ -343,11 +350,14 @@ function RequestsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts.map((shift) => (
-                                <SelectItem key={shift.id} value={shift.id.toString()}>
-                                  {formatShiftDateTime(shift)}
-                                </SelectItem>
-                              ))}
+                              {shifts.map((shift) => {
+                                const dateString = formatShiftDateTime(shift);
+                                return (
+                                  <SelectItem key={shift.id} value={shift.id.toString()}>
+                                    {dateString}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -367,11 +377,14 @@ function RequestsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts.map((shift) => (
-                                <SelectItem key={shift.id} value={shift.id.toString()}>
-                                  {formatShiftDateTime(shift)}
-                                </SelectItem>
-                              ))}
+                              {shifts.map((shift) => {
+                                const dateString = formatShiftDateTime(shift);
+                                return (
+                                  <SelectItem key={shift.id} value={shift.id.toString()}>
+                                    {dateString}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                           <FormMessage />
