@@ -9,7 +9,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   isManager: boolean("is_manager").default(false).notNull(),
-  isInspector: boolean("is_inspector").default(false).notNull(), // New field
+  isInspector: boolean("is_inspector").default(false).notNull(),
   fullName: text("full_name").notNull(),
 });
 
@@ -45,21 +45,20 @@ export const shifts = pgTable("shifts", {
 export const requests = pgTable("requests", {
   id: serial("id").primaryKey(),
   requesterId: integer("requester_id").references(() => users.id).notNull(),
-  type: text("type").notNull(), // 'SHIFT_SWAP', 'LEAVE'
-  status: text("status").default('PENDING').notNull(), // 'PENDING', 'APPROVED', 'REJECTED'
+  type: text("type").notNull(), 
+  status: text("status").default('PENDING').notNull(), 
   shiftId: integer("shift_id").references(() => shifts.id),
-  targetShiftId: integer("target_shift_id").references(() => shifts.id), // For shift swaps
-  startDate: timestamp("start_date"), // For leave requests
-  endDate: timestamp("end_date"), // For leave requests
+  targetShiftId: integer("target_shift_id").references(() => shifts.id), 
+  startDate: timestamp("start_date"), 
+  endDate: timestamp("end_date"), 
   reason: text("reason"),
   reviewerId: integer("reviewer_id").references(() => users.id),
-  managerId: integer("manager_id").references(() => users.id), // New: For request assignment to managers
+  managerId: integer("manager_id").references(() => users.id), 
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  metadata: jsonb("metadata"), // Additional data specific to request type
+  metadata: jsonb("metadata"), 
 });
 
-// Define relationships
 export const requestsRelations = relations(requests, ({ one }) => ({
   requester: one(users, {
     fields: [requests.requesterId],
@@ -105,15 +104,14 @@ export const shiftsRelations = relations(shifts, ({ one }) => ({
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  type: text("type").notNull(), // 'SHIFT_ASSIGNED', 'REQUEST_UPDATE', etc.
+  type: text("type").notNull(), 
   title: text("title").notNull(),
   message: text("message").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
-  metadata: jsonb("metadata"), // Additional data like shiftId, requestId, etc.
+  metadata: jsonb("metadata"), 
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Add notification relations
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.userId],
@@ -121,21 +119,17 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }));
 
-// Add notification schemas
 export const insertNotificationSchema = createInsertSchema(notifications);
 export const selectNotificationSchema = createSelectSchema(notifications);
 
-// Add notification types
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
 
-// Export notification with relations type
 export type NotificationWithUser = Notification & {
   user?: User;
 };
 
 
-// Schema exports
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const insertShiftSchema = createInsertSchema(shifts);
@@ -145,7 +139,6 @@ export const selectRoleSchema = createSelectSchema(roles);
 export const insertRequestSchema = createInsertSchema(requests);
 export const selectRequestSchema = createSelectSchema(requests);
 
-// Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Shift = typeof shifts.$inferSelect;
@@ -155,9 +148,49 @@ export type InsertRole = typeof roles.$inferInsert;
 export type Request = typeof requests.$inferSelect;
 export type InsertRequest = typeof requests.$inferInsert;
 
-// Extended types with relations
 export type RequestWithRelations = Request & {
   requester?: User;
   reviewer?: User | null;
   manager?: User | null;
+};
+
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  inspectorId: integer("inspector_id").references(() => users.id).notNull(),
+  shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
+  taskType: text("task_type").notNull(),
+  description: text("description").notNull(),
+  status: text("status").default("PENDING").notNull(), 
+  date: timestamp("date").notNull(),
+  isFollowupNeeded: boolean("is_followup_needed").default(false).notNull(),
+  assignedTo: integer("assigned_to").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  inspector: one(users, {
+    fields: [tasks.inspectorId],
+    references: [users.id],
+  }),
+  assignedEmployee: one(users, {
+    fields: [tasks.assignedTo],
+    references: [users.id],
+  }),
+  shiftType: one(shiftTypes, {
+    fields: [tasks.shiftTypeId],
+    references: [shiftTypes.id],
+  }),
+}));
+
+export const insertTaskSchema = createInsertSchema(tasks);
+export const selectTaskSchema = createSelectSchema(tasks);
+
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = typeof tasks.$inferInsert;
+
+export type TaskWithRelations = Task & {
+  inspector?: User;
+  assignedEmployee?: User;
+  shiftType?: typeof shiftTypes.$inferSelect;
 };

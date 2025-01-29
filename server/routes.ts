@@ -2,7 +2,7 @@ import { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { shifts, users, roles, requests, shiftTypes } from "@db/schema";
+import { shifts, users, roles, requests, shiftTypes, tasks } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
 import { getShifts } from "./routes/shifts";
@@ -386,6 +386,120 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+
+  // Tasks routes
+  // Get all tasks (admin only)
+  app.get("/api/admin/tasks", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const allTasks = await db
+        .select({
+          id: tasks.id,
+          inspectorId: tasks.inspectorId,
+          shiftTypeId: tasks.shiftTypeId,
+          taskType: tasks.taskType,
+          description: tasks.description,
+          status: tasks.status,
+          date: tasks.date,
+          isFollowupNeeded: tasks.isFollowupNeeded,
+          assignedTo: tasks.assignedTo,
+          inspector: {
+            id: users.id,
+            fullName: users.fullName,
+            username: users.username,
+          },
+          assignedEmployee: {
+            id: users.id,
+            fullName: users.fullName,
+            username: users.username,
+          },
+          shiftType: {
+            id: shiftTypes.id,
+            name: shiftTypes.name,
+            startTime: shiftTypes.startTime,
+            endTime: shiftTypes.endTime,
+          },
+        })
+        .from(tasks)
+        .leftJoin(users, eq(tasks.inspectorId, users.id))
+        .leftJoin(users, eq(tasks.assignedTo, users.id))
+        .leftJoin(shiftTypes, eq(tasks.shiftTypeId, shiftTypes.id));
+
+      res.json(allTasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      res.status(500).json({ message: 'Error fetching tasks' });
+    }
+  });
+
+  // Create task (admin only)
+  app.post("/api/admin/tasks", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { inspectorId, shiftTypeId, taskType, description, status, date, isFollowupNeeded, assignedTo } = req.body;
+
+      // Verify that the assigned user is an employee (not admin, manager, or inspector)
+      const [assignedUser] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.id, assignedTo),
+            eq(users.isAdmin, false),
+            eq(users.isManager, false),
+            eq(users.isInspector, false)
+          )
+        )
+        .limit(1);
+
+      if (!assignedUser) {
+        return res.status(400).json({ message: "Invalid assigned user. Must be an employee." });
+      }
+
+      const [newTask] = await db
+        .insert(tasks)
+        .values({
+          inspectorId,
+          shiftTypeId,
+          taskType,
+          description,
+          status,
+          date: new Date(date),
+          isFollowupNeeded,
+          assignedTo,
+          createdBy: req.user.id,
+        })
+        .returning();
+
+      res.json(newTask);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      res.status(500).json({ message: 'Error creating task' });
+    }
+  });
+
+  // Get employees (users who are not admin, manager, or inspector)
+  app.get("/api/admin/employees", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const employees = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+        })
+        .from(users)
+        .where(
+          and(
+            eq(users.isAdmin, false),
+            eq(users.isManager, false),
+            eq(users.isInspector, false)
+          )
+        );
+
+      res.json(employees);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      res.status(500).json({ message: 'Error fetching employees' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

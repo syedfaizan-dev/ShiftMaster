@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, LogOut, Users, User, FileText, Clock } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, User, FileText, Clock, CheckSquare } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
@@ -35,12 +35,20 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
         <div className="w-64 bg-gray-100 min-h-screen border-r border-gray-200">
           <nav className="p-4 space-y-2">
             {user?.isAdmin && (
-              <Link href="/">
-                <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
-                  <LayoutDashboard className="w-5 h-5" />
-                  <span>Dashboard</span>
-                </button>
-              </Link>
+              <>
+                <Link href="/">
+                  <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
+                    <LayoutDashboard className="w-5 h-5" />
+                    <span>Dashboard</span>
+                  </button>
+                </Link>
+                <Link href="/tasks">
+                  <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
+                    <CheckSquare className="w-5 h-5" />
+                    <span>Tasks</span>
+                  </button>
+                </Link>
+              </>
             )}
             <Link href="/shifts">
               <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
