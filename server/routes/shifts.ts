@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
-import { shifts, users, roles } from "@db/schema";
-import { NotificationService } from "../services/notification";
+import { shifts, users, roles, shiftTypes } from "@db/schema";
 
 export async function getShifts(req: Request, res: Response) {
   try {
@@ -11,8 +10,7 @@ export async function getShifts(req: Request, res: Response) {
         id: shifts.id,
         inspectorId: shifts.inspectorId,
         roleId: shifts.roleId,
-        startTime: shifts.startTime,
-        endTime: shifts.endTime,
+        shiftTypeId: shifts.shiftTypeId,
         week: shifts.week,
         backupId: shifts.backupId,
         inspector: {
@@ -24,10 +22,17 @@ export async function getShifts(req: Request, res: Response) {
           id: roles.id,
           name: roles.name,
         },
+        shiftType: {
+          id: shiftTypes.id,
+          name: shiftTypes.name,
+          startTime: shiftTypes.startTime,
+          endTime: shiftTypes.endTime,
+        },
       })
       .from(shifts)
       .leftJoin(users, eq(shifts.inspectorId, users.id))
-      .leftJoin(roles, eq(shifts.roleId, roles.id));
+      .leftJoin(roles, eq(shifts.roleId, roles.id))
+      .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id));
 
     // If not admin, only show user's shifts
     if (!req.user?.isAdmin) {
