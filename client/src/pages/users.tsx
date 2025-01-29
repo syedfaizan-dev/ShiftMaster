@@ -92,14 +92,17 @@ export default function UsersPage() {
       const { id, role, ...updateData } = data;
       const payload = {
         ...updateData,
-        is_admin: role === "admin",
-        is_manager: role === "manager",
-        is_inspector: role === "inspector",
+        isAdmin: role === "admin",
+        isManager: role === "manager",
+        isInspector: role === "inspector",
       };
       console.log('Updating user with payload:', payload);
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify(payload),
         credentials: "include",
       });

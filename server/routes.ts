@@ -116,31 +116,54 @@ export function registerRoutes(app: Express): Server {
 
   // Admin: Update user
   app.put("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { username, fullName, isAdmin, isManager, isInspector } = req.body;
-
-    const [existingUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.username, username))
-      .limit(1);
-
-    if (existingUser && existingUser.id !== parseInt(id)) {
-      return res.status(400).send("Username already exists");
-    }
-
     try {
+      const { id } = req.params;
+      const { username, fullName, isAdmin, isManager, isInspector } = req.body;
+
+      console.log('Update user request:', {
+        id,
+        username,
+        fullName,
+        isAdmin,
+        isManager,
+        isInspector
+      });
+
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check for username conflicts
+      const [userWithSameUsername] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (userWithSameUsername && userWithSameUsername.id !== parseInt(id)) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // Update the user with role information
       const [updatedUser] = await db
         .update(users)
         .set({
           username,
           fullName,
-          isAdmin: isAdmin || false,
-          isManager: isManager || false,
-          isInspector: isInspector || false,
+          isAdmin: isAdmin === true,
+          isManager: isManager === true,
+          isInspector: isInspector === true,
         })
         .where(eq(users.id, parseInt(id)))
         .returning();
+
+      console.log('Updated user:', updatedUser);
 
       res.json(updatedUser);
     } catch (error) {
