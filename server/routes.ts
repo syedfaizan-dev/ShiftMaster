@@ -501,6 +501,35 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get inspectors by shift type
+  app.get("/api/admin/shifts/inspectors/:shiftTypeId", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { shiftTypeId } = req.params;
+
+      // Get all inspectors assigned to this shift type
+      const inspectorsInShift = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+        })
+        .from(users)
+        .innerJoin(shifts, eq(shifts.inspectorId, users.id))
+        .where(
+          and(
+            eq(shifts.shiftTypeId, parseInt(shiftTypeId)),
+            eq(users.isInspector, true)
+          )
+        )
+        .groupBy(users.id, users.fullName, users.username);
+
+      res.json(inspectorsInShift);
+    } catch (error) {
+      console.error('Error fetching inspectors by shift type:', error);
+      res.status(500).json({ message: 'Error fetching inspectors' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

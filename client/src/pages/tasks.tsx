@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +58,7 @@ export default function Tasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(null);
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -81,14 +82,20 @@ export default function Tasks() {
     queryKey: ["/api/shift-types"],
   });
 
-  const { data: inspectors = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
-    select: (users) => users.filter((user) => user.isInspector),
+  // Fetch inspectors based on selected shift type
+  const { data: inspectors = [] } = useQuery({
+    queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
+    enabled: !!selectedShiftType,
   });
 
   const { data: employees = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/employees"],
   });
+
+  // Reset inspector when shift type changes
+  useEffect(() => {
+    form.setValue('inspectorId', '');
+  }, [selectedShiftType, form]);
 
   const createTask = useMutation({
     mutationFn: async (data: TaskFormData) => {
@@ -195,14 +202,20 @@ export default function Tasks() {
             </div>
             <div className="overflow-y-auto flex-1 px-6 py-4">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(async (data) => await createTask.mutateAsync(data))} className="space-y-4">
+                <form id="task-form" onSubmit={form.handleSubmit(async (data) => await createTask.mutateAsync(data))} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="shiftTypeId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Shift Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            setSelectedShiftType(value);
+                          }} 
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select shift type" />
@@ -227,10 +240,14 @@ export default function Tasks() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Inspector</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                          disabled={!selectedShiftType}
+                        >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select inspector" />
+                              <SelectValue placeholder={selectedShiftType ? "Select inspector" : "Select a shift type first"} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
