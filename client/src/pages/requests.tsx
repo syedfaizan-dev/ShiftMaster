@@ -283,23 +283,31 @@ function RequestsPage() {
                       <div className="space-y-2">
                         <div>
                           <p className="font-medium">Current Shift Type:</p>
-                          <p>{userShiftTypes.find(st => st.id === request.shiftTypeId)?.name || "Unknown"}</p>
-                          <p className="text-sm text-gray-500">
-                            {userShiftTypes.find(st => st.id === request.shiftTypeId)?.startTime && (
-                              `${format(new Date(`2000-01-01T${userShiftTypes.find(st => st.id === request.shiftTypeId)?.startTime}`), 'h:mm a')} - 
-                               ${format(new Date(`2000-01-01T${userShiftTypes.find(st => st.id === request.shiftTypeId)?.endTime}`), 'h:mm a')}`
-                            )}
-                          </p>
+                          {request.shift && (
+                            <>
+                              <p>{request.shift.shiftType?.name || "Unknown"}</p>
+                              <p className="text-sm text-gray-500">
+                                {request.shift.shiftType?.startTime && (
+                                  `${format(new Date(`2000-01-01T${request.shift.shiftType.startTime}`), 'h:mm a')} - 
+                                   ${format(new Date(`2000-01-01T${request.shift.shiftType.endTime}`), 'h:mm a')}`
+                                )}
+                              </p>
+                            </>
+                          )}
                         </div>
                         <div>
                           <p className="font-medium">Requested Shift Type:</p>
-                          <p>{allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.name || "Unknown"}</p>
-                          <p className="text-sm text-gray-500">
-                            {allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.startTime && (
-                              `${format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.startTime}`), 'h:mm a')} - 
-                               ${format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.endTime}`), 'h:mm a')}`
-                            )}
-                          </p>
+                          {request.targetShift && (
+                            <>
+                              <p>{request.targetShift.shiftType?.name || "Unknown"}</p>
+                              <p className="text-sm text-gray-500">
+                                {request.targetShift.shiftType?.startTime && (
+                                  `${format(new Date(`2000-01-01T${request.targetShift.shiftType.startTime}`), 'h:mm a')} - 
+                                   ${format(new Date(`2000-01-01T${request.targetShift.shiftType.endTime}`), 'h:mm a')}`
+                                )}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
@@ -440,7 +448,7 @@ function RequestsPage() {
                                 .filter(shiftType => shiftType.id !== form.watch("shiftTypeId"))
                                 .map((shiftType) => (
                                   <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
-                                    {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
+                                    {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shift.shiftType.endTime}`), 'h:mm a')})
                                   </SelectItem>
                                 ))}
                             </SelectContent>
