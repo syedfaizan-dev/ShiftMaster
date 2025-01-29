@@ -35,8 +35,7 @@ import Navbar from "@/components/navbar";
 const taskSchema = z.object({
   shiftTypeId: z.string().min(1, "Shift type is required"),
   inspectorId: z.string().min(1, "Inspector is required"),
-  taskType: z.string().min(1, "Task type is required"),
-  description: z.string().min(1, "Description is required"),
+  taskTypeId: z.string().min(1, "Task type is required"),
   status: z.string().min(1, "Status is required"),
   date: z.string().min(1, "Date is required"),
   isFollowupNeeded: z.boolean(),
@@ -49,8 +48,7 @@ type TaskWithRelations = {
   id: number;
   inspectorId: number;
   shiftTypeId: number;
-  taskType: string;
-  description: string;
+  taskTypeId: number;
   status: string;
   date: string;
   isFollowupNeeded: boolean;
@@ -58,6 +56,7 @@ type TaskWithRelations = {
   inspector: { id: number; fullName: string; username: string };
   assignedEmployee: { id: number; fullName: string; username: string };
   shiftType: { id: number; name: string; startTime: string; endTime: string };
+  taskType: { id: number; name: string; description: string | null };
 };
 
 export default function Tasks() {
@@ -72,8 +71,7 @@ export default function Tasks() {
     defaultValues: {
       shiftTypeId: "",
       inspectorId: "",
-      taskType: "",
-      description: "",
+      taskTypeId: "",
       status: "PENDING",
       date: "",
       isFollowupNeeded: false,
@@ -91,7 +89,6 @@ export default function Tasks() {
     queryKey: ["/api/shift-types"],
   });
 
-  // Updated query for inspectors with proper type
   type Inspector = {
     id: number;
     fullName: string;
@@ -115,7 +112,11 @@ export default function Tasks() {
     queryKey: ["/api/admin/employees"],
   });
 
-  // Reset inspector value when shift type changes
+  const { data: taskTypes = [] } = useQuery<any[]>({
+    queryKey: ["/api/task-types"],
+  });
+
+
   useEffect(() => {
     if (selectedShiftType) {
       form.setValue('inspectorId', '');
@@ -131,6 +132,7 @@ export default function Tasks() {
           ...data,
           inspectorId: parseInt(data.inspectorId),
           shiftTypeId: parseInt(data.shiftTypeId),
+          taskTypeId: parseInt(data.taskTypeId),
           assignedTo: parseInt(data.assignedTo),
         }),
         credentials: "include",
@@ -152,7 +154,6 @@ export default function Tasks() {
       });
     },
   });
-
 
   if (!user?.isAdmin) {
     return (
@@ -218,7 +219,6 @@ export default function Tasks() {
                     <form
                       id="task-form"
                       onSubmit={form.handleSubmit(async (data) => {
-                        console.log('Form submitted', data);
                         await createTask.mutateAsync(data);
                       })}
                       className="space-y-4"
@@ -233,7 +233,6 @@ export default function Tasks() {
                               onValueChange={(value) => {
                                 field.onChange(value);
                                 setSelectedShiftType(value);
-                                // Reset inspector when shift type changes
                                 form.setValue('inspectorId', '');
                               }}
                               value={field.value}
@@ -269,11 +268,11 @@ export default function Tasks() {
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder={
-                                    isLoadingInspectors 
-                                      ? "Loading inspectors..." 
-                                      : !selectedShiftType 
-                                      ? "Select a shift type first" 
-                                      : "Select inspector"
+                                    isLoadingInspectors
+                                      ? "Loading inspectors..."
+                                      : !selectedShiftType
+                                        ? "Select a shift type first"
+                                        : "Select inspector"
                                   } />
                                 </SelectTrigger>
                               </FormControl>
@@ -291,26 +290,27 @@ export default function Tasks() {
                       />
                       <FormField
                         control={form.control}
-                        name="taskType"
+                        name="taskTypeId"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Task Type</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Enter task type" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
-                            <FormControl>
-                              <Textarea {...field} placeholder="Enter task description" />
-                            </FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select task type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {taskTypes?.map((type) => (
+                                  <SelectItem key={type.id} value={type.id.toString()}>
+                                    {type.name} {type.description && `- ${type.description}`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -444,7 +444,6 @@ export default function Tasks() {
                   <form
                     id="task-form"
                     onSubmit={form.handleSubmit(async (data) => {
-                      console.log('Form submitted', data);
                       await createTask.mutateAsync(data);
                     })}
                     className="space-y-4"
@@ -459,7 +458,6 @@ export default function Tasks() {
                             onValueChange={(value) => {
                               field.onChange(value);
                               setSelectedShiftType(value);
-                              // Reset inspector when shift type changes
                               form.setValue('inspectorId', '');
                             }}
                             value={field.value}
@@ -495,11 +493,11 @@ export default function Tasks() {
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder={
-                                  isLoadingInspectors 
-                                    ? "Loading inspectors..." 
-                                    : !selectedShiftType 
-                                    ? "Select a shift type first" 
-                                    : "Select inspector"
+                                  isLoadingInspectors
+                                    ? "Loading inspectors..."
+                                    : !selectedShiftType
+                                      ? "Select a shift type first"
+                                      : "Select inspector"
                                 } />
                               </SelectTrigger>
                             </FormControl>
@@ -517,26 +515,27 @@ export default function Tasks() {
                     />
                     <FormField
                       control={form.control}
-                      name="taskType"
+                      name="taskTypeId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Task Type</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Enter task type" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Enter task description" />
-                          </FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select task type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {taskTypes?.map((type) => (
+                                <SelectItem key={type.id} value={type.id.toString()}>
+                                  {type.name} {type.description && `- ${type.description}`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -646,7 +645,6 @@ export default function Tasks() {
               <TableHead>Inspector</TableHead>
               <TableHead>Shift Type</TableHead>
               <TableHead>Task Type</TableHead>
-              <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Followup</TableHead>
               <TableHead>Assigned To</TableHead>
@@ -658,8 +656,7 @@ export default function Tasks() {
                 <TableCell>{format(new Date(task.date), "MMM d, yyyy")}</TableCell>
                 <TableCell>{task.inspector?.fullName || "Unknown"}</TableCell>
                 <TableCell>{task.shiftType?.name || "Unknown"}</TableCell>
-                <TableCell>{task.taskType}</TableCell>
-                <TableCell>{task.description}</TableCell>
+                <TableCell>{task.taskType?.name || "Unknown"}</TableCell>
                 <TableCell>{task.status}</TableCell>
                 <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
                 <TableCell>{task.assignedEmployee?.fullName || "Unknown"}</TableCell>
