@@ -61,7 +61,8 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
       });
       if (response.ok) {
         const data = await response.json();
-        setShifts(data);
+        // Only show the most recent shifts on dashboard
+        setShifts(data.slice(0, 5));
       } else {
         throw new Error('Failed to fetch shifts');
       }
@@ -116,15 +117,15 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
         ) : (
           shifts.map((shift) => (
             <View key={shift.id} style={styles.shiftCard}>
+              <Text style={styles.shiftRole}>
+                {shift.role?.name || 'Unknown Role'}
+              </Text>
               <Text style={styles.shiftDate}>
                 {new Date(shift.startTime).toLocaleDateString()}
               </Text>
               <Text style={styles.shiftTime}>
                 {new Date(shift.startTime).toLocaleTimeString()} - 
                 {new Date(shift.endTime).toLocaleTimeString()}
-              </Text>
-              <Text style={styles.shiftRole}>
-                Role: {shift.role?.name || 'Unknown'}
               </Text>
               <Text style={styles.shiftInspector}>
                 Inspector: {shift.inspector?.fullName || 'Unknown'}
@@ -205,21 +206,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
-  shiftDate: {
+  shiftRole: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#01843d',
+    marginBottom: 5,
+  },
+  shiftDate: {
+    fontSize: 14,
+    color: '#444',
   },
   shiftTime: {
     color: '#666',
-    marginTop: 5,
-  },
-  shiftRole: {
-    marginTop: 5,
-    fontWeight: '500',
+    marginTop: 2,
   },
   shiftInspector: {
-    marginTop: 2,
+    marginTop: 5,
     color: '#444',
+    fontWeight: '500',
   },
   shiftBackup: {
     marginTop: 2,
