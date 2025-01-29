@@ -13,6 +13,7 @@ import Employees from "@/pages/employees";
 import Requests from "@/pages/requests";
 import ShiftTypes from "@/pages/shift-types";
 import Tasks from "@/pages/tasks";
+import Users from "@/pages/users";
 import TaskTypes from "@/pages/task-types";
 
 function Router() {
@@ -33,17 +34,14 @@ function Router() {
   return (
     <Switch>
       <Route path="/">
-        {user.isAdmin ? (
-          <Dashboard />
-        ) : (
-          <Redirect to="/shifts" />
-        )}
+        {user.isAdmin ? <Dashboard /> : <Redirect to="/shifts" />}
       </Route>
       <Route path="/shifts" component={Shifts} />
       {/* Only admin can access these routes */}
       {user.isAdmin && (
         <>
           <Route path="/roles" component={Roles} />
+          <Route path="/users" component={Users} />
           <Route path="/employees" component={Employees} />
           <Route path="/shift-types" component={ShiftTypes} />
           <Route path="/tasks" component={Tasks} />
