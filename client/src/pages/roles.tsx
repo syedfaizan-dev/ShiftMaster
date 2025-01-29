@@ -57,12 +57,13 @@ function RolesPage() {
         body: JSON.stringify(data),
         credentials: "include",
       });
-      const responseText = await res.text();
+
       if (!res.ok) {
-        console.error('Create role failed:', responseText);
-        throw new Error(responseText);
+        const errorText = await res.text();
+        throw new Error(errorText);
       }
-      return JSON.parse(responseText);
+
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Role created successfully" });
@@ -71,7 +72,6 @@ function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
     },
     onError: (error: Error) => {
-      console.error('Create role error:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -83,29 +83,28 @@ function RolesPage() {
   const updateRole = useMutation({
     mutationFn: async (data: RoleFormData & { id: number }) => {
       const { id, ...updateData } = data;
-      console.log('Updating role with data:', { id, ...updateData });
 
+      // Send the update request
       const res = await fetch(`/api/admin/roles/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify(updateData),
         credentials: "include",
       });
 
-      const responseText = await res.text();
-      console.log('Update role response:', responseText);
-
       if (!res.ok) {
-        console.error('Update role failed:', responseText);
-        throw new Error(responseText);
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to update role");
       }
 
-      try {
-        return JSON.parse(responseText);
-      } catch (e) {
-        console.error('Failed to parse response:', e);
-        throw new Error('Invalid server response');
-      }
+      // For successful updates, return the updated data
+      return {
+        id,
+        ...updateData,
+      };
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Role updated successfully" });
@@ -115,7 +114,6 @@ function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
     },
     onError: (error: Error) => {
-      console.error('Update role error:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -142,8 +140,8 @@ function RolesPage() {
       } else {
         await createRole.mutateAsync(data);
       }
-    } catch (error) {
-      console.error('Form submission error:', error);
+    } catch (error: any) {
+      console.error('Form submission error:', error.message);
     }
   };
 
@@ -181,7 +179,7 @@ function RolesPage() {
               {roles.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell>{role.name}</TableCell>
-                  <TableCell>{role.description}</TableCell>
+                  <TableCell>{role.description || "—"}</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
