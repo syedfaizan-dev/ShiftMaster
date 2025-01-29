@@ -200,10 +200,10 @@ function RequestsPage() {
         return null;
       }
 
-      const weekStart = new Date(2025, 0, 1); 
-      weekStart.setDate(weekStart.getDate() + (weekNum - 1) * 7); 
+      const weekStart = new Date(2025, 0, 1);
+      weekStart.setDate(weekStart.getDate() + (weekNum - 1) * 7);
 
-      const timeObj = new Date(`2000-01-01T${shift.shiftType.startTime}`); 
+      const timeObj = new Date(`2000-01-01T${shift.shiftType.startTime}`);
 
       const shiftDateTime = new Date(
         weekStart.getFullYear(),
@@ -254,7 +254,7 @@ function RequestsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Reason</TableHead>
                 {(user?.isAdmin || user?.isManager) && <TableHead>Requester</TableHead>}
-                <TableHead>Dates</TableHead>
+                <TableHead>Details</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Review Info</TableHead>
                 {(user?.isAdmin || user?.isManager) && <TableHead>Actions</TableHead>}
@@ -275,11 +275,33 @@ function RequestsPage() {
                   {(user?.isAdmin || user?.isManager) && <TableCell>{request.requester?.fullName || "Unknown"}</TableCell>}
                   <TableCell>
                     {request.type === "LEAVE" ? (
-                      <>
-                        {format(new Date(request.startDate!), "MMM d, yyyy")} - {format(new Date(request.endDate!), "MMM d, yyyy")}
-                      </>
+                      <div>
+                        <p className="font-medium">Leave Period:</p>
+                        <p>{format(new Date(request.startDate!), "MMM d, yyyy")} - {format(new Date(request.endDate!), "MMM d, yyyy")}</p>
+                      </div>
                     ) : (
-                      formatShiftDateTime(shifts.find((s) => s.id === request.shiftId)!)?.formatted || "Invalid Shift"
+                      <div className="space-y-2">
+                        <div>
+                          <p className="font-medium">Current Shift Type:</p>
+                          <p>{userShiftTypes.find(st => st.id === request.shiftTypeId)?.name || "Unknown"}</p>
+                          <p className="text-sm text-gray-500">
+                            {userShiftTypes.find(st => st.id === request.shiftTypeId)?.startTime && (
+                              `${format(new Date(`2000-01-01T${userShiftTypes.find(st => st.id === request.shiftTypeId)?.startTime}`), 'h:mm a')} - 
+                               ${format(new Date(`2000-01-01T${userShiftTypes.find(st => st.id === request.shiftTypeId)?.endTime}`), 'h:mm a')}`
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Requested Shift Type:</p>
+                          <p>{allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.name || "Unknown"}</p>
+                          <p className="text-sm text-gray-500">
+                            {allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.startTime && (
+                              `${format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.startTime}`), 'h:mm a')} - 
+                               ${format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.targetShiftTypeId)?.endTime}`), 'h:mm a')}`
+                            )}
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
