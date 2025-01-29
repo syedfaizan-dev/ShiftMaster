@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, parse, startOfWeek, isValid } from "date-fns";
+import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
@@ -26,8 +26,8 @@ import type { RequestWithRelations, Shift, User } from "@db/schema";
 
 const requestSchema = z.object({
   type: z.enum(["SHIFT_SWAP", "LEAVE"]),
-  shiftId: z.number().optional(),
-  targetShiftId: z.number().optional(),
+  shiftTypeId: z.number().optional(),
+  targetShiftTypeId: z.number().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   reason: z.string().min(1, "Reason is required"),
@@ -69,9 +69,34 @@ function RequestsPage() {
     enabled: user?.isAdmin,
   });
 
-  const { data: shifts = [] } = useQuery<(Shift & { shiftType: { startTime: string; endTime: string } })[]>({
+  const { data: shifts = [] } = useQuery<(Shift & { shiftType: { startTime: string; endTime: string; name: string } })[]>({
     queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
+
+  // Get unique shift types from user's shifts
+  const userShiftTypes = shifts
+    .filter(shift => shift.inspectorId === user?.id)
+    .map(shift => ({
+      id: shift.shiftTypeId,
+      name: shift.shiftType.name,
+      startTime: shift.shiftType.startTime,
+      endTime: shift.shiftType.endTime
+    }))
+    .filter((value, index, self) => 
+      self.findIndex(v => v.id === value.id) === index
+    );
+
+  // Get all unique shift types
+  const allShiftTypes = shifts
+    .map(shift => ({
+      id: shift.shiftTypeId,
+      name: shift.shiftType.name,
+      startTime: shift.shiftType.startTime,
+      endTime: shift.shiftType.endTime
+    }))
+    .filter((value, index, self) => 
+      self.findIndex(v => v.id === value.id) === index
+    );
 
   const createRequest = useMutation({
     mutationFn: async (data: RequestFormData) => {
@@ -175,27 +200,18 @@ function RequestsPage() {
         return null;
       }
 
-      const weekStart = startOfWeek(new Date(2025, 0, 1));
-      const shiftDate = new Date(weekStart.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
+      const weekStart = new Date(2025, 0, 1); //Corrected to use new Date instead of startOfWeek
+      weekStart.setDate(weekStart.getDate() + (weekNum - 1) * 7); //Simplified week calculation
 
-      const timeObj = parse(shift.shiftType.startTime, "HH:mm:ss", new Date());
-      if (!isValid(timeObj)) {
-        console.debug("Invalid time format", { startTime: shift.shiftType.startTime });
-        return null;
-      }
+      const timeObj = new Date(`2000-01-01T${shift.shiftType.startTime}`); //Corrected parsing to use new Date
 
       const shiftDateTime = new Date(
-        shiftDate.getFullYear(),
-        shiftDate.getMonth(),
-        shiftDate.getDate(),
+        weekStart.getFullYear(),
+        weekStart.getMonth(),
+        weekStart.getDate(),
         timeObj.getHours(),
         timeObj.getMinutes()
       );
-
-      if (!isValid(shiftDateTime)) {
-        console.debug("Invalid final datetime");
-        return null;
-      }
 
       return {
         date: shiftDateTime,
@@ -336,7 +352,7 @@ function RequestsPage() {
           <DialogContent>
             <DialogTitle>Create New Request</DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(createRequest.mutate)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(data => createRequest.mutate(data))} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="type"
@@ -363,37 +379,22 @@ function RequestsPage() {
                   <>
                     <FormField
                       control={form.control}
-                      name="shiftId"
+                      name="shiftTypeId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Select Your Shift</FormLabel>
+                          <FormLabel>Your Shift Type</FormLabel>
                           <Select onValueChange={(val) => field.onChange(parseInt(val))}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select your shift to swap" />
+                                <SelectValue placeholder="Select your shift type" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts
-                                .filter((shift) => {
-                                  const dateInfo = formatShiftDateTime(shift);
-                                  return shift.inspectorId === user?.id && dateInfo !== null;
-                                })
-                                .sort((a, b) => {
-                                  const dateA = formatShiftDateTime(a)?.date;
-                                  const dateB = formatShiftDateTime(b)?.date;
-                                  if (!dateA || !dateB) return 0;
-                                  return dateA.getTime() - dateB.getTime();
-                                })
-                                .map((shift) => {
-                                  const dateInfo = formatShiftDateTime(shift);
-                                  if (!dateInfo) return null;
-                                  return (
-                                    <SelectItem key={shift.id} value={shift.id.toString()}>
-                                      {dateInfo.formatted}
-                                    </SelectItem>
-                                  );
-                                })}
+                              {userShiftTypes.map((shiftType) => (
+                                <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
+                                  {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -402,37 +403,22 @@ function RequestsPage() {
                     />
                     <FormField
                       control={form.control}
-                      name="targetShiftId"
+                      name="targetShiftTypeId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Target Shift</FormLabel>
+                          <FormLabel>Target Shift Type</FormLabel>
                           <Select onValueChange={(val) => field.onChange(parseInt(val))}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select target shift" />
+                                <SelectValue placeholder="Select target shift type" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts
-                                .filter((shift) => {
-                                  const dateInfo = formatShiftDateTime(shift);
-                                  return shift.inspectorId !== user?.id && dateInfo !== null;
-                                })
-                                .sort((a, b) => {
-                                  const dateA = formatShiftDateTime(a)?.date;
-                                  const dateB = formatShiftDateTime(b)?.date;
-                                  if (!dateA || !dateB) return 0;
-                                  return dateA.getTime() - dateB.getTime();
-                                })
-                                .map((shift) => {
-                                  const dateInfo = formatShiftDateTime(shift);
-                                  if (!dateInfo) return null;
-                                  return (
-                                    <SelectItem key={shift.id} value={shift.id.toString()}>
-                                      {dateInfo.formatted}
-                                    </SelectItem>
-                                  );
-                                })}
+                              {allShiftTypes.map((shiftType) => (
+                                <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
+                                  {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -500,7 +486,7 @@ function RequestsPage() {
           <DialogContent>
             <DialogTitle>Assign Manager</DialogTitle>
             <Form {...assignManagerForm}>
-              <form onSubmit={assignManagerForm.handleSubmit(assignManager.mutate)} className="space-y-4">
+              <form onSubmit={assignManagerForm.handleSubmit(data => assignManager.mutate(data))} className="space-y-4">
                 <FormField
                   control={assignManagerForm.control}
                   name="managerId"
