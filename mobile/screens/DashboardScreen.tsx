@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { type Shift } from '../../db/schema';
 
 const API_BASE_URL = 'http://0.0.0.0:5000';
 
