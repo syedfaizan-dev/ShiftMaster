@@ -10,6 +10,47 @@ import { getShifts, createShift } from "./routes/shifts";
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Middleware to check if user is authenticated
+  const requireAuth = (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    next();
+  };
+
+  // Get basic user info
+  app.get("/api/users", requireAuth, async (req, res) => {
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+        })
+        .from(users);
+      res.json(allUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).send('Error fetching users');
+    }
+  });
+
+  // Get basic role info
+  app.get("/api/roles", requireAuth, async (req, res) => {
+    try {
+      const allRoles = await db
+        .select({
+          id: roles.id,
+          name: roles.name,
+        })
+        .from(roles);
+      res.json(allRoles);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      res.status(500).send('Error fetching roles');
+    }
+  });
+
   // Middleware to check if user is authenticated and is admin
   const requireAdmin = (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
     if (!req.isAuthenticated()) {

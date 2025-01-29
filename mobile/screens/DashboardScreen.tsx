@@ -35,12 +35,25 @@ type ShiftWithRelations = {
 export default function DashboardScreen({ navigation }: NavigationProps) {
   const [user, setUser] = useState<any>(null);
   const [shifts, setShifts] = useState<ShiftWithRelations[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initializeData = async () => {
-      await loadUser();
-      await fetchShifts();
+      try {
+        await loadUser();
+        // Fetch users and roles first
+        await Promise.all([
+          fetchUsers(),
+          fetchRoles(),
+          fetchShifts()
+        ]);
+      } catch (error) {
+        console.error('Error initializing data:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     initializeData();
@@ -57,9 +70,36 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/roles`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setRoles(data);
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+    }
+  };
+
   const fetchShifts = async () => {
     try {
-      setIsLoading(true);
       console.log('Fetching shifts from:', `${API_BASE_URL}/api/shifts`);
 
       const response = await fetch(`${API_BASE_URL}/api/shifts`, {
@@ -76,9 +116,17 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
         const data = await response.json();
         console.log('Received shifts data:', data);
 
-        if (Array.isArray(data) && data.length > 0) {
+        // Enhance shift data with user and role information
+        const enhancedShifts = data.map((shift: any) => ({
+          ...shift,
+          inspector: users.find(u => u.id === shift.inspectorId) || { fullName: 'Unknown' },
+          role: roles.find(r => r.id === shift.roleId) || { name: 'Unknown' },
+          backup: shift.backupId ? users.find(u => u.id === shift.backupId) : null,
+        }));
+
+        if (enhancedShifts.length > 0) {
           // Only show the most recent shifts on dashboard
-          setShifts(data.slice(0, 5));
+          setShifts(enhancedShifts.slice(0, 5));
         } else {
           console.log('No shifts data received or empty array');
           setShifts([]);
@@ -91,8 +139,6 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
     } catch (error) {
       console.error('Error in fetchShifts:', error);
       Alert.alert('Error', 'Failed to fetch shifts');
-    } finally {
-      setIsLoading(false);
     }
   };
 
