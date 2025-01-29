@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/table";
 import ShiftForm from "@/components/shift-form";
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import Navbar from "@/components/navbar";
 
 type ShiftWithRelations = {
@@ -31,20 +31,27 @@ type ShiftWithRelations = {
 export default function Shifts() {
   const { user } = useUser();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(null);
 
   const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
-    // If user is admin or manager, show all shifts. If inspector, show only their shifts
     queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
   });
+
+  const handleEdit = (shift: ShiftWithRelations) => {
+    setSelectedShift(shift);
+    setIsDialogOpen(true);
+  };
 
   return (
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shifts</h1>
-          {/* Only admin can create shifts */}
           {user?.isAdmin && (
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button onClick={() => {
+              setSelectedShift(null);
+              setIsDialogOpen(true);
+            }}>
               Create New Shift
             </Button>
           )}
@@ -66,6 +73,7 @@ export default function Shifts() {
                 <TableHead>Time</TableHead>
                 <TableHead>Week</TableHead>
                 <TableHead>Backup Inspector</TableHead>
+                {user?.isAdmin && <TableHead>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,6 +89,17 @@ export default function Shifts() {
                   <TableCell>
                     {shift.backup?.fullName || "-"}
                   </TableCell>
+                  {user?.isAdmin && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(shift)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -89,7 +108,14 @@ export default function Shifts() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col">
-            <ShiftForm onSuccess={() => setIsDialogOpen(false)} />
+            <DialogTitle>{selectedShift ? 'Edit Shift' : 'Create New Shift'}</DialogTitle>
+            <ShiftForm 
+              onSuccess={() => {
+                setIsDialogOpen(false);
+                setSelectedShift(null);
+              }} 
+              editShift={selectedShift}
+            />
           </DialogContent>
         </Dialog>
       </div>

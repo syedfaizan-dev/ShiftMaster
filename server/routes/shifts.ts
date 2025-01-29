@@ -142,3 +142,54 @@ export async function createShift(req: Request, res: Response) {
     res.status(500).send((error as Error).message);
   }
 }
+
+export async function updateShift(req: Request, res: Response) {
+  try {
+    if (!req.user?.isAdmin) {
+      return res.status(403).send("Not authorized - Admin access required");
+    }
+
+    const { id } = req.params;
+    const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
+
+    // Validate that the shift exists
+    const [existingShift] = await db
+      .select()
+      .from(shifts)
+      .where(eq(shifts.id, parseInt(id)))
+      .limit(1);
+
+    if (!existingShift) {
+      return res.status(404).send("Shift not found");
+    }
+
+    // Validate that the shift type exists
+    const [shiftType] = await db
+      .select()
+      .from(shiftTypes)
+      .where(eq(shiftTypes.id, shiftTypeId))
+      .limit(1);
+
+    if (!shiftType) {
+      return res.status(400).json({ message: "Invalid shift type" });
+    }
+
+    // Update the shift
+    const [updatedShift] = await db
+      .update(shifts)
+      .set({
+        inspectorId,
+        roleId,
+        shiftTypeId,
+        week,
+        backupId,
+      })
+      .where(eq(shifts.id, parseInt(id)))
+      .returning();
+
+    res.json(updatedShift);
+  } catch (error) {
+    console.error('Error updating shift:', error);
+    res.status(500).send((error as Error).message);
+  }
+}

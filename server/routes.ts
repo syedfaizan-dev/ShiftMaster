@@ -40,6 +40,49 @@ export const createShift = async (req: Request, res: Response) => {
   }
 };
 
+const updateShift = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
+
+        const [existingShift] = await db.select().from(shifts).where(eq(shifts.id, parseInt(id))).limit(1);
+
+        if (!existingShift) {
+            return res.status(404).json({ message: "Shift not found" });
+        }
+
+        // Validate that the shift type exists
+        const [shiftType] = await db
+            .select()
+            .from(shiftTypes)
+            .where(eq(shiftTypes.id, shiftTypeId))
+            .limit(1);
+
+        if (!shiftType) {
+            return res.status(400).json({ message: "Invalid shift type" });
+        }
+
+
+        const [updatedShift] = await db.update(shifts)
+            .set({
+                inspectorId,
+                roleId,
+                shiftTypeId,
+                week,
+                backupId,
+                updatedBy: req.user.id, // Assuming you have updatedBy field
+            })
+            .where(eq(shifts.id, parseInt(id)))
+            .returning();
+
+        res.json(updatedShift);
+    } catch (error) {
+        console.error('Error updating shift:', error);
+        res.status(500).json({ message: 'Error updating shift' });
+    }
+};
+
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -180,6 +223,11 @@ export function registerRoutes(app: Express): Server {
 
   // Admin: Create shift
   app.post("/api/admin/shifts", requireAdmin, createShift);
+
+  // Admin: Update shift
+  app.put("/api/admin/shifts/:id", requireAdmin, async (req: Request, res: Response) => {
+    await updateShift(req, res);
+  });
 
   // Admin: Get all roles
   app.get("/api/admin/roles", requireAdmin, async (req: Request, res: Response) => {
