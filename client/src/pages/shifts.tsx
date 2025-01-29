@@ -12,7 +12,6 @@ import ShiftForm from "@/components/shift-form";
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 
@@ -20,12 +19,12 @@ type ShiftWithRelations = {
   id: number;
   inspectorId: number;
   roleId: number;
-  startTime: string;
-  endTime: string;
+  shiftTypeId: number;
   week: string;
   backupId: number | null;
   inspector: { id: number; fullName: string; username: string };
   role: { id: number; name: string };
+  shiftType: { id: number; name: string; startTime: string; endTime: string };
   backup?: { id: number; fullName: string; username: string } | null;
 };
 
@@ -61,7 +60,7 @@ export default function Shifts() {
               <TableRow>
                 <TableHead>Inspector Name</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Shift Type</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Week</TableHead>
                 <TableHead>Backup Inspector</TableHead>
@@ -72,11 +71,11 @@ export default function Shifts() {
                 <TableRow key={shift.id}>
                   <TableCell>{shift.inspector?.fullName || 'Unknown'}</TableCell>
                   <TableCell>{shift.role?.name || 'Unknown'}</TableCell>
-                  <TableCell>{format(new Date(shift.startTime), "MMM d, yyyy")}</TableCell>
+                  <TableCell>{shift.shiftType?.name || 'Unknown'}</TableCell>
                   <TableCell>
-                    {format(new Date(shift.startTime), "h:mm a")} - {format(new Date(shift.endTime), "h:mm a")}
+                    {shift.shiftType?.startTime || 'N/A'} - {shift.shiftType?.endTime || 'N/A'}
                   </TableCell>
-                  <TableCell>{shift.week}</TableCell>
+                  <TableCell>Week {shift.week}</TableCell>
                   <TableCell>
                     {shift.backup?.fullName || "-"}
                   </TableCell>
