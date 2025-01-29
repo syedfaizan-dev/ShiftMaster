@@ -480,6 +480,33 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Admin: Delete shift type
+  app.delete("/api/admin/shift-types/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Check if shift type exists
+      const [existingShiftType] = await db
+        .select()
+        .from(shiftTypes)
+        .where(eq(shiftTypes.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingShiftType) {
+        return res.status(404).json({ message: "Shift type not found" });
+      }
+
+      await db
+        .delete(shiftTypes)
+        .where(eq(shiftTypes.id, parseInt(id)));
+
+      res.json({ message: "Shift type deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting shift type:', error);
+      res.status(500).json({ message: 'Error deleting shift type' });
+    }
+  });
+
   // Get all tasks (admin only)
   app.get("/api/admin/tasks", requireAdmin, async (req: Request, res: Response) => {
     try {
@@ -694,7 +721,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: 'Error deleting task type' });
     }
   });
-
 
   const httpServer = createServer(app);
   return httpServer;

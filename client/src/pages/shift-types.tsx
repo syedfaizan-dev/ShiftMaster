@@ -3,6 +3,16 @@ import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -17,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
@@ -37,6 +47,7 @@ function ShiftTypesPage() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedShiftType, setSelectedShiftType] = useState<any>(null);
+  const [shiftTypeToDelete, setShiftTypeToDelete] = useState<any>(null);
 
   const form = useForm<ShiftTypeFormData>({
     resolver: zodResolver(shiftTypeSchema),
@@ -94,6 +105,29 @@ function ShiftTypesPage() {
       setIsDialogOpen(false);
       form.reset();
       setSelectedShiftType(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/shift-types"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
+  const deleteShiftType = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/admin/shift-types/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Shift type deleted successfully" });
+      setShiftTypeToDelete(null);
       queryClient.invalidateQueries({ queryKey: ["/api/shift-types"] });
     },
     onError: (error: Error) => {
@@ -186,13 +220,20 @@ function ShiftTypesPage() {
                   <TableCell>{shiftType.startTime}</TableCell>
                   <TableCell>{shiftType.endTime}</TableCell>
                   <TableCell>{shiftType.description || "-"}</TableCell>
-                  <TableCell>
+                  <TableCell className="space-x-2">
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleEdit(shiftType)}
                     >
-                      Edit
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShiftTypeToDelete(shiftType)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -274,6 +315,34 @@ function ShiftTypesPage() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!shiftTypeToDelete} onOpenChange={(open) => !open && setShiftTypeToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Shift Type</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the shift type "{shiftTypeToDelete?.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => shiftTypeToDelete && deleteShiftType.mutate(shiftTypeToDelete.id)}
+                disabled={deleteShiftType.isPending}
+              >
+                {deleteShiftType.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Navbar>
   );
