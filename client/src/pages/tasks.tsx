@@ -17,8 +17,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -64,7 +77,9 @@ export default function Tasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(null);
+  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(
+    null,
+  );
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -79,7 +94,11 @@ export default function Tasks() {
     },
   });
 
-  const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useQuery<TaskWithRelations[]>({
+  const {
+    data: tasks = [],
+    isLoading: isLoadingTasks,
+    error: tasksError,
+  } = useQuery<TaskWithRelations[]>({
     queryKey: ["/api/admin/tasks"],
     retry: 1,
     retryDelay: 1000,
@@ -95,14 +114,18 @@ export default function Tasks() {
     username: string;
   };
 
-  const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
+  const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<
+    Inspector[]
+  >({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
     enabled: !!selectedShiftType,
     queryFn: async () => {
       if (!selectedShiftType) return [];
-      const response = await fetch(`/api/admin/shifts/inspectors/${selectedShiftType}`);
+      const response = await fetch(
+        `/api/admin/shifts/inspectors/${selectedShiftType}`,
+      );
       if (!response.ok) {
-        throw new Error('Failed to fetch inspectors');
+        throw new Error("Failed to fetch inspectors");
       }
       return response.json();
     },
@@ -116,10 +139,9 @@ export default function Tasks() {
     queryKey: ["/api/task-types"],
   });
 
-
   useEffect(() => {
     if (selectedShiftType) {
-      form.setValue('inspectorId', '');
+      form.setValue("inspectorId", "");
     }
   }, [selectedShiftType, form]);
 
@@ -205,7 +227,9 @@ export default function Tasks() {
             <h1 className="text-3xl font-bold">Tasks</h1>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => setIsDialogOpen(true)}>Create Task</Button>
+                <Button onClick={() => setIsDialogOpen(true)}>
+                  Create Task
+                </Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] w-[90vw] max-w-[600px] overflow-y-auto">
                 <DialogHeader>
@@ -233,7 +257,7 @@ export default function Tasks() {
                               onValueChange={(value) => {
                                 field.onChange(value);
                                 setSelectedShiftType(value);
-                                form.setValue('inspectorId', '');
+                                form.setValue("inspectorId", "");
                               }}
                               value={field.value}
                             >
@@ -244,8 +268,12 @@ export default function Tasks() {
                               </FormControl>
                               <SelectContent>
                                 {shiftTypes?.map((type) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name} ({type.startTime} - {type.endTime})
+                                  <SelectItem
+                                    key={type.id}
+                                    value={type.id.toString()}
+                                  >
+                                    {type.name} ({type.startTime} -{" "}
+                                    {type.endTime})
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -263,22 +291,29 @@ export default function Tasks() {
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
-                              disabled={!selectedShiftType || isLoadingInspectors}
+                              disabled={
+                                !selectedShiftType || isLoadingInspectors
+                              }
                             >
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder={
-                                    isLoadingInspectors
-                                      ? "Loading inspectors..."
-                                      : !selectedShiftType
-                                        ? "Select a shift type first"
-                                        : "Select inspector"
-                                  } />
+                                  <SelectValue
+                                    placeholder={
+                                      isLoadingInspectors
+                                        ? "Loading inspectors..."
+                                        : !selectedShiftType
+                                          ? "Select a shift type first"
+                                          : "Select inspector"
+                                    }
+                                  />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
                                 {inspectors?.map((inspector) => (
-                                  <SelectItem key={inspector.id} value={inspector.id.toString()}>
+                                  <SelectItem
+                                    key={inspector.id}
+                                    value={inspector.id.toString()}
+                                  >
                                     {inspector.fullName}
                                   </SelectItem>
                                 ))}
@@ -305,8 +340,13 @@ export default function Tasks() {
                               </FormControl>
                               <SelectContent>
                                 {taskTypes?.map((type) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name} {type.description && `- ${type.description}`}
+                                  <SelectItem
+                                    key={type.id}
+                                    value={type.id.toString()}
+                                  >
+                                    {type.name}{" "}
+                                    {type.description &&
+                                      `- ${type.description}`}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -321,7 +361,10 @@ export default function Tasks() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select status" />
@@ -329,8 +372,12 @@ export default function Tasks() {
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="PENDING">Pending</SelectItem>
-                                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                                <SelectItem value="COMPLETED">Completed</SelectItem>
+                                <SelectItem value="IN_PROGRESS">
+                                  In Progress
+                                </SelectItem>
+                                <SelectItem value="COMPLETED">
+                                  Completed
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -372,7 +419,10 @@ export default function Tasks() {
                         render={({ field }) => (
                           <FormItem className="mb-6">
                             <FormLabel>Assign To</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select employee" />
@@ -380,7 +430,10 @@ export default function Tasks() {
                               </FormControl>
                               <SelectContent>
                                 {employees?.map((employee) => (
-                                  <SelectItem key={employee.id} value={employee.id.toString()}>
+                                  <SelectItem
+                                    key={employee.id}
+                                    value={employee.id.toString()}
+                                  >
                                     {employee.fullName}
                                   </SelectItem>
                                 ))}
@@ -458,7 +511,7 @@ export default function Tasks() {
                             onValueChange={(value) => {
                               field.onChange(value);
                               setSelectedShiftType(value);
-                              form.setValue('inspectorId', '');
+                              form.setValue("inspectorId", "");
                             }}
                             value={field.value}
                           >
@@ -469,8 +522,12 @@ export default function Tasks() {
                             </FormControl>
                             <SelectContent>
                               {shiftTypes?.map((type) => (
-                                <SelectItem key={type.id} value={type.id.toString()}>
-                                  {type.name} ({type.startTime} - {type.endTime})
+                                <SelectItem
+                                  key={type.id}
+                                  value={type.id.toString()}
+                                >
+                                  {type.name} ({type.startTime} - {type.endTime}
+                                  )
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -492,18 +549,23 @@ export default function Tasks() {
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={
-                                  isLoadingInspectors
-                                    ? "Loading inspectors..."
-                                    : !selectedShiftType
-                                      ? "Select a shift type first"
-                                      : "Select inspector"
-                                } />
+                                <SelectValue
+                                  placeholder={
+                                    isLoadingInspectors
+                                      ? "Loading inspectors..."
+                                      : !selectedShiftType
+                                        ? "Select a shift type first"
+                                        : "Select inspector"
+                                  }
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               {inspectors?.map((inspector) => (
-                                <SelectItem key={inspector.id} value={inspector.id.toString()}>
+                                <SelectItem
+                                  key={inspector.id}
+                                  value={inspector.id.toString()}
+                                >
                                   {inspector.fullName}
                                 </SelectItem>
                               ))}
@@ -530,8 +592,12 @@ export default function Tasks() {
                             </FormControl>
                             <SelectContent>
                               {taskTypes?.map((type) => (
-                                <SelectItem key={type.id} value={type.id.toString()}>
-                                  {type.name} {type.description && `- ${type.description}`}
+                                <SelectItem
+                                  key={type.id}
+                                  value={type.id.toString()}
+                                >
+                                  {type.name}{" "}
+                                  {type.description && `- ${type.description}`}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -546,7 +612,10 @@ export default function Tasks() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select status" />
@@ -554,8 +623,12 @@ export default function Tasks() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="PENDING">Pending</SelectItem>
-                              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                              <SelectItem value="COMPLETED">Completed</SelectItem>
+                              <SelectItem value="IN_PROGRESS">
+                                In Progress
+                              </SelectItem>
+                              <SelectItem value="COMPLETED">
+                                Completed
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -597,7 +670,10 @@ export default function Tasks() {
                       render={({ field }) => (
                         <FormItem className="mb-6">
                           <FormLabel>Assign To</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select employee" />
@@ -605,7 +681,10 @@ export default function Tasks() {
                             </FormControl>
                             <SelectContent>
                               {employees?.map((employee) => (
-                                <SelectItem key={employee.id} value={employee.id.toString()}>
+                                <SelectItem
+                                  key={employee.id}
+                                  value={employee.id.toString()}
+                                >
                                   {employee.fullName}
                                 </SelectItem>
                               ))}
@@ -645,21 +724,28 @@ export default function Tasks() {
               <TableHead>Inspector</TableHead>
               <TableHead>Shift Type</TableHead>
               <TableHead>Task Type</TableHead>
+              <TableHead>Task Description</TableHead>
+
               <TableHead>Status</TableHead>
-              <TableHead>Followup</TableHead>
+              <TableHead>Followup Needed</TableHead>
               <TableHead>Assigned To</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tasks.map((task) => (
               <TableRow key={task.id}>
-                <TableCell>{format(new Date(task.date), "MMM d, yyyy")}</TableCell>
+                <TableCell>
+                  {format(new Date(task.date), "MMM d, yyyy")}
+                </TableCell>
                 <TableCell>{task.inspector?.fullName || "Unknown"}</TableCell>
                 <TableCell>{task.shiftType?.name || "Unknown"}</TableCell>
                 <TableCell>{task.taskType?.name || "Unknown"}</TableCell>
+                <TableCell>{task.taskType?.description || "Unknown"}</TableCell>
                 <TableCell>{task.status}</TableCell>
                 <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
-                <TableCell>{task.assignedEmployee?.fullName || "Unknown"}</TableCell>
+                <TableCell>
+                  {task.assignedEmployee?.fullName || "Unknown"}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
