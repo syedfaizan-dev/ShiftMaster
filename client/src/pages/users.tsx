@@ -33,7 +33,7 @@ const userSchema = z.object({
 
 type UserFormData = z.infer<typeof userSchema>;
 
-function UsersPage() {
+export default function UsersPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -92,9 +92,9 @@ function UsersPage() {
       const { id, role, ...updateData } = data;
       const payload = {
         ...updateData,
-        isAdmin: role === "admin",
-        isManager: role === "manager",
-        isInspector: role === "inspector",
+        is_admin: role === "admin",
+        is_manager: role === "manager",
+        is_inspector: role === "inspector",
       };
       console.log('Updating user with payload:', payload);
       const res = await fetch(`/api/admin/users/${id}`, {
@@ -104,14 +104,13 @@ function UsersPage() {
         credentials: "include",
       });
 
-      const responseText = await res.text();
-      console.log('Update response:', responseText);
-
       if (!res.ok) {
-        throw new Error(responseText);
+        const errorText = await res.text();
+        console.error('Update failed:', errorText);
+        throw new Error(errorText);
       }
 
-      return JSON.parse(responseText);
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "User updated successfully" });
@@ -121,6 +120,7 @@ function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
     },
     onError: (error: Error) => {
+      console.error('Update error:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -318,5 +318,3 @@ function UsersPage() {
     </Navbar>
   );
 }
-
-export default UsersPage;
