@@ -6,11 +6,15 @@ import { NotificationService } from "../services/notification";
 
 export async function createShift(req: Request, res: Response) {
   try {
+    if (!req.user?.isAdmin) {
+      return res.status(403).send("Not authorized - Admin access required");
+    }
+
     const [shift] = await db
       .insert(shifts)
       .values({
         ...req.body,
-        createdBy: req.user?.id,
+        createdBy: req.user.id,
       })
       .returning();
 
