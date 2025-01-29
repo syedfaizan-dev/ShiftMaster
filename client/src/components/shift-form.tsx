@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useUser } from "@/hooks/use-user";
 
 type ShiftFormProps = {
   onSuccess: () => void;
@@ -25,6 +26,7 @@ const shiftSchema = z.object({
 export default function ShiftForm({ onSuccess }: ShiftFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useUser();
 
   const form = useForm({
     resolver: zodResolver(shiftSchema),
@@ -39,11 +41,11 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
   });
 
   const { data: users } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
+    queryKey: [user?.isAdmin ? "/api/admin/users" : "/api/users"],
   });
 
   const { data: roles } = useQuery<any[]>({
-    queryKey: ["/api/admin/roles"],
+    queryKey: [user?.isAdmin ? "/api/admin/roles" : "/api/roles"],
   });
 
   const createShift = useMutation({
