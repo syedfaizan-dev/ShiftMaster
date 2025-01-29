@@ -90,19 +90,28 @@ function UsersPage() {
   const updateUser = useMutation({
     mutationFn: async (data: UserFormData & { id: number }) => {
       const { id, role, ...updateData } = data;
+      const payload = {
+        ...updateData,
+        isAdmin: role === "admin",
+        isManager: role === "manager",
+        isInspector: role === "inspector",
+      };
+      console.log('Updating user with payload:', payload);
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...updateData,
-          isAdmin: role === "admin",
-          isManager: role === "manager",
-          isInspector: role === "inspector",
-        }),
+        body: JSON.stringify(payload),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+
+      const responseText = await res.text();
+      console.log('Update response:', responseText);
+
+      if (!res.ok) {
+        throw new Error(responseText);
+      }
+
+      return JSON.parse(responseText);
     },
     onSuccess: () => {
       toast({ title: "Success", description: "User updated successfully" });
