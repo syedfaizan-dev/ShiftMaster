@@ -171,6 +171,41 @@ export function registerRoutes(app: Express): Server {
     res.json(newRole);
   });
 
+  // Admin: Update role
+  app.put("/api/admin/roles/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, description } = req.body;
+
+      // Verify role exists
+      const [existingRole] = await db
+        .select()
+        .from(roles)
+        .where(eq(roles.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      // Update the role
+      const [updatedRole] = await db
+        .update(roles)
+        .set({
+          name,
+          description,
+        })
+        .where(eq(roles.id, parseInt(id)))
+        .returning();
+
+      res.json(updatedRole);
+    } catch (error) {
+      console.error('Error updating role:', error);
+      res.status(500).json({ message: 'Error updating role' });
+    }
+  });
+
+
   // Get requests based on user role
   app.get("/api/requests", requireAuth, async (req: Request, res: Response) => {
     try {
