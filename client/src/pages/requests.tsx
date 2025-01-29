@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
+import { format, parse, startOfWeek } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
@@ -69,7 +69,7 @@ function RequestsPage() {
     enabled: user?.isAdmin,
   });
 
-  const { data: shifts = [] } = useQuery<Shift[]>({
+  const { data: shifts = [] } = useQuery<(Shift & { shiftType: { startTime: string; endTime: string } })[]>({
     queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
 
@@ -128,7 +128,7 @@ function RequestsPage() {
   });
 
   const updateRequestStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: 'APPROVED' | 'REJECTED' }) => {
+    mutationFn: async ({ id, status }: { id: number; status: "APPROVED" | "REJECTED" }) => {
       const res = await fetch(`/api/admin/requests/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -153,13 +153,27 @@ function RequestsPage() {
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'APPROVED':
-        return 'bg-green-100 text-green-800';
-      case 'REJECTED':
-        return 'bg-red-100 text-red-800';
+      case "APPROVED":
+        return "bg-green-100 text-green-800";
+      case "REJECTED":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return "bg-yellow-100 text-yellow-800";
     }
+  };
+
+  const formatShiftDateTime = (shift: Shift & { shiftType: { startTime: string } }) => {
+    const weekStart = startOfWeek(new Date(2025, 0, 1));
+    const shiftDate = new Date(weekStart.getTime() + (parseInt(shift.week) - 1) * 7 * 24 * 60 * 60 * 1000);
+    const timeObj = parse(shift.shiftType.startTime, "HH:mm:ss", new Date());
+    const shiftDateTime = new Date(
+      shiftDate.getFullYear(),
+      shiftDate.getMonth(),
+      shiftDate.getDate(),
+      timeObj.getHours(),
+      timeObj.getMinutes()
+    );
+    return format(shiftDateTime, "MMM d, yyyy h:mm a");
   };
 
   return (
@@ -182,9 +196,7 @@ function RequestsPage() {
           <Alert>
             <AlertTitle>No Requests Found</AlertTitle>
             <AlertDescription>
-              {user?.isAdmin 
-                ? "There are no pending requests to review."
-                : "You haven't submitted any requests yet."}
+              {user?.isAdmin ? "There are no pending requests to review." : "You haven't submitted any requests yet."}
             </AlertDescription>
           </Alert>
         ) : (
@@ -205,7 +217,7 @@ function RequestsPage() {
               {requests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell className="capitalize">
-                    {request.type.toLowerCase().replace('_', ' ')}
+                    {request.type.toLowerCase().replace("_", " ")}
                   </TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(request.status)}`}>
@@ -213,17 +225,14 @@ function RequestsPage() {
                     </span>
                   </TableCell>
                   <TableCell>{request.reason}</TableCell>
-                  {(user?.isAdmin || user?.isManager) && (
-                    <TableCell>{request.requester?.fullName || 'Unknown'}</TableCell>
-                  )}
+                  {(user?.isAdmin || user?.isManager) && <TableCell>{request.requester?.fullName || "Unknown"}</TableCell>}
                   <TableCell>
-                    {request.type === 'LEAVE' ? (
+                    {request.type === "LEAVE" ? (
                       <>
-                        {format(new Date(request.startDate!), "MMM d, yyyy")} - 
-                        {format(new Date(request.endDate!), "MMM d, yyyy")}
+                        {format(new Date(request.startDate!), "MMM d, yyyy")} - {format(new Date(request.endDate!), "MMM d, yyyy")}
                       </>
                     ) : (
-                      format(new Date(shifts.find(s => s.id === request.shiftId)?.startTime || ''), "MMM d, yyyy")
+                      formatShiftDateTime(shifts.find((s) => s.id === request.shiftId)!)
                     )}
                   </TableCell>
                   <TableCell>
@@ -247,7 +256,7 @@ function RequestsPage() {
                       <span className="text-gray-500">-</span>
                     )}
                   </TableCell>
-                  {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === 'PENDING' && (
+                  {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === "PENDING" && (
                     <TableCell>
                       <div className="flex gap-2">
                         {user.isAdmin && !request.managerId && (
@@ -267,7 +276,7 @@ function RequestsPage() {
                             <Button
                               size="sm"
                               variant="default"
-                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'APPROVED' })}
+                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: "APPROVED" })}
                               disabled={updateRequestStatus.isPending}
                             >
                               Approve
@@ -275,7 +284,7 @@ function RequestsPage() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: 'REJECTED' })}
+                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: "REJECTED" })}
                               disabled={updateRequestStatus.isPending}
                             >
                               Reject
@@ -327,16 +336,16 @@ function RequestsPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Select Shift</FormLabel>
-                          <Select onValueChange={val => field.onChange(parseInt(val))}>
+                          <Select onValueChange={(val) => field.onChange(parseInt(val))}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select shift" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts.map(shift => (
+                              {shifts.map((shift) => (
                                 <SelectItem key={shift.id} value={shift.id.toString()}>
-                                  {format(new Date(shift.startTime), "MMM d, yyyy h:mm a")}
+                                  {formatShiftDateTime(shift)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -351,16 +360,16 @@ function RequestsPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Target Shift</FormLabel>
-                          <Select onValueChange={val => field.onChange(parseInt(val))}>
+                          <Select onValueChange={(val) => field.onChange(parseInt(val))}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select target shift" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts.map(shift => (
+                              {shifts.map((shift) => (
                                 <SelectItem key={shift.id} value={shift.id.toString()}>
-                                  {format(new Date(shift.startTime), "MMM d, yyyy h:mm a")}
+                                  {formatShiftDateTime(shift)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
