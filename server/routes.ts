@@ -392,30 +392,10 @@ export function registerRoutes(app: Express): Server {
     try {
       const result = await db.query.tasks.findMany({
         with: {
-          inspector: {
-            columns: {
-              id: true,
-              fullName: true,
-              username: true
-            }
-          },
-          assignedEmployee: {
-            columns: {
-              id: true,
-              fullName: true,
-              username: true
-            }
-          },
-          shiftType: {
-            columns: {
-              id: true,
-              name: true,
-              startTime: true,
-              endTime: true
-            }
-          }
-        },
-        orderBy: (tasks, { asc }) => [asc(tasks.date)]
+          inspector: true,
+          assignedEmployee: true,
+          shiftType: true
+        }
       });
 
       res.json(result || []);
