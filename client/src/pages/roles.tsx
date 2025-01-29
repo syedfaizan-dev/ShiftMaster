@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -75,6 +75,41 @@ function RolesPage() {
     },
   });
 
+  const updateRole = useMutation({
+    mutationFn: async (data: RoleFormData & { id: number }) => {
+      const { id, ...updateData } = data;
+      const res = await fetch(`/api/admin/roles/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Update failed:', errorText);
+        throw new Error(errorText);
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Role updated successfully" });
+      setIsDialogOpen(false);
+      setEditingRole(null);
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
+    },
+    onError: (error: Error) => {
+      console.error('Update error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -86,6 +121,14 @@ function RolesPage() {
     );
   }
 
+  const handleSubmit = async (data: RoleFormData) => {
+    if (editingRole) {
+      await updateRole.mutateAsync({ ...data, id: editingRole.id });
+    } else {
+      await createRole.mutateAsync(data);
+    }
+  };
+
   return (
     <Navbar>
       <div className="p-6">
@@ -93,7 +136,10 @@ function RolesPage() {
           <h1 className="text-3xl font-bold">Roles</h1>
           <Button onClick={() => {
             setEditingRole(null);
-            form.reset();
+            form.reset({
+              name: "",
+              description: "",
+            });
             setIsDialogOpen(true);
           }}>
             Create New Role
@@ -142,8 +188,11 @@ function RolesPage() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
+            <DialogTitle>
+              {editingRole ? 'Edit Role' : 'Create New Role'}
+            </DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createRole.mutate(data))} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -170,7 +219,10 @@ function RolesPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={createRole.isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={createRole.isPending || updateRole.isPending}
+                >
                   {editingRole ? 'Update Role' : 'Create Role'}
                 </Button>
               </form>
