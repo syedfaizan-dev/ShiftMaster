@@ -20,9 +20,22 @@ type NavigationProps = {
   };
 };
 
+type ShiftWithRelations = {
+  id: number;
+  inspectorId: number;
+  roleId: number;
+  startTime: string;
+  endTime: string;
+  week: string;
+  backupId: number | null;
+  inspector: { id: number; fullName: string; username: string };
+  role: { id: number; name: string };
+  backup?: { id: number; fullName: string; username: string } | null;
+};
+
 export default function DashboardScreen({ navigation }: NavigationProps) {
   const [user, setUser] = useState<any>(null);
-  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [shifts, setShifts] = useState<ShiftWithRelations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -111,8 +124,16 @@ export default function DashboardScreen({ navigation }: NavigationProps) {
                 {new Date(shift.startTime).toLocaleTimeString()} - 
                 {new Date(shift.endTime).toLocaleTimeString()}
               </Text>
-              {shift.notes && (
-                <Text style={styles.shiftNotes}>{shift.notes}</Text>
+              <Text style={styles.shiftRole}>
+                Role: {shift.role?.name || 'Unknown'}
+              </Text>
+              <Text style={styles.shiftInspector}>
+                Inspector: {shift.inspector?.fullName || 'Unknown'}
+              </Text>
+              {shift.backup && (
+                <Text style={styles.shiftBackup}>
+                  Backup: {shift.backup.fullName}
+                </Text>
               )}
             </View>
           ))
@@ -193,8 +214,16 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 5,
   },
-  shiftNotes: {
+  shiftRole: {
     marginTop: 5,
+    fontWeight: '500',
+  },
+  shiftInspector: {
+    marginTop: 2,
+    color: '#444',
+  },
+  shiftBackup: {
+    marginTop: 2,
     color: '#666',
     fontStyle: 'italic',
   },
