@@ -9,7 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -131,6 +137,18 @@ export default function Tasks() {
     },
   });
 
+  // Handle dialog open
+  const handleOpenDialog = () => {
+    console.log('Opening dialog');
+    setIsDialogOpen(true);
+  };
+
+  // Handle dialog close
+  const handleCloseDialog = () => {
+    console.log('Closing dialog');
+    setIsDialogOpen(false);
+  };
+
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -179,7 +197,7 @@ export default function Tasks() {
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold">Tasks</h1>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button onClick={handleOpenDialog}>
               Create Task
             </Button>
           </div>
@@ -199,7 +217,7 @@ export default function Tasks() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Tasks</h1>
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button onClick={handleOpenDialog}>
             Create Task
           </Button>
         </div>
@@ -233,12 +251,21 @@ export default function Tasks() {
           </TableBody>
         </Table>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogTitle className="pb-4">Create New Task</DialogTitle>
-            <div className="space-y-4">
+        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <DialogContent className="sm:max-w-[600px] bg-background z-50">
+            <DialogHeader>
+              <DialogTitle>Create New Task</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
               <Form {...form}>
-                <form id="task-form" onSubmit={form.handleSubmit(async (data) => await createTask.mutateAsync(data))} className="space-y-4">
+                <form 
+                  id="task-form" 
+                  onSubmit={form.handleSubmit(async (data) => {
+                    console.log('Form submitted', data);
+                    await createTask.mutateAsync(data);
+                  })} 
+                  className="space-y-4"
+                >
                   <FormField
                     control={form.control}
                     name="shiftTypeId"
@@ -401,22 +428,22 @@ export default function Tasks() {
                 </form>
               </Form>
             </div>
-            <div className="pt-4 space-x-2 flex justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      form="task-form"
-                      disabled={createTask.isPending}
-                    >
-                      {createTask.isPending ? "Creating..." : "Create Task"}
-                    </Button>
-                  </div>
+            <div className="flex justify-end gap-4 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseDialog}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="task-form"
+                disabled={createTask.isPending}
+              >
+                {createTask.isPending ? "Creating..." : "Create Task"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
