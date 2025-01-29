@@ -6,16 +6,28 @@ import { DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
 type ShiftFormProps = {
   onSuccess: () => void;
 };
+
+const shiftSchema = z.object({
+  inspectorId: z.string().min(1, "Inspector is required"),
+  roleId: z.string().min(1, "Role is required"),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
+  week: z.string().min(1, "Week is required"),
+  backupId: z.string().optional(),
+});
 
 export default function ShiftForm({ onSuccess }: ShiftFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const form = useForm({
+    resolver: zodResolver(shiftSchema),
     defaultValues: {
       inspectorId: "",
       roleId: "",
@@ -49,11 +61,18 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
         }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to create shift');
+      }
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Shift created successfully" });
+      toast({ 
+        title: "Success", 
+        description: "Shift created successfully",
+        duration: 3000,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
       form.reset();
@@ -64,9 +83,19 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
         variant: "destructive",
         title: "Error",
         description: error.message,
+        duration: 5000,
       });
     },
   });
+
+  const onSubmit = async (data: z.infer<typeof shiftSchema>) => {
+    try {
+      await createShift.mutateAsync(data);
+    } catch (error) {
+      // Error is handled by mutation's onError
+      console.error('Shift creation failed:', error);
+    }
+  };
 
   return (
     <>
@@ -75,7 +104,7 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
       </div>
       <div className="overflow-y-auto flex-1 px-6 py-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createShift.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="inspectorId"
@@ -129,14 +158,12 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
             <FormField
               control={form.control}
               name="startTime"
-              render={({ field: { value, onChange, ...field } }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Start Time</FormLabel>
                   <FormControl>
                     <Input 
                       type="datetime-local"
-                      value={value}
-                      onChange={(e) => onChange(e.target.value)}
                       {...field}
                     />
                   </FormControl>
@@ -148,14 +175,12 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
             <FormField
               control={form.control}
               name="endTime"
-              render={({ field: { value, onChange, ...field } }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>End Time</FormLabel>
                   <FormControl>
                     <Input 
                       type="datetime-local"
-                      value={value}
-                      onChange={(e) => onChange(e.target.value)}
                       {...field}
                     />
                   </FormControl>
@@ -204,8 +229,12 @@ export default function ShiftForm({ onSuccess }: ShiftFormProps) {
             />
 
             <div className="sticky bottom-0 bg-white pb-4 pt-2">
-              <Button type="submit" disabled={createShift.isPending}>
-                Create Shift
+              <Button 
+                type="submit" 
+                disabled={createShift.isPending}
+                className="w-full"
+              >
+                {createShift.isPending ? "Creating..." : "Create Shift"}
               </Button>
             </div>
           </form>
