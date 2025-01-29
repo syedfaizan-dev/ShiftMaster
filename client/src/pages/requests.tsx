@@ -22,7 +22,7 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-import type { RequestWithRelations, Shift, User } from "@db/schema";
+import type { RequestWithRelations, Shift, ShiftType, User } from "@db/schema";
 
 const requestSchema = z.object({
   type: z.enum(["SHIFT_SWAP", "LEAVE"]),
@@ -283,28 +283,24 @@ function RequestsPage() {
                       <div className="space-y-2">
                         <div>
                           <p className="font-medium">Current Shift Type:</p>
-                          {request.shift && (
+                          {request.shiftType && (
                             <>
-                              <p>{request.shift.shiftType?.name || "Unknown"}</p>
+                              <p>{request.shiftType.name}</p>
                               <p className="text-sm text-gray-500">
-                                {request.shift.shiftType?.startTime && (
-                                  `${format(new Date(`2000-01-01T${request.shift.shiftType.startTime}`), 'h:mm a')} - 
-                                   ${format(new Date(`2000-01-01T${request.shift.shiftType.endTime}`), 'h:mm a')}`
-                                )}
+                                {format(new Date(`2000-01-01T${request.shiftType.startTime}`), 'h:mm a')} - 
+                                {format(new Date(`2000-01-01T${request.shiftType.endTime}`), 'h:mm a')}
                               </p>
                             </>
                           )}
                         </div>
                         <div>
                           <p className="font-medium">Requested Shift Type:</p>
-                          {request.targetShift && (
+                          {request.targetShiftType && (
                             <>
-                              <p>{request.targetShift.shiftType?.name || "Unknown"}</p>
+                              <p>{request.targetShiftType.name}</p>
                               <p className="text-sm text-gray-500">
-                                {request.targetShift.shiftType?.startTime && (
-                                  `${format(new Date(`2000-01-01T${request.targetShift.shiftType.startTime}`), 'h:mm a')} - 
-                                   ${format(new Date(`2000-01-01T${request.targetShift.shiftType.endTime}`), 'h:mm a')}`
-                                )}
+                                {format(new Date(`2000-01-01T${request.targetShiftType.startTime}`), 'h:mm a')} - 
+                                {format(new Date(`2000-01-01T${request.targetShiftType.endTime}`), 'h:mm a')}
                               </p>
                             </>
                           )}
