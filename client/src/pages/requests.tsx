@@ -164,7 +164,7 @@ function RequestsPage() {
 
   const formatShiftDateTime = (shift: Shift & { shiftType?: { startTime: string; endTime: string } }) => {
     if (!shift?.shiftType?.startTime || !shift.week) {
-      return "Invalid shift time";
+      return null;
     }
 
     try {
@@ -173,7 +173,7 @@ function RequestsPage() {
       const timeObj = parse(shift.shiftType.startTime, "HH:mm:ss", new Date());
 
       if (isNaN(timeObj.getTime())) {
-        return "Invalid time format";
+        return null;
       }
 
       const shiftDateTime = new Date(
@@ -184,10 +184,13 @@ function RequestsPage() {
         timeObj.getMinutes()
       );
 
-      return format(shiftDateTime, "MMM d, yyyy h:mm a");
+      return {
+        date: shiftDateTime,
+        formatted: format(shiftDateTime, "MMM d, yyyy h:mm a")
+      };
     } catch (error) {
       console.error("Error formatting shift date:", error);
-      return "Invalid date";
+      return null;
     }
   };
 
@@ -247,7 +250,7 @@ function RequestsPage() {
                         {format(new Date(request.startDate!), "MMM d, yyyy")} - {format(new Date(request.endDate!), "MMM d, yyyy")}
                       </>
                     ) : (
-                      formatShiftDateTime(shifts.find((s) => s.id === request.shiftId)!)
+                      formatShiftDateTime(shifts.find((s) => s.id === request.shiftId)!)?.formatted || "Invalid Shift"
                     )}
                   </TableCell>
                   <TableCell>
@@ -350,22 +353,31 @@ function RequestsPage() {
                       name="shiftId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Select Shift</FormLabel>
+                          <FormLabel>Select Your Shift</FormLabel>
                           <Select onValueChange={(val) => field.onChange(parseInt(val))}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select shift" />
+                                <SelectValue placeholder="Select your shift to swap" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts.map((shift) => {
-                                const dateString = formatShiftDateTime(shift);
-                                return (
-                                  <SelectItem key={shift.id} value={shift.id.toString()}>
-                                    {dateString}
-                                  </SelectItem>
-                                );
-                              })}
+                              {shifts
+                                .filter((shift) => shift.inspectorId === user?.id && formatShiftDateTime(shift))
+                                .sort((a, b) => {
+                                  const dateA = formatShiftDateTime(a)?.date;
+                                  const dateB = formatShiftDateTime(b)?.date;
+                                  if (!dateA || !dateB) return 0;
+                                  return dateA.getTime() - dateB.getTime();
+                                })
+                                .map((shift) => {
+                                  const dateInfo = formatShiftDateTime(shift);
+                                  if (!dateInfo) return null;
+                                  return (
+                                    <SelectItem key={shift.id} value={shift.id.toString()}>
+                                      {dateInfo.formatted}
+                                    </SelectItem>
+                                  );
+                                })}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -385,14 +397,23 @@ function RequestsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {shifts.map((shift) => {
-                                const dateString = formatShiftDateTime(shift);
-                                return (
-                                  <SelectItem key={shift.id} value={shift.id.toString()}>
-                                    {dateString}
-                                  </SelectItem>
-                                );
-                              })}
+                              {shifts
+                                .filter((shift) => shift.inspectorId !== user?.id && formatShiftDateTime(shift))
+                                .sort((a, b) => {
+                                  const dateA = formatShiftDateTime(a)?.date;
+                                  const dateB = formatShiftDateTime(b)?.date;
+                                  if (!dateA || !dateB) return 0;
+                                  return dateA.getTime() - dateB.getTime();
+                                })
+                                .map((shift) => {
+                                  const dateInfo = formatShiftDateTime(shift);
+                                  if (!dateInfo) return null;
+                                  return (
+                                    <SelectItem key={shift.id} value={shift.id.toString()}>
+                                      {dateInfo.formatted}
+                                    </SelectItem>
+                                  );
+                                })}
                             </SelectContent>
                           </Select>
                           <FormMessage />
