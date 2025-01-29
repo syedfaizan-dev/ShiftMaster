@@ -1,4 +1,4 @@
-import { type Express } from "express";
+import { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
@@ -11,15 +11,15 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   // Middleware to check if user is authenticated
-  const requireAuth = (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ message: "Not authenticated" });
     }
     next();
   };
 
-  // Get basic user info
-  app.get("/api/users", requireAuth, async (req, res) => {
+  // Get basic user info for authenticated users
+  app.get("/api/users", requireAuth, async (req: Request, res: Response) => {
     try {
       const allUsers = await db
         .select({
@@ -31,12 +31,12 @@ export function registerRoutes(app: Express): Server {
       res.json(allUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
-      res.status(500).send('Error fetching users');
+      res.status(500).json({ message: 'Error fetching users' });
     }
   });
 
-  // Get basic role info
-  app.get("/api/roles", requireAuth, async (req, res) => {
+  // Get basic role info for authenticated users
+  app.get("/api/roles", requireAuth, async (req: Request, res: Response) => {
     try {
       const allRoles = await db
         .select({
@@ -47,27 +47,27 @@ export function registerRoutes(app: Express): Server {
       res.json(allRoles);
     } catch (error) {
       console.error('Error fetching roles:', error);
-      res.status(500).send('Error fetching roles');
+      res.status(500).json({ message: 'Error fetching roles' });
     }
   });
 
   // Middleware to check if user is authenticated and is admin
-  const requireAdmin = (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+  const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+      return res.status(401).json({ message: "Not authenticated" });
     }
-    if (!req.user.isAdmin) {
-      return res.status(403).send("Not authorized");
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ message: "Not authorized" });
     }
     next();
   };
 
   // Notification routes
-  app.get("/api/notifications", getNotifications);
-  app.post("/api/notifications/:id/read", markNotificationAsRead);
+  app.get("/api/notifications", requireAuth, getNotifications);
+  app.post("/api/notifications/:id/read", requireAuth, markNotificationAsRead);
 
   // Get all managers
-  app.get("/api/admin/managers", requireAdmin, async (req, res) => {
+  app.get("/api/admin/managers", requireAdmin, async (req: Request, res: Response) => {
     const managers = await db
       .select()
       .from(users)
@@ -76,13 +76,13 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Admin: Get all users
-  app.get("/api/admin/users", requireAdmin, async (req, res) => {
+  app.get("/api/admin/users", requireAdmin, async (req: Request, res: Response) => {
     const allUsers = await db.select().from(users);
     res.json(allUsers);
   });
 
   // Admin: Update user
-  app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  app.put("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     const { id } = req.params;
     const { username, fullName } = req.body;
 
@@ -109,7 +109,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Get all shifts for a user (now using the getShifts handler)
-  app.get("/api/shifts", getShifts);
+  app.get("/api/shifts", requireAuth, getShifts);
 
   // Admin: Get all shifts (also using the same getShifts handler)
   app.get("/api/admin/shifts", requireAdmin, getShifts);
@@ -118,13 +118,13 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/admin/shifts", requireAdmin, createShift);
 
   // Admin: Get all roles
-  app.get("/api/admin/roles", requireAdmin, async (req, res) => {
+  app.get("/api/admin/roles", requireAdmin, async (req: Request, res: Response) => {
     const allRoles = await db.select().from(roles);
     res.json(allRoles);
   });
 
   // Admin: Create role
-  app.post("/api/admin/roles", requireAdmin, async (req, res) => {
+  app.post("/api/admin/roles", requireAdmin, async (req: Request, res: Response) => {
     const { name, description } = req.body;
 
     const [newRole] = await db.insert(roles)
@@ -139,11 +139,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Get requests based on user role
-  app.get("/api/requests", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
+  app.get("/api/requests", requireAuth, async (req: Request, res: Response) => {
     try {
       let query = db.select().from(requests);
 
@@ -217,16 +213,12 @@ export function registerRoutes(app: Express): Server {
       res.json(requestsWithDetails);
     } catch (error) {
       console.error('Error fetching requests:', error);
-      res.status(500).send('Error fetching requests');
+      res.status(500).json({ message: 'Error fetching requests' });
     }
   });
 
   // Create a new request (shift swap or leave)
-  app.post("/api/requests", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
+  app.post("/api/requests", requireAuth, async (req: Request, res: Response) => {
     const { type, shiftId, targetShiftId, startDate, endDate, reason } = req.body;
 
     const [newRequest] = await db.insert(requests)
@@ -245,7 +237,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Admin: Assign request to manager
-  app.post("/api/admin/requests/:id/assign", requireAdmin, async (req, res) => {
+  app.post("/api/admin/requests/:id/assign", requireAdmin, async (req: Request, res: Response) => {
     const { id } = req.params;
     const { managerId } = req.body;
 
@@ -261,11 +253,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Manager/Admin: Review request (approve/reject)
-  app.put("/api/admin/requests/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
+  app.put("/api/admin/requests/:id", requireAuth, async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status } = req.body;
 
