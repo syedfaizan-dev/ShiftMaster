@@ -4,6 +4,64 @@ import { db } from "@db";
 import { shifts, users, roles } from "@db/schema";
 import { NotificationService } from "../services/notification";
 
+export async function getShifts(req: Request, res: Response) {
+  try {
+    const query = db
+      .select({
+        id: shifts.id,
+        inspectorId: shifts.inspectorId,
+        roleId: shifts.roleId,
+        startTime: shifts.startTime,
+        endTime: shifts.endTime,
+        week: shifts.week,
+        backupId: shifts.backupId,
+        inspector: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+        },
+        role: {
+          id: roles.id,
+          name: roles.name,
+        },
+      })
+      .from(shifts)
+      .leftJoin(users, eq(shifts.inspectorId, users.id))
+      .leftJoin(roles, eq(shifts.roleId, roles.id));
+
+    // If not admin, only show user's shifts
+    if (!req.user?.isAdmin) {
+      query.where(eq(shifts.inspectorId, req.user!.id));
+    }
+
+    const shiftsData = await query;
+
+    // Get backup inspector details in a separate query
+    const shiftsWithBackup = await Promise.all(
+      shiftsData.map(async (shift) => {
+        if (shift.backupId) {
+          const [backup] = await db
+            .select({
+              id: users.id,
+              fullName: users.fullName,
+              username: users.username,
+            })
+            .from(users)
+            .where(eq(users.id, shift.backupId))
+            .limit(1);
+          return { ...shift, backup };
+        }
+        return { ...shift, backup: null };
+      })
+    );
+
+    res.json(shiftsWithBackup);
+  } catch (error) {
+    console.error('Error fetching shifts:', error);
+    res.status(500).send((error as Error).message);
+  }
+}
+
 export async function createShift(req: Request, res: Response) {
   try {
     if (!req.user?.isAdmin) {

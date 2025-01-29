@@ -16,31 +16,26 @@ import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 
+type ShiftWithRelations = {
+  id: number;
+  inspectorId: number;
+  roleId: number;
+  startTime: string;
+  endTime: string;
+  week: string;
+  backupId: number | null;
+  inspector: { id: number; fullName: string; username: string };
+  role: { id: number; name: string };
+  backup?: { id: number; fullName: string; username: string } | null;
+};
+
 export default function Shifts() {
   const { user } = useUser();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<any[]>({
+  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
     queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
-
-  const { data: users } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
-  });
-
-  const { data: roles } = useQuery<any[]>({
-    queryKey: ["/api/admin/roles"],
-  });
-
-  const getInspectorName = (id: number) => {
-    const inspector = users?.find(u => u.id === id);
-    return inspector?.fullName || 'Unknown';
-  };
-
-  const getRoleName = (id: number) => {
-    const role = roles?.find(r => r.id === id);
-    return role?.name || 'Unknown';
-  };
 
   return (
     <Navbar>
@@ -75,15 +70,15 @@ export default function Shifts() {
             <TableBody>
               {shifts.map((shift) => (
                 <TableRow key={shift.id}>
-                  <TableCell>{getInspectorName(shift.inspectorId)}</TableCell>
-                  <TableCell>{getRoleName(shift.roleId)}</TableCell>
+                  <TableCell>{shift.inspector?.fullName || 'Unknown'}</TableCell>
+                  <TableCell>{shift.role?.name || 'Unknown'}</TableCell>
                   <TableCell>{format(new Date(shift.startTime), "MMM d, yyyy")}</TableCell>
                   <TableCell>
                     {format(new Date(shift.startTime), "h:mm a")} - {format(new Date(shift.endTime), "h:mm a")}
                   </TableCell>
                   <TableCell>{shift.week}</TableCell>
                   <TableCell>
-                    {shift.backupId ? getInspectorName(shift.backupId) : "-"}
+                    {shift.backup?.fullName || "-"}
                   </TableCell>
                 </TableRow>
               ))}
