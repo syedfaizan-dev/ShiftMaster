@@ -189,13 +189,13 @@ export default function Tasks() {
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
-            <div className="p-6 pb-0">
-              <DialogTitle>Create New Task</DialogTitle>
+          <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col p-0">
+            <div className="flex-none">
+              <DialogTitle className="p-6 pb-2">Create New Task</DialogTitle>
             </div>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(async (data) => await createTask.mutateAsync(data))} className="space-y-4 flex flex-col h-full">
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="overflow-y-auto flex-1 px-6 py-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(async (data) => await createTask.mutateAsync(data))} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="shiftTypeId"
@@ -332,7 +332,7 @@ export default function Tasks() {
                     control={form.control}
                     name="assignedTo"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="mb-6">
                         <FormLabel>Assign To</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
@@ -352,19 +352,19 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-                </div>
-
-                <div className="border-t p-4 mt-auto">
-                  <Button
-                    type="submit"
-                    disabled={createTask.isPending}
-                    className="w-full"
-                  >
-                    {createTask.isPending ? "Creating..." : "Create Task"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+                </form>
+              </Form>
+            </div>
+            <div className="flex-none p-4 bg-white border-t">
+              <Button
+                type="submit"
+                form="task-form"
+                disabled={createTask.isPending}
+                className="w-full"
+              >
+                {createTask.isPending ? "Creating..." : "Create Task"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
