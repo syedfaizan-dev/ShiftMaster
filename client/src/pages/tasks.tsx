@@ -85,26 +85,41 @@ export default function Tasks() {
     queryKey: ["/api/admin/tasks"],
     retry: 1,
     retryDelay: 1000,
-    onError: (error) => {
-      console.error('Error fetching tasks:', error);
-    }
   });
 
   const { data: shiftTypes = [] } = useQuery<any[]>({
     queryKey: ["/api/shift-types"],
   });
 
-  const { data: inspectors = [] } = useQuery({
+  // Updated query for inspectors with proper type
+  type Inspector = {
+    id: number;
+    fullName: string;
+    username: string;
+  };
+
+  const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
     enabled: !!selectedShiftType,
+    queryFn: async () => {
+      if (!selectedShiftType) return [];
+      const response = await fetch(`/api/admin/shifts/inspectors/${selectedShiftType}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch inspectors');
+      }
+      return response.json();
+    },
   });
 
   const { data: employees = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/employees"],
   });
 
+  // Reset inspector value when shift type changes
   useEffect(() => {
-    form.setValue('inspectorId', '');
+    if (selectedShiftType) {
+      form.setValue('inspectorId', '');
+    }
   }, [selectedShiftType, form]);
 
   const createTask = useMutation({
@@ -218,6 +233,8 @@ export default function Tasks() {
                               onValueChange={(value) => {
                                 field.onChange(value);
                                 setSelectedShiftType(value);
+                                // Reset inspector when shift type changes
+                                form.setValue('inspectorId', '');
                               }}
                               value={field.value}
                             >
@@ -247,11 +264,17 @@ export default function Tasks() {
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
-                              disabled={!selectedShiftType}
+                              disabled={!selectedShiftType || isLoadingInspectors}
                             >
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder={selectedShiftType ? "Select inspector" : "Select a shift type first"} />
+                                  <SelectValue placeholder={
+                                    isLoadingInspectors 
+                                      ? "Loading inspectors..." 
+                                      : !selectedShiftType 
+                                      ? "Select a shift type first" 
+                                      : "Select inspector"
+                                  } />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -407,7 +430,7 @@ export default function Tasks() {
           <h1 className="text-3xl font-bold">Tasks</h1>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setIsDialogOpen(true)}>Create Task</Button>
+              <Button>Create Task</Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] w-[90vw] max-w-[600px] overflow-y-auto">
               <DialogHeader>
@@ -436,6 +459,8 @@ export default function Tasks() {
                             onValueChange={(value) => {
                               field.onChange(value);
                               setSelectedShiftType(value);
+                              // Reset inspector when shift type changes
+                              form.setValue('inspectorId', '');
                             }}
                             value={field.value}
                           >
@@ -465,11 +490,17 @@ export default function Tasks() {
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
-                            disabled={!selectedShiftType}
+                            disabled={!selectedShiftType || isLoadingInspectors}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={selectedShiftType ? "Select inspector" : "Select a shift type first"} />
+                                <SelectValue placeholder={
+                                  isLoadingInspectors 
+                                    ? "Loading inspectors..." 
+                                    : !selectedShiftType 
+                                    ? "Select a shift type first" 
+                                    : "Select inspector"
+                                } />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
