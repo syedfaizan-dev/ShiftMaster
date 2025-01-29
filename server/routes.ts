@@ -205,6 +205,34 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Admin: Delete role
+  app.delete("/api/admin/roles/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Check if role exists
+      const [existingRole] = await db
+        .select()
+        .from(roles)
+        .where(eq(roles.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      // Delete the role
+      await db
+        .delete(roles)
+        .where(eq(roles.id, parseInt(id)));
+
+      res.json({ message: "Role deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting role:', error);
+      res.status(500).json({ message: 'Error deleting role' });
+    }
+  });
+
 
   // Get requests based on user role
   app.get("/api/requests", requireAuth, async (req: Request, res: Response) => {
