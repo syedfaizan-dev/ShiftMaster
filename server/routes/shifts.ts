@@ -10,10 +10,23 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
+    const { startTime, endTime, ...rest } = req.body;
+
+    // Ensure dates are properly parsed
+    const parsedStartTime = new Date(startTime);
+    const parsedEndTime = new Date(endTime);
+
+    // Validate dates
+    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
+      return res.status(400).send("Invalid date format");
+    }
+
     const [shift] = await db
       .insert(shifts)
       .values({
-        ...req.body,
+        ...rest,
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
         createdBy: req.user.id,
       })
       .returning();
@@ -37,8 +50,8 @@ export async function createShift(req: Request, res: Response) {
       userId: inspector.id,
       userEmail: inspector.username, // Assuming username is email
       shiftId: shift.id,
-      startTime: new Date(shift.startTime),
-      endTime: new Date(shift.endTime),
+      startTime: parsedStartTime,
+      endTime: parsedEndTime,
       role: role.name,
     });
 
@@ -54,8 +67,8 @@ export async function createShift(req: Request, res: Response) {
         userId: backup.id,
         userEmail: backup.username,
         shiftId: shift.id,
-        startTime: new Date(shift.startTime),
-        endTime: new Date(shift.endTime),
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
         role: `Backup ${role.name}`,
       });
     }
