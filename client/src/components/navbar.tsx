@@ -48,12 +48,15 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 <span>Shifts</span>
               </button>
             </Link>
-            <Link href="/requests">
-              <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
-                <FileText className="w-5 h-5" />
-                <span>Requests</span>
-              </button>
-            </Link>
+            {/* Show Requests link to everyone except admins */}
+            {!user?.isAdmin && (
+              <Link href="/requests">
+                <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
+                  <FileText className="w-5 h-5" />
+                  <span>Requests</span>
+                </button>
+              </Link>
+            )}
             {user?.isAdmin && (
               <>
                 <Link href="/employees">

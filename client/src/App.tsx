@@ -46,10 +46,7 @@ function Router() {
           <Route path="/shift-types" component={ShiftTypes} />
         </>
       )}
-      {/* Both managers and inspectors can access requests */}
-      {(user.isManager || user.isInspector) && (
-        <Route path="/requests" component={Requests} />
-      )}
+      <Route path="/requests" component={Requests} />
       <Route component={NotFound} />
     </Switch>
   );
