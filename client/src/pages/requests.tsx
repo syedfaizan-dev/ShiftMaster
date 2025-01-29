@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, parse, startOfWeek } from "date-fns";
+import { format, parse, startOfWeek, isValid } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
@@ -164,15 +164,23 @@ function RequestsPage() {
 
   const formatShiftDateTime = (shift: Shift & { shiftType?: { startTime: string; endTime: string } }) => {
     if (!shift?.shiftType?.startTime || !shift.week) {
+      console.debug("Missing required shift data", { shift });
       return null;
     }
 
     try {
-      const weekStart = startOfWeek(new Date(2025, 0, 1));
-      const shiftDate = new Date(weekStart.getTime() + (parseInt(shift.week.toString()) - 1) * 7 * 24 * 60 * 60 * 1000);
-      const timeObj = parse(shift.shiftType.startTime, "HH:mm:ss", new Date());
+      const weekNum = parseInt(shift.week.toString());
+      if (isNaN(weekNum) || weekNum < 1 || weekNum > 52) {
+        console.debug("Invalid week number", { week: shift.week });
+        return null;
+      }
 
-      if (isNaN(timeObj.getTime())) {
+      const weekStart = startOfWeek(new Date(2025, 0, 1));
+      const shiftDate = new Date(weekStart.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
+
+      const timeObj = parse(shift.shiftType.startTime, "HH:mm:ss", new Date());
+      if (!isValid(timeObj)) {
+        console.debug("Invalid time format", { startTime: shift.shiftType.startTime });
         return null;
       }
 
@@ -183,6 +191,11 @@ function RequestsPage() {
         timeObj.getHours(),
         timeObj.getMinutes()
       );
+
+      if (!isValid(shiftDateTime)) {
+        console.debug("Invalid final datetime");
+        return null;
+      }
 
       return {
         date: shiftDateTime,
@@ -362,7 +375,10 @@ function RequestsPage() {
                             </FormControl>
                             <SelectContent>
                               {shifts
-                                .filter((shift) => shift.inspectorId === user?.id && formatShiftDateTime(shift))
+                                .filter((shift) => {
+                                  const dateInfo = formatShiftDateTime(shift);
+                                  return shift.inspectorId === user?.id && dateInfo !== null;
+                                })
                                 .sort((a, b) => {
                                   const dateA = formatShiftDateTime(a)?.date;
                                   const dateB = formatShiftDateTime(b)?.date;
@@ -398,7 +414,10 @@ function RequestsPage() {
                             </FormControl>
                             <SelectContent>
                               {shifts
-                                .filter((shift) => shift.inspectorId !== user?.id && formatShiftDateTime(shift))
+                                .filter((shift) => {
+                                  const dateInfo = formatShiftDateTime(shift);
+                                  return shift.inspectorId !== user?.id && dateInfo !== null;
+                                })
                                 .sort((a, b) => {
                                   const dateA = formatShiftDateTime(a)?.date;
                                   const dateB = formatShiftDateTime(b)?.date;

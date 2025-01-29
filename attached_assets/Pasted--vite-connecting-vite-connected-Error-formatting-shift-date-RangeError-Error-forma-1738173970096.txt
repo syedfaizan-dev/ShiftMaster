@@ -1,0 +1,33 @@
+[vite] connecting...
+[vite] connected.
+Error formatting shift date: 
+RangeError {}
+
+Error formatting shift date: 
+RangeError {}
+
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Error formatting shift date: 
+RangeError {}
+
+Error formatting shift date: 
+RangeError {}
+
+at t.value (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Error formatting shift date: 
+RangeError {}
+
+at t.value (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Error formatting shift date: 
+RangeError {}
+
+at t.value (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
