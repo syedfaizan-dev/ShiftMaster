@@ -390,58 +390,35 @@ export function registerRoutes(app: Express): Server {
   // Get all tasks (admin only)
   app.get("/api/admin/tasks", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const inspectorTable = users;
-      const assignedEmployeeTable = users;
-
-      const allTasks = await db
-        .select({
-          id: tasks.id,
-          inspectorId: tasks.inspectorId,
-          shiftTypeId: tasks.shiftTypeId,
-          taskType: tasks.taskType,
-          description: tasks.description,
-          status: tasks.status,
-          date: tasks.date,
-          isFollowupNeeded: tasks.isFollowupNeeded,
-          assignedTo: tasks.assignedTo,
+      const result = await db.query.tasks.findMany({
+        with: {
           inspector: {
-            id: inspectorTable.id,
-            fullName: inspectorTable.fullName,
-            username: inspectorTable.username,
+            columns: {
+              id: true,
+              fullName: true,
+              username: true
+            }
           },
           assignedEmployee: {
-            id: assignedEmployeeTable.id,
-            fullName: assignedEmployeeTable.fullName,
-            username: assignedEmployeeTable.username,
+            columns: {
+              id: true,
+              fullName: true,
+              username: true
+            }
           },
           shiftType: {
-            id: shiftTypes.id,
-            name: shiftTypes.name,
-            startTime: shiftTypes.startTime,
-            endTime: shiftTypes.endTime,
-          },
-        })
-        .from(tasks)
-        .$dynamic();  
+            columns: {
+              id: true,
+              name: true,
+              startTime: true,
+              endTime: true
+            }
+          }
+        },
+        orderBy: (tasks, { asc }) => [asc(tasks.date)]
+      });
 
-      const withInspector = allTasks.leftJoin(
-        inspectorTable, 
-        eq(tasks.inspectorId, inspectorTable.id)
-      );
-
-      const withEmployee = withInspector.leftJoin(
-        assignedEmployeeTable,
-        eq(tasks.assignedTo, assignedEmployeeTable.id)
-      );
-
-      const finalQuery = withEmployee.leftJoin(
-        shiftTypes,
-        eq(tasks.shiftTypeId, shiftTypes.id)
-      );
-
-      const result = await finalQuery.orderBy(tasks.date);
       res.json(result || []);
-
     } catch (error) {
       console.error('Error fetching tasks:', error);
       if (error instanceof Error) {
