@@ -76,7 +76,6 @@ export default function Tasks() {
 
   const { data: tasks = [], isLoading: isLoadingTasks, error: tasksError } = useQuery<TaskWithRelations[]>({
     queryKey: ["/api/admin/tasks"],
-    // Add retry configuration and error handling
     retry: 1,
     retryDelay: 1000,
     onError: (error) => {
@@ -88,7 +87,6 @@ export default function Tasks() {
     queryKey: ["/api/shift-types"],
   });
 
-  // Fetch inspectors based on selected shift type
   const { data: inspectors = [] } = useQuery({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
     enabled: !!selectedShiftType,
@@ -98,7 +96,6 @@ export default function Tasks() {
     queryKey: ["/api/admin/employees"],
   });
 
-  // Reset inspector when shift type changes
   useEffect(() => {
     form.setValue('inspectorId', '');
   }, [selectedShiftType, form]);
@@ -237,11 +234,9 @@ export default function Tasks() {
         </Table>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col p-0">
-            <div className="flex-none">
-              <DialogTitle className="p-6 pb-2">Create New Task</DialogTitle>
-            </div>
-            <div className="overflow-y-auto flex-1 px-6 py-4">
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogTitle className="pb-4">Create New Task</DialogTitle>
+            <div className="space-y-4">
               <Form {...form}>
                 <form id="task-form" onSubmit={form.handleSubmit(async (data) => await createTask.mutateAsync(data))} className="space-y-4">
                   <FormField
@@ -274,7 +269,6 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="inspectorId"
@@ -303,7 +297,6 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="taskType"
@@ -317,7 +310,6 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="description"
@@ -331,7 +323,6 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="status"
@@ -354,7 +345,6 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="date"
@@ -368,7 +358,6 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="isFollowupNeeded"
@@ -385,7 +374,6 @@ export default function Tasks() {
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="assignedTo"
@@ -413,16 +401,22 @@ export default function Tasks() {
                 </form>
               </Form>
             </div>
-            <div className="flex-none p-4 bg-white border-t">
-              <Button
-                type="submit"
-                form="task-form"
-                disabled={createTask.isPending}
-                className="w-full"
-              >
-                {createTask.isPending ? "Creating..." : "Create Task"}
-              </Button>
-            </div>
+            <div className="pt-4 space-x-2 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      form="task-form"
+                      disabled={createTask.isPending}
+                    >
+                      {createTask.isPending ? "Creating..." : "Create Task"}
+                    </Button>
+                  </div>
           </DialogContent>
         </Dialog>
       </div>
