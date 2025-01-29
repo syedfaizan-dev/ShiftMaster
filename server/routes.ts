@@ -387,10 +387,12 @@ export function registerRoutes(app: Express): Server {
   });
 
 
-  // Tasks routes
   // Get all tasks (admin only)
   app.get("/api/admin/tasks", requireAdmin, async (req: Request, res: Response) => {
     try {
+      const inspectorAlias = users;
+      const assignedEmployeeAlias = users;
+
       const allTasks = await db
         .select({
           id: tasks.id,
@@ -403,14 +405,14 @@ export function registerRoutes(app: Express): Server {
           isFollowupNeeded: tasks.isFollowupNeeded,
           assignedTo: tasks.assignedTo,
           inspector: {
-            id: users.id,
-            fullName: users.fullName,
-            username: users.username,
+            id: inspectorAlias.id,
+            fullName: inspectorAlias.fullName,
+            username: inspectorAlias.username,
           },
           assignedEmployee: {
-            id: users.id,
-            fullName: users.fullName,
-            username: users.username,
+            id: assignedEmployeeAlias.id,
+            fullName: assignedEmployeeAlias.fullName,
+            username: assignedEmployeeAlias.username,
           },
           shiftType: {
             id: shiftTypes.id,
@@ -420,8 +422,8 @@ export function registerRoutes(app: Express): Server {
           },
         })
         .from(tasks)
-        .leftJoin(users, eq(tasks.inspectorId, users.id))
-        .leftJoin(users, eq(tasks.assignedTo, users.id))
+        .leftJoin(inspectorAlias, eq(tasks.inspectorId, inspectorAlias.id))
+        .leftJoin(assignedEmployeeAlias, eq(tasks.assignedTo, assignedEmployeeAlias.id))
         .leftJoin(shiftTypes, eq(tasks.shiftTypeId, shiftTypes.id))
         .orderBy(tasks.date);
 
