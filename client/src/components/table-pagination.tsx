@@ -40,7 +40,7 @@ export function TablePagination({
   // Generate page numbers to display
   const getPageNumbers = () => {
     const pages = [];
-    const maxVisiblePages = 5;
+    const maxVisiblePages = window.innerWidth < 640 ? 3 : 5; // Show fewer pages on mobile
 
     if (totalPages <= maxVisiblePages) {
       // Show all pages if total pages is less than max visible
@@ -51,13 +51,18 @@ export function TablePagination({
       // Always show first page
       pages.push(1);
 
-      if (currentPage > 3) {
+      if (currentPage > 2) {
         pages.push('ellipsis');
       }
 
       // Show pages around current page
-      for (let i = Math.max(2, currentPage - 1); i <= Math.min(currentPage + 1, totalPages - 1); i++) {
-        pages.push(i);
+      const beforeCurrent = Math.max(2, currentPage - 1);
+      const afterCurrent = Math.min(currentPage + 1, totalPages - 1);
+
+      for (let i = beforeCurrent; i <= afterCurrent; i++) {
+        if (i < totalPages) {
+          pages.push(i);
+        }
       }
 
       if (currentPage < totalPages - 2) {
@@ -65,16 +70,18 @@ export function TablePagination({
       }
 
       // Always show last page
-      pages.push(totalPages);
+      if (!pages.includes(totalPages)) {
+        pages.push(totalPages);
+      }
     }
 
     return pages;
   };
 
   return (
-    <div className="flex items-center justify-between px-2 py-4">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-700">Rows per page:</span>
+    <div className="flex flex-col sm:flex-row items-center justify-between px-2 py-4 gap-4">
+      <div className="flex items-center gap-2 order-2 sm:order-1">
+        <span className="text-sm text-gray-700 whitespace-nowrap">Rows per page:</span>
         <Select
           value={pageSize.toString()}
           onValueChange={(value) => onPageSizeChange(Number(value))}
@@ -92,8 +99,8 @@ export function TablePagination({
         </Select>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-700">
+      <div className="flex items-center gap-2 order-1 sm:order-2">
+        <span className="text-sm text-gray-700 hidden sm:inline">
           {totalItems === 0 ? '0 items' : `${startItem}-${endItem} of ${totalItems}`}
         </span>
 
@@ -107,7 +114,7 @@ export function TablePagination({
             </PaginationItem>
 
             {getPageNumbers().map((page, idx) => (
-              <PaginationItem key={idx}>
+              <PaginationItem key={idx} className="hidden sm:inline-flex">
                 {page === 'ellipsis' ? (
                   <PaginationEllipsis />
                 ) : (

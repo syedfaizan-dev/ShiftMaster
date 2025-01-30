@@ -43,7 +43,7 @@ export default function UsersPage() {
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5); // Set default to 5
+  const [pageSize, setPageSize] = useState(5); // Changed default to 5
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),

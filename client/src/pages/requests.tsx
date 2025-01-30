@@ -72,7 +72,7 @@ function RequestsPage() {
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5); // Changed default to 5
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
