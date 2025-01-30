@@ -41,10 +41,20 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import * as z from "zod";
 import Navbar from "@/components/navbar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const taskSchema = z.object({
   shiftTypeId: z.string().min(1, "Shift type is required"),
@@ -169,6 +179,28 @@ export default function Tasks() {
       toast({ title: "Success", description: "Task created successfully" });
       setIsDialogOpen(false);
       form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tasks"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
+  const deleteTask = useMutation({
+    mutationFn: async (taskId: number) => {
+      const res = await fetch(`/api/admin/tasks/${taskId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Task deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tasks"] });
     },
     onError: (error: Error) => {
@@ -501,6 +533,7 @@ export default function Tasks() {
                   <TableHead>Status</TableHead>
                   <TableHead>Followup Needed</TableHead>
                   <TableHead>Assigned To</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -517,6 +550,53 @@ export default function Tasks() {
                     <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
                     <TableCell>
                       {task.assignedEmployee?.fullName || "Unknown"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // Set the task data in the form
+                            form.reset({
+                              shiftTypeId: task.shiftTypeId.toString(),
+                              inspectorId: task.inspectorId.toString(),
+                              taskTypeId: task.taskTypeId.toString(),
+                              status: task.status,
+                              date: task.date,
+                              isFollowupNeeded: task.isFollowupNeeded,
+                              assignedTo: task.assignedTo.toString(),
+                            });
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </DialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will
+                                permanently delete the task.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteTask.mutate(task.id)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

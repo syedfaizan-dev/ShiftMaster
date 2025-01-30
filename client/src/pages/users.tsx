@@ -18,12 +18,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { User } from "@db/schema";
 import { TablePagination } from "@/components/table-pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const userSchema = z.object({
   username: z.string().email("Invalid email format"),
@@ -119,7 +129,7 @@ export default function UsersPage() {
       console.log('Updating user with payload:', payload);
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
@@ -144,6 +154,28 @@ export default function UsersPage() {
     },
     onError: (error: Error) => {
       console.error('Update error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "User deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+    onError: (error: Error) => {
       toast({
         variant: "destructive",
         title: "Error",
@@ -228,21 +260,47 @@ export default function UsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditingUser(user);
-                            form.reset({
-                              username: user.username,
-                              fullName: user.fullName,
-                              role: getUserRole(user),
-                            });
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingUser(user);
+                              form.reset({
+                                username: user.username,
+                                fullName: user.fullName,
+                                role: getUserRole(user),
+                              });
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </DialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the user
+                                  and all associated data.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteUser.mutate(user.id)}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
