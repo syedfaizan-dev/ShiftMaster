@@ -74,7 +74,7 @@ function RequestsPage() {
   const { data: requests = [], isLoading } = useQuery<RequestWithRelations[]>({
     queryKey: ["/api/requests"],
   });
-
+  console.log("All Requests: ", requests);
   const { data: managers = [] } = useQuery<User[]>({
     queryKey: ["/api/admin/managers"],
     enabled: user?.isAdmin,
@@ -246,7 +246,7 @@ function RequestsPage() {
     setPageSize(newSize);
     setCurrentPage(1); // Reset to first page when changing page size
   };
-
+  console.log(requests);
   return (
     <Navbar>
       <div className="p-6">

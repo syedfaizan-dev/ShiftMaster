@@ -346,9 +346,9 @@ export function registerRoutes(app: Express): Server {
       let query = db.select().from(requests);
 
       // Apply filters based on user role
-      if (req.user.isAdmin) {
+      if (req.user?.isAdmin) {
         // Admin sees all requests - no filter needed
-      } else if (req.user.isManager) {
+      } else if (req.user?.isManager) {
         // Managers only see requests assigned to them
         query = query.where(eq(requests.managerId, req.user.id));
       } else {
@@ -403,11 +403,35 @@ export function registerRoutes(app: Express): Server {
             manager = managerData;
           }
 
+          // Get shift type details if exists
+          let shiftType = null;
+          if (request.shiftTypeId) {
+            const [shiftTypeData] = await db
+              .select()
+              .from(shiftTypes)
+              .where(eq(shiftTypes.id, request.shiftTypeId))
+              .limit(1);
+            shiftType = shiftTypeData;
+          }
+
+          // Get target shift type details if exists
+          let targetShiftType = null;
+          if (request.targetShiftTypeId) {
+            const [targetShiftTypeData] = await db
+              .select()
+              .from(shiftTypes)
+              .where(eq(shiftTypes.id, request.targetShiftTypeId))
+              .limit(1);
+            targetShiftType = targetShiftTypeData;
+          }
+
           return {
             ...request,
             requester,
             reviewer,
             manager,
+            shiftType,
+            targetShiftType
           };
         })
       );
