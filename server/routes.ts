@@ -421,21 +421,66 @@ export function registerRoutes(app: Express): Server {
 
   // Create a new request (shift swap or leave)
   app.post("/api/requests", requireAuth, async (req: Request, res: Response) => {
-    const { type, shiftId, targetShiftId, startDate, endDate, reason } = req.body;
+    try {
+      const { type, shiftTypeId, targetShiftTypeId, startDate, endDate, reason } = req.body;
 
-    const [newRequest] = await db.insert(requests)
-      .values({
-        requesterId: req.user.id,
-        type,
-        shiftId,
-        targetShiftId,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-        reason,
-      })
-      .returning();
+      if (type === "SHIFT_SWAP" && (!shiftTypeId || !targetShiftTypeId)) {
+        return res.status(400).json({ message: "Shift type IDs are required for shift swap requests" });
+      }
 
-    res.json(newRequest);
+      let shiftId = null;
+      let targetShiftId = null;
+
+      if (type === "SHIFT_SWAP") {
+        // Find the user's shift with the specified shiftTypeId
+        const [userShift] = await db
+          .select()
+          .from(shifts)
+          .where(
+            and(
+              eq(shifts.inspectorId, req.user!.id),
+              eq(shifts.shiftTypeId, shiftTypeId)
+            )
+          )
+          .limit(1);
+
+        if (!userShift) {
+          return res.status(400).json({ message: "No matching shift found for the user" });
+        }
+
+        // Find a shift with the target shift type
+        const [targetShift] = await db
+          .select()
+          .from(shifts)
+          .where(eq(shifts.shiftTypeId, targetShiftTypeId))
+          .limit(1);
+
+        if (!targetShift) {
+          return res.status(400).json({ message: "No matching target shift found" });
+        }
+
+        shiftId = userShift.id;
+        targetShiftId = targetShift.id;
+      }
+
+      const [newRequest] = await db.insert(requests)
+        .values({
+          requesterId: req.user!.id,
+          type,
+          shiftId,
+          targetShiftId,
+          startDate: startDate ? new Date(startDate) : null,
+          endDate: endDate ? new Date(endDate) : null,
+          reason,
+          status: "PENDING"
+        })
+        .returning();
+
+      res.json(newRequest);
+    } catch (error) {
+      console.error('Error creating request:', error);
+      res.status(500).json({ message: 'Error creating request' });
+    }
   });
 
   // Admin: Assign request to manager
