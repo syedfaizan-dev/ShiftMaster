@@ -9,11 +9,11 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top Navbar with dual colors - Full Width */}
-      <div className="h-16 flex relative">
-        {/* Primary color (30%) */}
+      {/* Fixed Top Navbar */}
+      <div className="h-16 flex fixed top-0 left-0 right-0 z-50">
+        {/* Primary color (for sidebar width) */}
         <div className="absolute inset-0 w-64 bg-primary" />
-        {/* Secondary color (70%) */}
+        {/* Secondary color (remaining width) */}
         <div className="absolute inset-0 left-64 right-0" style={{ backgroundColor: '#04a3e0' }} />
         {/* Content */}
         <div className="relative flex items-center justify-between px-6 w-full">
@@ -29,10 +29,10 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Main Content Area with Left Navigation */}
-      <div className="flex flex-1">
-        {/* Left Navigation */}
-        <div className="w-64 bg-gray-100 min-h-screen border-r border-gray-200">
+      {/* Main Content Area with Fixed Left Navigation */}
+      <div className="flex pt-16 flex-1">
+        {/* Fixed Left Navigation */}
+        <div className="w-64 bg-gray-100 fixed left-0 top-16 bottom-0 border-r border-gray-200 overflow-y-auto">
           <nav className="p-4 space-y-2">
             {user?.isAdmin && (
               <>
@@ -68,7 +68,6 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 <span>Shifts</span>
               </button>
             </Link>
-            {/* Show Requests link to everyone including admins */}
             <Link href="/requests">
               <button className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700">
                 <FileText className="w-5 h-5" />
@@ -92,7 +91,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
               </>
             )}
           </nav>
-          <div className="absolute bottom-0 w-64 p-4">
+          <div className="absolute bottom-0 w-64 p-4 bg-gray-100">
             <Button 
               variant="outline" 
               className="w-full justify-start text-gray-700"
@@ -104,9 +103,11 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Page Content */}
-        <main className="flex-1 bg-background overflow-auto">
-          {children}
+        {/* Scrollable Content Area */}
+        <main className="flex-1 ml-64 bg-background overflow-y-auto min-h-screen">
+          <div className="p-6">
+            {children}
+          </div>
         </main>
       </div>
     </div>

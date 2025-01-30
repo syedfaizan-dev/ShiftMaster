@@ -12,9 +12,22 @@ import {
 } from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -53,7 +66,9 @@ function RequestsPage() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [assignManagerDialogOpen, setAssignManagerDialogOpen] = useState(false);
-  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
+    null,
+  );
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,7 +95,11 @@ function RequestsPage() {
     enabled: user?.isAdmin,
   });
 
-  const { data: shifts = [] } = useQuery<(Shift & { shiftType: { startTime: string; endTime: string; name: string } })[]>({
+  const { data: shifts = [] } = useQuery<
+    (Shift & {
+      shiftType: { startTime: string; endTime: string; name: string };
+    })[]
+  >({
     queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
 
@@ -91,20 +110,21 @@ function RequestsPage() {
 
   // Get unique shift types from user's shifts for the first dropdown
   const userShiftTypes = shifts
-    .filter(shift => shift.inspectorId === user?.id)
-    .map(shift => ({
+    .filter((shift) => shift.inspectorId === user?.id)
+    .map((shift) => ({
       id: shift.shiftTypeId,
       name: shift.shiftType.name,
       startTime: shift.shiftType.startTime,
-      endTime: shift.shiftType.endTime
+      endTime: shift.shiftType.endTime,
     }))
-    .filter((value, index, self) =>
-      self.findIndex(v => v.id === value.id) === index
+    .filter(
+      (value, index, self) =>
+        self.findIndex((v) => v.id === value.id) === index,
     );
 
   // Remove duplicates from allShiftTypes array
-  const uniqueShiftTypes = allShiftTypes.filter((value, index, self) =>
-    index === self.findIndex((t) => t.id === value.id)
+  const uniqueShiftTypes = allShiftTypes.filter(
+    (value, index, self) => index === self.findIndex((t) => t.id === value.id),
   );
 
   const createRequest = useMutation({
@@ -119,7 +139,10 @@ function RequestsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Request submitted successfully" });
+      toast({
+        title: "Success",
+        description: "Request submitted successfully",
+      });
       setIsDialogOpen(false);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -137,12 +160,15 @@ function RequestsPage() {
     mutationFn: async (data: AssignManagerFormData) => {
       if (!selectedRequestId) throw new Error("No request selected");
 
-      const res = await fetch(`/api/admin/requests/${selectedRequestId}/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ managerId: parseInt(data.managerId) }),
-        credentials: "include",
-      });
+      const res = await fetch(
+        `/api/admin/requests/${selectedRequestId}/assign`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ managerId: parseInt(data.managerId) }),
+          credentials: "include",
+        },
+      );
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -162,7 +188,13 @@ function RequestsPage() {
   });
 
   const updateRequestStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: "APPROVED" | "REJECTED" }) => {
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: number;
+      status: "APPROVED" | "REJECTED";
+    }) => {
       const res = await fetch(`/api/admin/requests/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -173,7 +205,10 @@ function RequestsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Request status updated successfully" });
+      toast({
+        title: "Success",
+        description: "Request status updated successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
     },
     onError: (error: Error) => {
@@ -196,7 +231,9 @@ function RequestsPage() {
     }
   };
 
-  const formatShiftDateTime = (shift: Shift & { shiftType?: { startTime: string; endTime: string } }) => {
+  const formatShiftDateTime = (
+    shift: Shift & { shiftType?: { startTime: string; endTime: string } },
+  ) => {
     if (!shift?.shiftType?.startTime || !shift.week) {
       console.debug("Missing required shift data", { shift });
       return null;
@@ -219,12 +256,12 @@ function RequestsPage() {
         weekStart.getMonth(),
         weekStart.getDate(),
         timeObj.getHours(),
-        timeObj.getMinutes()
+        timeObj.getMinutes(),
       );
 
       return {
         date: shiftDateTime,
-        formatted: format(shiftDateTime, "MMM d, yyyy h:mm a")
+        formatted: format(shiftDateTime, "MMM d, yyyy h:mm a"),
       };
     } catch (error) {
       console.error("Error formatting shift date:", error);
@@ -253,9 +290,7 @@ function RequestsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Requests</h1>
           {!user?.isAdmin && !user?.isManager && (
-            <Button onClick={() => setIsDialogOpen(true)}>
-              New Request
-            </Button>
+            <Button onClick={() => setIsDialogOpen(true)}>New Request</Button>
           )}
         </div>
 
@@ -267,7 +302,9 @@ function RequestsPage() {
           <Alert>
             <AlertTitle>No Requests Found</AlertTitle>
             <AlertDescription>
-              {user?.isAdmin ? "There are no pending requests to review." : "You haven't submitted any requests yet."}
+              {user?.isAdmin
+                ? "There are no pending requests to review."
+                : "You haven't submitted any requests yet."}
             </AlertDescription>
           </Alert>
         ) : (
@@ -278,11 +315,15 @@ function RequestsPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Reason</TableHead>
-                  {(user?.isAdmin || user?.isManager) && <TableHead>Requester</TableHead>}
+                  {(user?.isAdmin || user?.isManager) && (
+                    <TableHead>Requester</TableHead>
+                  )}
                   <TableHead>Details</TableHead>
                   <TableHead>Assigned To</TableHead>
                   <TableHead>Review Info</TableHead>
-                  {(user?.isAdmin || user?.isManager) && <TableHead>Actions</TableHead>}
+                  {(user?.isAdmin || user?.isManager) && (
+                    <TableHead>Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -292,17 +333,30 @@ function RequestsPage() {
                       {request.type.toLowerCase().replace("_", " ")}
                     </TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(request.status)}`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(request.status)}`}
+                      >
                         {request.status}
                       </span>
                     </TableCell>
                     <TableCell>{request.reason}</TableCell>
-                    {(user?.isAdmin || user?.isManager) && <TableCell>{request.requester?.fullName || "Unknown"}</TableCell>}
+                    {(user?.isAdmin || user?.isManager) && (
+                      <TableCell>
+                        {request.requester?.fullName || "Unknown"}
+                      </TableCell>
+                    )}
                     <TableCell>
                       {request.type === "LEAVE" ? (
                         <div>
                           <p className="font-medium">Leave Period:</p>
-                          <p>{format(new Date(request.startDate!), "MMM d, yyyy")} - {format(new Date(request.endDate!), "MMM d, yyyy")}</p>
+                          <p>
+                            {format(
+                              new Date(request.startDate!),
+                              "MMM d, yyyy",
+                            )}{" "}
+                            -{" "}
+                            {format(new Date(request.endDate!), "MMM d, yyyy")}
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-2">
@@ -312,8 +366,19 @@ function RequestsPage() {
                               <>
                                 <p>{request.shiftType.name}</p>
                                 <p className="text-sm text-gray-500">
-                                  {format(new Date(`2000-01-01T${request.shiftType.startTime}`), 'h:mm a')} -
-                                  {format(new Date(`2000-01-01T${request.shiftType.endTime}`), 'h:mm a')}
+                                  {format(
+                                    new Date(
+                                      `2000-01-01T${request.shiftType.startTime}`,
+                                    ),
+                                    "h:mm a",
+                                  )}{" "}
+                                  -
+                                  {format(
+                                    new Date(
+                                      `2000-01-01T${request.shiftType.endTime}`,
+                                    ),
+                                    "h:mm a",
+                                  )}
                                 </p>
                               </>
                             )}
@@ -324,20 +389,19 @@ function RequestsPage() {
                               <>
                                 <p>{request.targetShiftType.name}</p>
                                 <p className="text-sm text-gray-500">
-                                  {format(new Date(`2000-01-01T${request.targetShiftType.startTime}`), 'h:mm a')} -
-                                  {format(new Date(`2000-01-01T${request.targetShiftType.endTime}`), 'h:mm a')}
-                                </p>
-                              </>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium">Target Shift Type:</p>
-                            {request.metadata?.targetShiftTypeId && (
-                              <>
-                                <p>{allShiftTypes.find(st => st.id === request.metadata.targetShiftTypeId)?.name}</p>
-                                <p className="text-sm text-gray-500">
-                                  {format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.metadata.targetShiftTypeId)?.startTime}`), 'h:mm a')} -
-                                  {format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.metadata.targetShiftTypeId)?.endTime}`), 'h:mm a')}
+                                  {format(
+                                    new Date(
+                                      `2000-01-01T${request.targetShiftType.startTime}`,
+                                    ),
+                                    "h:mm a",
+                                  )}{" "}
+                                  -
+                                  {format(
+                                    new Date(
+                                      `2000-01-01T${request.targetShiftType.endTime}`,
+                                    ),
+                                    "h:mm a",
+                                  )}
                                 </p>
                               </>
                             )}
@@ -359,7 +423,10 @@ function RequestsPage() {
                         <div className="text-sm">
                           <p>By: {request.reviewer.fullName}</p>
                           <p className="text-gray-500">
-                            {format(new Date(request.reviewedAt!), "MMM d, yyyy h:mm a")}
+                            {format(
+                              new Date(request.reviewedAt!),
+                              "MMM d, yyyy h:mm a",
+                            )}
                           </p>
                         </div>
                       ) : (
@@ -367,43 +434,57 @@ function RequestsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === "PENDING" && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {user.isAdmin && !request.managerId && (
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedRequestId(request.id);
-                                  setAssignManagerDialogOpen(true);
-                                }}
-                              >
-                                Reassign Manager
-                              </DropdownMenuItem>
-                            )}
-                            {(user.isAdmin || (user.isManager && request.managerId === user.id)) && (
-                              <>
+                      {(user?.isAdmin ||
+                        (user?.isManager && request.managerId === user.id)) &&
+                        request.status === "PENDING" && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {user.isAdmin && !request.managerId && (
                                 <DropdownMenuItem
-                                  onClick={() => updateRequestStatus.mutate({ id: request.id, status: "APPROVED" })}
+                                  onClick={() => {
+                                    setSelectedRequestId(request.id);
+                                    setAssignManagerDialogOpen(true);
+                                  }}
                                 >
-                                  Approve Request
+                                  Reassign Manager
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => updateRequestStatus.mutate({ id: request.id, status: "REJECTED" })}
-                                >
-                                  Reject Request
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                              )}
+                              {(user.isAdmin ||
+                                (user.isManager &&
+                                  request.managerId === user.id)) && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      updateRequestStatus.mutate({
+                                        id: request.id,
+                                        status: "APPROVED",
+                                      })
+                                    }
+                                  >
+                                    Approve Request
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() =>
+                                      updateRequestStatus.mutate({
+                                        id: request.id,
+                                        status: "REJECTED",
+                                      })
+                                    }
+                                  >
+                                    Reject Request
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -425,14 +506,22 @@ function RequestsPage() {
           <DialogContent>
             <DialogTitle>Create New Request</DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(data => createRequest.mutate(data))} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit((data) =>
+                  createRequest.mutate(data),
+                )}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="type"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Request Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select type" />
@@ -456,7 +545,11 @@ function RequestsPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Your Shift Type</FormLabel>
-                          <Select onValueChange={(val) => field.onChange(parseInt(val))}>
+                          <Select
+                            onValueChange={(val) =>
+                              field.onChange(parseInt(val))
+                            }
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select your shift type" />
@@ -464,8 +557,23 @@ function RequestsPage() {
                             </FormControl>
                             <SelectContent>
                               {userShiftTypes.map((shiftType) => (
-                                <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
-                                  {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
+                                <SelectItem
+                                  key={shiftType.id}
+                                  value={shiftType.id.toString()}
+                                >
+                                  {shiftType.name} (
+                                  {format(
+                                    new Date(
+                                      `2000-01-01T${shiftType.startTime}`,
+                                    ),
+                                    "h:mm a",
+                                  )}{" "}
+                                  -{" "}
+                                  {format(
+                                    new Date(`2000-01-01T${shiftType.endTime}`),
+                                    "h:mm a",
+                                  )}
+                                  )
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -480,7 +588,11 @@ function RequestsPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Target Shift Type</FormLabel>
-                          <Select onValueChange={(val) => field.onChange(parseInt(val))}>
+                          <Select
+                            onValueChange={(val) =>
+                              field.onChange(parseInt(val))
+                            }
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select target shift type" />
@@ -488,8 +600,23 @@ function RequestsPage() {
                             </FormControl>
                             <SelectContent>
                               {uniqueShiftTypes.map((shiftType) => (
-                                <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
-                                  {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
+                                <SelectItem
+                                  key={shiftType.id}
+                                  value={shiftType.id.toString()}
+                                >
+                                  {shiftType.name} (
+                                  {format(
+                                    new Date(
+                                      `2000-01-01T${shiftType.startTime}`,
+                                    ),
+                                    "h:mm a",
+                                  )}{" "}
+                                  -{" "}
+                                  {format(
+                                    new Date(`2000-01-01T${shiftType.endTime}`),
+                                    "h:mm a",
+                                  )}
+                                  )
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -555,11 +682,19 @@ function RequestsPage() {
         </Dialog>
 
         {/* Assign Manager Dialog */}
-        <Dialog open={assignManagerDialogOpen} onOpenChange={setAssignManagerDialogOpen}>
+        <Dialog
+          open={assignManagerDialogOpen}
+          onOpenChange={setAssignManagerDialogOpen}
+        >
           <DialogContent>
             <DialogTitle>Assign Manager</DialogTitle>
             <Form {...assignManagerForm}>
-              <form onSubmit={assignManagerForm.handleSubmit(data => assignManager.mutate(data))} className="space-y-4">
+              <form
+                onSubmit={assignManagerForm.handleSubmit((data) =>
+                  assignManager.mutate(data),
+                )}
+                className="space-y-4"
+              >
                 <FormField
                   control={assignManagerForm.control}
                   name="managerId"
@@ -574,7 +709,10 @@ function RequestsPage() {
                         </FormControl>
                         <SelectContent>
                           {managers.map((manager) => (
-                            <SelectItem key={manager.id} value={manager.id.toString()}>
+                            <SelectItem
+                              key={manager.id}
+                              value={manager.id.toString()}
+                            >
                               {manager.fullName}
                             </SelectItem>
                           ))}
