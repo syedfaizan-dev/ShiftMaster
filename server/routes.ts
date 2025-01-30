@@ -752,6 +752,64 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Admin: Update task
+  app.put("/api/admin/tasks/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { inspectorId, shiftTypeId, taskTypeId, status, date, isFollowupNeeded, assignedTo } = req.body;
+
+      // Verify that the task exists
+      const [existingTask] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Verify that the assigned user is an employee (not admin, manager, or inspector)
+      const [assignedUser] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.id, assignedTo),
+            eq(users.isAdmin, false),
+            eq(users.isManager, false),
+            eq(users.isInspector, false)
+          )
+        )
+        .limit(1);
+
+      if (!assignedUser) {
+        return res.status(400).json({ message: "Invalid assigned user. Must be an employee." });
+      }
+
+      // Update the task
+      const [updatedTask] = await db
+        .update(tasks)
+        .set({
+          inspectorId,
+          shiftTypeId,
+          taskTypeId,
+          status,
+          date: new Date(date),
+          isFollowupNeeded,
+          assignedTo,
+          updatedBy: req.user?.id,
+        })
+        .where(eq(tasks.id, parseInt(id)))
+        .returning();
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      res.status(500).json({ message: 'Error updating task' });
+    }
+  });
+
   // Get employees (users who are not admin, manager, or inspector)
   app.get("/api/admin/employees", requireAdmin, async (req: Request, res: Response) => {
     try {
