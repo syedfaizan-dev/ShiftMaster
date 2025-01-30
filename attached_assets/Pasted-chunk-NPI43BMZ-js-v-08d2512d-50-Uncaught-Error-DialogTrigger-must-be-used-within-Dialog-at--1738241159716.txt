@@ -1,0 +1,54 @@
+chunk-NPI43BMZ.js?v=08d2512d:50 Uncaught Error: `DialogTrigger` must be used within `Dialog`
+    at useContext2 (chunk-NPI43BMZ.js?v=08d2512d:50:13)
+    at chunk-74PJSGVD.js?v=08d2512d:82:21
+    at renderWithHooks (chunk-RPCDYKBN.js?v=08d2512d:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=08d2512d:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=08d2512d:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=08d2512d:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=08d2512d:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=08d2512d:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=08d2512d:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=08d2512d:19198:20)Understand this errorAI
+chunk-RPCDYKBN.js?v=08d2512d:14032 The above error occurred in the <DialogTrigger> component:
+
+    at https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-74PJSGVD.js?v=08d2512d:81:13
+    at Provider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-NPI43BMZ.js?v=08d2512d:38:15)
+    at Dialog (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-74PJSGVD.js?v=08d2512d:46:5)
+    at AlertDialog (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-alert-dialog.js?v=08d2512d:46:11)
+    at div
+    at td
+    at _c13 (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/table.tsx:142:13)
+    at tr
+    at _c9 (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/table.tsx:96:12)
+    at tbody
+    at _c5 (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/table.tsx:53:12)
+    at table
+    at div
+    at _c (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/table.tsx:20:11)
+    at div
+    at div
+    at main
+    at div
+    at div
+    at Navbar (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/navbar.tsx:24:34)
+    at Tasks (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/pages/tasks.tsx:85:20)
+    at Route (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=08d2512d:323:16)
+    at Switch (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=08d2512d:379:17)
+    at Router (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/App.tsx?v=BXKLAqMNEkXSpzjeem7pb:37:31)
+    at QueryClientProvider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=08d2512d:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=08d2512d:14032Understand this errorAI
+chunk-RPCDYKBN.js?v=08d2512d:9129 Uncaught Error: `DialogTrigger` must be used within `Dialog`
+    at useContext2 (chunk-NPI43BMZ.js?v=08d2512d:50:13)
+    at chunk-74PJSGVD.js?v=08d2512d:82:21
+    at renderWithHooks (chunk-RPCDYKBN.js?v=08d2512d:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=08d2512d:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=08d2512d:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=08d2512d:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=08d2512d:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=08d2512d:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=08d2512d:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=08d2512d:18736:28)

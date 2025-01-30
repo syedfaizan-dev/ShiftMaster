@@ -54,6 +54,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 const taskSchema = z.object({
@@ -573,11 +574,11 @@ export default function Tasks() {
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <AlertDialog>
-                          <DialogTrigger asChild>
+                          <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon">
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
-                          </DialogTrigger>
+                          </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
