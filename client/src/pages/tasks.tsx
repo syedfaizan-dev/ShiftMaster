@@ -125,6 +125,22 @@ export default function Tasks() {
   const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<any[]>({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
     enabled: !!selectedShiftType,
+    queryFn: async () => {
+      if (!selectedShiftType) return [];
+      const response = await fetch(
+        `/api/admin/shifts/inspectors/${selectedShiftType}`,
+        {
+          credentials: "include",
+          headers: {
+            "Accept": "application/json"
+          }
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch inspectors");
+      }
+      return response.json();
+    }
   });
 
   const { data: employees = [] } = useQuery<any[]>({
