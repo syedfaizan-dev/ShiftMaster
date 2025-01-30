@@ -6,6 +6,7 @@ import { shifts, users, roles, requests, shiftTypes, tasks, taskTypes } from "@d
 import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
 import { getShifts } from "./routes/shifts";
+import { sql } from "drizzle-orm";
 
 export const createShift = async (req: Request, res: Response) => {
   try {
@@ -957,6 +958,40 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error deleting task type:', error);
       res.status(500).json({ message: 'Error deleting task type' });
+    }
+  });
+
+  // Get task statistics grouped by shift type
+  app.get("/api/admin/tasks/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const stats = await db.execute(sql`
+        WITH task_counts AS (
+          SELECT 
+            t.shiftTypeId,
+            st.name as shiftTypeName,
+            COUNT(*) as total,
+            COUNT(CASE WHEN t.status = 'PENDING' THEN 1 END) as pending,
+            COUNT(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 END) as inProgress,
+            COUNT(CASE WHEN t.status ='COMPLETED' THEN 1 END) as completed
+          FROM tasks t
+          JOIN shiftTypes st ON t.shiftTypeId = st.id
+          GROUP BY t.shiftTypeId, st.name
+        )
+        SELECT 
+          shiftTypeId,
+          shiftTypeName,
+          total,
+          pending,
+          inProgress,
+          completed
+        FROM task_counts
+        ORDER BY shiftTypeName
+      `);
+
+      res.json(stats.rows);
+    } catch (error) {
+      console.error('Error fetching task statistics:', error);
+      res.status(500).json({ message: 'Error fetching task statistics' });
     }
   });
 
