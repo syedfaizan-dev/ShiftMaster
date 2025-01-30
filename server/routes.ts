@@ -467,7 +467,17 @@ export function registerRoutes(app: Express): Server {
         })
       );
 
-      res.json(requestsWithDetails);
+      // Sort requests: PENDING first, then by createdAt date in descending order
+      const sortedRequests = requestsWithDetails.sort((a, b) => {
+        // First sort by status (PENDING first)
+        if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+        if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
+
+        // Then sort by createdAt date in descending order (most recent first)
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      res.json(sortedRequests);
     } catch (error) {
       console.error('Error fetching requests:', error);
       res.status(500).json({ message: 'Error fetching requests' });
