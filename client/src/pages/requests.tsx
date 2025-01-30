@@ -444,7 +444,7 @@ function RequestsPage() {
                                 .filter(shiftType => shiftType.id !== form.watch("shiftTypeId"))
                                 .map((shiftType) => (
                                   <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
-                                    {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shift.shiftType.endTime}`), 'h:mm a')})
+                                    {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
                                   </SelectItem>
                                 ))}
                             </SelectContent>
