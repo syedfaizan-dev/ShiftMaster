@@ -95,11 +95,9 @@ function RequestsPage() {
     enabled: user?.isAdmin,
   });
 
-  const { data: shifts = [] } = useQuery<
-    (Shift & {
-      shiftType: { startTime: string; endTime: string; name: string };
-    })[]
-  >({
+  const { data: shifts = [] } = useQuery<(Shift & {
+    shiftType: { startTime: string; endTime: string; name: string };
+  })[]>({
     queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
 
@@ -441,12 +439,19 @@ function RequestsPage() {
                         request.status === "PENDING" && (
                           <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
+                              <Button
+                                variant="ghost"
+                                className="relative h-8 w-8 p-0"
+                              >
                                 <span className="sr-only">Open menu</span>
                                 <Settings className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[200px]">
+                            <DropdownMenuContent
+                              align="end"
+                              style={{ position: 'fixed' }}
+                              className="w-[200px] z-50"
+                            >
                               {user.isAdmin && !request.managerId && (
                                 <DropdownMenuItem
                                   onClick={() => {
