@@ -24,7 +24,7 @@ interface TablePaginationProps {
   onPageSizeChange: (size: number) => void;
 }
 
-const pageSizes = [10, 20, 30, 50];
+const pageSizes = [5, 10, 20, 30, 50];
 
 export function TablePagination({
   currentPage,
@@ -41,7 +41,7 @@ export function TablePagination({
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       // Show all pages if total pages is less than max visible
       for (let i = 1; i <= totalPages; i++) {
@@ -50,24 +50,24 @@ export function TablePagination({
     } else {
       // Always show first page
       pages.push(1);
-      
+
       if (currentPage > 3) {
         pages.push('ellipsis');
       }
-      
+
       // Show pages around current page
       for (let i = Math.max(2, currentPage - 1); i <= Math.min(currentPage + 1, totalPages - 1); i++) {
         pages.push(i);
       }
-      
+
       if (currentPage < totalPages - 2) {
         pages.push('ellipsis');
       }
-      
+
       // Always show last page
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
@@ -96,7 +96,7 @@ export function TablePagination({
         <span className="text-sm text-gray-700">
           {totalItems === 0 ? '0 items' : `${startItem}-${endItem} of ${totalItems}`}
         </span>
-        
+
         <Pagination>
           <PaginationContent>
             <PaginationItem>

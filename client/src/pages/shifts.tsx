@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
+import { TablePagination } from "@/components/table-pagination";
 import {
   Table,
   TableBody,
@@ -47,9 +48,28 @@ export default function Shifts() {
   const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(null);
   const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
 
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5); // Set default to 5
+
   const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
     queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
   });
+
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentShifts = shifts.slice(startIndex, endIndex);
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
 
   const deleteShift = useMutation({
     mutationFn: async (id: number) => {
@@ -102,63 +122,73 @@ export default function Shifts() {
         ) : shifts.length === 0 ? (
           <p className="text-center text-gray-500">No shifts found</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Inspector Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Shift Type</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Week</TableHead>
-                <TableHead>Backup Inspector</TableHead>
-                {user?.isAdmin && <TableHead>Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shifts.map((shift) => (
-                <TableRow key={shift.id}>
-                  <TableCell>{shift.inspector?.fullName || 'Unknown'}</TableCell>
-                  <TableCell>{shift.role?.name || 'Unknown'}</TableCell>
-                  <TableCell>{shift.shiftType?.name || 'Unknown'}</TableCell>
-                  <TableCell>
-                    {shift.shiftType?.startTime || 'N/A'} - {shift.shiftType?.endTime || 'N/A'}
-                  </TableCell>
-                  <TableCell>Week {shift.week}</TableCell>
-                  <TableCell>
-                    {shift.backup?.fullName || "-"}
-                  </TableCell>
-                  {user?.isAdmin && (
-                    <TableCell className="space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(shift)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShiftToDelete(shift)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  )}
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Inspector Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Shift Type</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Week</TableHead>
+                  <TableHead>Backup Inspector</TableHead>
+                  {user?.isAdmin && <TableHead>Actions</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {currentShifts.map((shift) => (
+                  <TableRow key={shift.id}>
+                    <TableCell>{shift.inspector?.fullName || 'Unknown'}</TableCell>
+                    <TableCell>{shift.role?.name || 'Unknown'}</TableCell>
+                    <TableCell>{shift.shiftType?.name || 'Unknown'}</TableCell>
+                    <TableCell>
+                      {shift.shiftType?.startTime || 'N/A'} - {shift.shiftType?.endTime || 'N/A'}
+                    </TableCell>
+                    <TableCell>Week {shift.week}</TableCell>
+                    <TableCell>
+                      {shift.backup?.fullName || "-"}
+                    </TableCell>
+                    {user?.isAdmin && (
+                      <TableCell className="space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(shift)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShiftToDelete(shift)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={shifts.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col">
             <DialogTitle>{selectedShift ? 'Edit Shift' : 'Create New Shift'}</DialogTitle>
-            <ShiftForm 
+            <ShiftForm
               onSuccess={() => {
                 setIsDialogOpen(false);
                 setSelectedShift(null);
-              }} 
+              }}
               editShift={selectedShift}
             />
           </DialogContent>

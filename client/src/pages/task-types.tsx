@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import * as z from "zod";
 import Navbar from "@/components/navbar";
+import { TablePagination } from "@/components/table-pagination";
 
 const taskTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -50,6 +51,10 @@ export default function TaskTypes() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTaskType, setSelectedTaskType] = useState<TaskType | null>(null);
 
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5); // Set default to 5
+
   const form = useForm<TaskTypeFormData>({
     resolver: zodResolver(taskTypeSchema),
     defaultValues: {
@@ -61,6 +66,21 @@ export default function TaskTypes() {
   const { data: taskTypes = [], isLoading: isLoadingTaskTypes } = useQuery<TaskType[]>({
     queryKey: ["/api/task-types"],
   });
+
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentTaskTypes = taskTypes.slice(startIndex, endIndex);
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
 
   const createTaskType = useMutation({
     mutationFn: async (data: TaskTypeFormData) => {
@@ -253,52 +273,75 @@ export default function TaskTypes() {
           </Dialog>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {taskTypes.map((taskType) => (
-              <TableRow key={taskType.id}>
-                <TableCell>{taskType.name}</TableCell>
-                <TableCell>{taskType.description || "—"}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        setSelectedTaskType(taskType);
-                        form.reset({
-                          name: taskType.name,
-                          description: taskType.description || "",
-                        });
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this task type?")) {
-                          deleteTaskType.mutate(taskType.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {isLoadingTaskTypes ? (
+          <div className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : taskTypes.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Task Types Found</AlertTitle>
+            <AlertDescription>
+              Create your first task type to get started.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentTaskTypes.map((taskType) => (
+                  <TableRow key={taskType.id}>
+                    <TableCell>{taskType.name}</TableCell>
+                    <TableCell>{taskType.description || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedTaskType(taskType);
+                            form.reset({
+                              name: taskType.name,
+                              description: taskType.description || "",
+                            });
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            if (confirm("Are you sure you want to delete this task type?")) {
+                              deleteTaskType.mutate(taskType.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={taskTypes.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </>
+        )}
       </div>
     </Navbar>
   );

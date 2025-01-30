@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { User } from "@db/schema";
+import { TablePagination } from "@/components/table-pagination";
 
 const userSchema = z.object({
   username: z.string().email("Invalid email format"),
@@ -40,6 +41,10 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5); // Set default to 5
+
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
@@ -54,6 +59,21 @@ export default function UsersPage() {
     queryKey: ["/api/admin/users"],
     enabled: user?.isAdmin,
   });
+
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentUsers = users.slice(startIndex, endIndex);
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
 
   const createUser = useMutation({
     mutationFn: async (data: UserFormData) => {
@@ -185,49 +205,59 @@ export default function UsersPage() {
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => {
-                const roleDetails = getRoleDetails(user);
-                return (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.fullName}</TableCell>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>
-                      <Badge variant={roleDetails.variant}>
-                        {roleDetails.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditingUser(user);
-                          form.reset({
-                            username: user.username,
-                            fullName: user.fullName,
-                            role: getUserRole(user),
-                          });
-                          setIsDialogOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Full Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentUsers.map((user) => {
+                  const roleDetails = getRoleDetails(user);
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.fullName}</TableCell>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>
+                        <Badge variant={roleDetails.variant}>
+                          {roleDetails.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingUser(user);
+                            form.reset({
+                              username: user.username,
+                              fullName: user.fullName,
+                              role: getUserRole(user),
+                            });
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={users.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
