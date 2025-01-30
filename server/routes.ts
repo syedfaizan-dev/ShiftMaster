@@ -215,6 +215,39 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Admin: Delete user
+  app.delete("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Check if user exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Don't allow deleting your own account
+      if (existingUser.id === req.user?.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      // Delete the user
+      await db
+        .delete(users)
+        .where(eq(users.id, parseInt(id)));
+
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ message: 'Error deleting user' });
+    }
+  });
+
   // Get all shifts for a user (now using the getShifts handler)
   app.get("/api/shifts", requireAuth, getShifts);
 
