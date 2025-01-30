@@ -334,7 +334,9 @@ function RequestsPage() {
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(request.status)}`}
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
+                          request.status,
+                        )}`}
                       >
                         {request.status}
                       </span>
@@ -437,14 +439,14 @@ function RequestsPage() {
                       {(user?.isAdmin ||
                         (user?.isManager && request.managerId === user.id)) &&
                         request.status === "PENDING" && (
-                          <DropdownMenu>
+                          <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0">
                                 <span className="sr-only">Open menu</span>
                                 <Settings className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="w-[200px]">
                               {user.isAdmin && !request.managerId && (
                                 <DropdownMenuItem
                                   onClick={() => {
