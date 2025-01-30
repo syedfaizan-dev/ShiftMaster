@@ -477,13 +477,11 @@ function RequestsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {allShiftTypes
-                                .filter(shiftType => shiftType.id !== form.watch("shiftTypeId"))
-                                .map((shiftType) => (
-                                  <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
-                                    {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
-                                  </SelectItem>
-                                ))}
+                              {allShiftTypes.map((shiftType) => (
+                                <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
+                                  {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
