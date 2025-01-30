@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, or, and, desc } from "drizzle-orm";
+import { eq, or, and, desc, isNull } from "drizzle-orm";
 import { db } from "@db";
 import { notifications, shifts } from "@db/schema";
 
@@ -9,36 +9,22 @@ export async function getNotifications(req: Request, res: Response) {
       return res.status(401).send("Not authenticated");
     }
 
-    // First get notifications that don't have shift metadata (system notifications)
-    const systemNotifications = await db
+    // Get all notifications for the user
+    const userNotifications = await db
       .select()
       .from(notifications)
-      .where(
-        and(
-          eq(notifications.userId, req.user.id),
-          or(
-            eq(notifications.type, 'SYSTEM'),
-            eq(notifications.metadata, null)
-          )
-        )
-      );
+      .where(eq(notifications.userId, req.user.id))
+      .orderBy(desc(notifications.createdAt));
 
-    // Then get shift-related notifications
-    const shiftNotifications = await db
-      .select()
-      .from(notifications)
-      .where(
-        and(
-          eq(notifications.userId, req.user.id),
-          notifications.metadata.notNull()
-        )
-      );
-
-    // Filter shift notifications based on user's shifts
-    const filteredShiftNotifications = await Promise.all(
-      shiftNotifications.map(async (notification) => {
+    // Filter notifications based on shift assignments
+    const filteredNotifications = await Promise.all(
+      userNotifications.map(async (notification) => {
         const metadata = notification.metadata as any;
-        if (!metadata?.shiftId) return notification;
+
+        // If no metadata or no shiftId, include the notification (system notifications)
+        if (!metadata || !metadata.shiftId) {
+          return notification;
+        }
 
         // Check if user is assigned to this shift
         const [shift] = await db
@@ -55,19 +41,14 @@ export async function getNotifications(req: Request, res: Response) {
           )
           .limit(1);
 
+        // Only include notification if user is assigned to the shift
         return shift ? notification : null;
       })
     );
 
-    // Combine and sort notifications
-    const allNotifications = [
-      ...systemNotifications,
-      ...filteredShiftNotifications.filter(Boolean)
-    ].sort((a, b) => 
-      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-    );
-
-    res.json(allNotifications);
+    // Remove null values and send response
+    const finalNotifications = filteredNotifications.filter(Boolean);
+    res.json(finalNotifications);
   } catch (error) {
     console.error('Error fetching notifications:', error);
     res.status(500).send((error as Error).message);
