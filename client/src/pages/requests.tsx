@@ -43,7 +43,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { TableContainer } from "@/components/ui/table-container";
 
 const requestSchema = z.object({
   type: z.enum(["SHIFT_SWAP", "LEAVE"]),
@@ -307,8 +306,8 @@ function RequestsPage() {
             </AlertDescription>
           </Alert>
         ) : (
-          <div className="space-y-4">
-            <TableContainer>
+          <div className="relative overflow-x-auto">
+            <div className="w-full rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -485,15 +484,17 @@ function RequestsPage() {
                   ))}
                 </TableBody>
               </Table>
-            </TableContainer>
+            </div>
 
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={requests.length}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
+            <div className="mt-4">
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={requests.length}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </div>
           </div>
         )}
 
