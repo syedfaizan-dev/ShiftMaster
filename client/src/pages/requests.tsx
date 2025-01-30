@@ -24,6 +24,13 @@ import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { RequestWithRelations, Shift, ShiftType, User } from "@db/schema";
 import { TablePagination } from "@/components/table-pagination";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 
 const requestSchema = z.object({
   type: z.enum(["SHIFT_SWAP", "LEAVE"]),
@@ -350,44 +357,45 @@ function RequestsPage() {
                         <span className="text-gray-500">-</span>
                       )}
                     </TableCell>
-                    {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === "PENDING" && (
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {user.isAdmin && !request.managerId && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedRequestId(request.id);
-                                setAssignManagerDialogOpen(true);
-                              }}
-                            >
-                              Assign Manager
+                    <TableCell>
+                      {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === "PENDING" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          )}
-                          {(user.isAdmin || (user.isManager && request.managerId === user.id)) && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => updateRequestStatus.mutate({ id: request.id, status: "APPROVED" })}
-                                disabled={updateRequestStatus.isPending}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {user.isAdmin && !request.managerId && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedRequestId(request.id);
+                                  setAssignManagerDialogOpen(true);
+                                }}
                               >
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => updateRequestStatus.mutate({ id: request.id, status: "REJECTED" })}
-                                disabled={updateRequestStatus.isPending}
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
+                                Reassign Manager
+                              </DropdownMenuItem>
+                            )}
+                            {(user.isAdmin || (user.isManager && request.managerId === user.id)) && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => updateRequestStatus.mutate({ id: request.id, status: "APPROVED" })}
+                                >
+                                  Approve Request
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => updateRequestStatus.mutate({ id: request.id, status: "REJECTED" })}
+                                >
+                                  Reject Request
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
