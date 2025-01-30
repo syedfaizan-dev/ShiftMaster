@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { RequestWithRelations, Shift, ShiftType, User } from "@db/schema";
+import { TablePagination } from "@/components/table-pagination";
 
 const requestSchema = z.object({
   type: z.enum(["SHIFT_SWAP", "LEAVE"]),
@@ -47,6 +48,10 @@ function RequestsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [assignManagerDialogOpen, setAssignManagerDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
@@ -223,6 +228,21 @@ function RequestsPage() {
     }
   };
 
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentRequests = requests.slice(startIndex, endIndex);
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
   return (
     <Navbar>
       <div className="p-6">
@@ -247,130 +267,140 @@ function RequestsPage() {
             </AlertDescription>
           </Alert>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Reason</TableHead>
-                {(user?.isAdmin || user?.isManager) && <TableHead>Requester</TableHead>}
-                <TableHead>Details</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Review Info</TableHead>
-                {(user?.isAdmin || user?.isManager) && <TableHead>Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell className="capitalize">
-                    {request.type.toLowerCase().replace("_", " ")}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(request.status)}`}>
-                      {request.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{request.reason}</TableCell>
-                  {(user?.isAdmin || user?.isManager) && <TableCell>{request.requester?.fullName || "Unknown"}</TableCell>}
-                  <TableCell>
-                    {request.type === "LEAVE" ? (
-                      <div>
-                        <p className="font-medium">Leave Period:</p>
-                        <p>{format(new Date(request.startDate!), "MMM d, yyyy")} - {format(new Date(request.endDate!), "MMM d, yyyy")}</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div>
-                          <p className="font-medium">Current Shift Type:</p>
-                          {request.shiftType && (
-                            <>
-                              <p>{request.shiftType.name}</p>
-                              <p className="text-sm text-gray-500">
-                                {format(new Date(`2000-01-01T${request.shiftType.startTime}`), 'h:mm a')} - 
-                                {format(new Date(`2000-01-01T${request.shiftType.endTime}`), 'h:mm a')}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium">Requested Shift Type:</p>
-                          {request.targetShiftType && (
-                            <>
-                              <p>{request.targetShiftType.name}</p>
-                              <p className="text-sm text-gray-500">
-                                {format(new Date(`2000-01-01T${request.targetShiftType.startTime}`), 'h:mm a')} - 
-                                {format(new Date(`2000-01-01T${request.targetShiftType.endTime}`), 'h:mm a')}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {request.manager ? (
-                      <span className="text-sm font-medium">
-                        {request.manager.fullName}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {request.reviewer ? (
-                      <div className="text-sm">
-                        <p>By: {request.reviewer.fullName}</p>
-                        <p className="text-gray-500">
-                          {format(new Date(request.reviewedAt!), "MMM d, yyyy h:mm a")}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </TableCell>
-                  {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === "PENDING" && (
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {user.isAdmin && !request.managerId && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedRequestId(request.id);
-                              setAssignManagerDialogOpen(true);
-                            }}
-                          >
-                            Assign Manager
-                          </Button>
-                        )}
-                        {(user.isAdmin || (user.isManager && request.managerId === user.id)) && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: "APPROVED" })}
-                              disabled={updateRequestStatus.isPending}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => updateRequestStatus.mutate({ id: request.id, status: "REJECTED" })}
-                              disabled={updateRequestStatus.isPending}
-                            >
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Reason</TableHead>
+                  {(user?.isAdmin || user?.isManager) && <TableHead>Requester</TableHead>}
+                  <TableHead>Details</TableHead>
+                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Review Info</TableHead>
+                  {(user?.isAdmin || user?.isManager) && <TableHead>Actions</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {currentRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="capitalize">
+                      {request.type.toLowerCase().replace("_", " ")}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(request.status)}`}>
+                        {request.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>{request.reason}</TableCell>
+                    {(user?.isAdmin || user?.isManager) && <TableCell>{request.requester?.fullName || "Unknown"}</TableCell>}
+                    <TableCell>
+                      {request.type === "LEAVE" ? (
+                        <div>
+                          <p className="font-medium">Leave Period:</p>
+                          <p>{format(new Date(request.startDate!), "MMM d, yyyy")} - {format(new Date(request.endDate!), "MMM d, yyyy")}</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div>
+                            <p className="font-medium">Current Shift Type:</p>
+                            {request.shiftType && (
+                              <>
+                                <p>{request.shiftType.name}</p>
+                                <p className="text-sm text-gray-500">
+                                  {format(new Date(`2000-01-01T${request.shiftType.startTime}`), 'h:mm a')} -
+                                  {format(new Date(`2000-01-01T${request.shiftType.endTime}`), 'h:mm a')}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium">Requested Shift Type:</p>
+                            {request.targetShiftType && (
+                              <>
+                                <p>{request.targetShiftType.name}</p>
+                                <p className="text-sm text-gray-500">
+                                  {format(new Date(`2000-01-01T${request.targetShiftType.startTime}`), 'h:mm a')} -
+                                  {format(new Date(`2000-01-01T${request.targetShiftType.endTime}`), 'h:mm a')}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {request.manager ? (
+                        <span className="text-sm font-medium">
+                          {request.manager.fullName}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {request.reviewer ? (
+                        <div className="text-sm">
+                          <p>By: {request.reviewer.fullName}</p>
+                          <p className="text-gray-500">
+                            {format(new Date(request.reviewedAt!), "MMM d, yyyy h:mm a")}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </TableCell>
+                    {(user?.isAdmin || (user?.isManager && request.managerId === user.id)) && request.status === "PENDING" && (
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {user.isAdmin && !request.managerId && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedRequestId(request.id);
+                                setAssignManagerDialogOpen(true);
+                              }}
+                            >
+                              Assign Manager
+                            </Button>
+                          )}
+                          {(user.isAdmin || (user.isManager && request.managerId === user.id)) && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => updateRequestStatus.mutate({ id: request.id, status: "APPROVED" })}
+                                disabled={updateRequestStatus.isPending}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => updateRequestStatus.mutate({ id: request.id, status: "REJECTED" })}
+                                disabled={updateRequestStatus.isPending}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={requests.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </>
         )}
 
         {/* New Request Dialog */}
