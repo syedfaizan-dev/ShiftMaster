@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/table-pagination";
 import {
   Dialog,
   DialogContent,
@@ -77,9 +78,11 @@ export default function Tasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(
-    null,
-  );
+  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(null);
+
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -177,6 +180,21 @@ export default function Tasks() {
     },
   });
 
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentTasks = tasks.slice(startIndex, endIndex);
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -212,263 +230,6 @@ export default function Tasks() {
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
               Failed to load tasks. Please try again later.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </Navbar>
-    );
-  }
-
-  if (!tasks || tasks.length === 0) {
-    return (
-      <Navbar>
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Tasks</h1>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => setIsDialogOpen(true)}>
-                  Create Task
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-h-[90vh] w-[90vw] max-w-[600px] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Task</DialogTitle>
-                  <DialogDescription>
-                    Fill in the details below to create a new task.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <Form {...form}>
-                    <form
-                      id="task-form"
-                      onSubmit={form.handleSubmit(async (data) => {
-                        await createTask.mutateAsync(data);
-                      })}
-                      className="space-y-4"
-                    >
-                      <FormField
-                        control={form.control}
-                        name="shiftTypeId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Shift Type</FormLabel>
-                            <Select
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                setSelectedShiftType(value);
-                                form.setValue("inspectorId", "");
-                              }}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select shift type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {shiftTypes?.map((type) => (
-                                  <SelectItem
-                                    key={type.id}
-                                    value={type.id.toString()}
-                                  >
-                                    {type.name} ({type.startTime} -{" "}
-                                    {type.endTime})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="inspectorId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Inspector</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              disabled={
-                                !selectedShiftType || isLoadingInspectors
-                              }
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue
-                                    placeholder={
-                                      isLoadingInspectors
-                                        ? "Loading inspectors..."
-                                        : !selectedShiftType
-                                          ? "Select a shift type first"
-                                          : "Select inspector"
-                                    }
-                                  />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {inspectors?.map((inspector) => (
-                                  <SelectItem
-                                    key={inspector.id}
-                                    value={inspector.id.toString()}
-                                  >
-                                    {inspector.fullName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="taskTypeId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Task Type</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select task type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {taskTypes?.map((type) => (
-                                  <SelectItem
-                                    key={type.id}
-                                    value={type.id.toString()}
-                                  >
-                                    {type.name}{" "}
-                                    {type.description &&
-                                      `- ${type.description}`}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Status</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="PENDING">Pending</SelectItem>
-                                <SelectItem value="IN_PROGRESS">
-                                  In Progress
-                                </SelectItem>
-                                <SelectItem value="COMPLETED">
-                                  Completed
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="isFollowupNeeded"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center gap-2">
-                            <FormLabel>Follow-up Needed</FormLabel>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="assignedTo"
-                        render={({ field }) => (
-                          <FormItem className="mb-6">
-                            <FormLabel>Assign To</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select employee" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {employees?.map((employee) => (
-                                  <SelectItem
-                                    key={employee.id}
-                                    value={employee.id.toString()}
-                                  >
-                                    {employee.fullName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex justify-end gap-4 pt-4 sticky bottom-0 bg-background pb-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          form="task-form"
-                          disabled={createTask.isPending}
-                        >
-                          {createTask.isPending ? "Creating..." : "Create Task"}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-          <Alert>
-            <AlertTitle>No Tasks Found</AlertTitle>
-            <AlertDescription>
-              Create your first task to start managing work.
             </AlertDescription>
           </Alert>
         </div>
@@ -526,8 +287,7 @@ export default function Tasks() {
                                   key={type.id}
                                   value={type.id.toString()}
                                 >
-                                  {type.name} ({type.startTime} - {type.endTime}
-                                  )
+                                  {type.name} ({type.startTime} - {type.endTime})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -717,39 +477,61 @@ export default function Tasks() {
           </Dialog>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Inspector</TableHead>
-              <TableHead>Shift Type</TableHead>
-              <TableHead>Task Type</TableHead>
-              <TableHead>Task Description</TableHead>
+        {isLoadingTasks ? (
+          <div className="flex justify-center p-4">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : tasks.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Tasks Found</AlertTitle>
+            <AlertDescription>
+              Create your first task to start managing work.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Inspector</TableHead>
+                  <TableHead>Shift Type</TableHead>
+                  <TableHead>Task Type</TableHead>
+                  <TableHead>Task Description</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Followup Needed</TableHead>
+                  <TableHead>Assigned To</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentTasks.map((task) => (
+                  <TableRow key={task.id}>
+                    <TableCell>
+                      {format(new Date(task.date), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell>{task.inspector?.fullName || "Unknown"}</TableCell>
+                    <TableCell>{task.shiftType?.name || "Unknown"}</TableCell>
+                    <TableCell>{task.taskType?.name || "Unknown"}</TableCell>
+                    <TableCell>{task.taskType?.description || "Unknown"}</TableCell>
+                    <TableCell>{task.status}</TableCell>
+                    <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
+                    <TableCell>
+                      {task.assignedEmployee?.fullName || "Unknown"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-              <TableHead>Status</TableHead>
-              <TableHead>Followup Needed</TableHead>
-              <TableHead>Assigned To</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tasks.map((task) => (
-              <TableRow key={task.id}>
-                <TableCell>
-                  {format(new Date(task.date), "MMM d, yyyy")}
-                </TableCell>
-                <TableCell>{task.inspector?.fullName || "Unknown"}</TableCell>
-                <TableCell>{task.shiftType?.name || "Unknown"}</TableCell>
-                <TableCell>{task.taskType?.name || "Unknown"}</TableCell>
-                <TableCell>{task.taskType?.description || "Unknown"}</TableCell>
-                <TableCell>{task.status}</TableCell>
-                <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
-                <TableCell>
-                  {task.assignedEmployee?.fullName || "Unknown"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={tasks.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </>
+        )}
       </div>
     </Navbar>
   );
