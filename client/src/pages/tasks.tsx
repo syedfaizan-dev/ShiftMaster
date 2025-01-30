@@ -173,7 +173,10 @@ export default function Tasks() {
       const { id, ...updateData } = data;
       const res = await fetch(`/api/admin/tasks/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           ...updateData,
           inspectorId: parseInt(updateData.inspectorId),
@@ -183,14 +186,17 @@ export default function Tasks() {
         }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to update task");
+      }
       return res.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Task updated successfully" });
       setIsDialogOpen(false);
-      form.reset();
       setEditingTask(null);
+      form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/admin/tasks"] });
     },
     onError: (error: Error) => {

@@ -258,9 +258,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/admin/shifts", requireAdmin, createShift);
 
   // Admin: Update shift
-  app.put("/api/admin/shifts/:id", requireAdmin, async (req: Request, res: Response) => {
-    await updateShift(req, res);
-  });
+  app.put("/api/admin/shifts/:id", requireAdmin, updateShift);
 
   // Admin: Delete shift
   app.delete("/api/admin/shifts/:id", requireAdmin, async (req: Request, res: Response) => {
@@ -769,36 +767,17 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      // Verify that the assigned user is an employee (not admin, manager, or inspector)
-      const [assignedUser] = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.id, assignedTo),
-            eq(users.isAdmin, false),
-            eq(users.isManager, false),
-            eq(users.isInspector, false)
-          )
-        )
-        .limit(1);
-
-      if (!assignedUser) {
-        return res.status(400).json({ message: "Invalid assigned user. Must be an employee." });
-      }
-
       // Update the task
       const [updatedTask] = await db
         .update(tasks)
         .set({
-          inspectorId,
-          shiftTypeId,
-          taskTypeId,
+          inspectorId: parseInt(inspectorId),
+          shiftTypeId: parseInt(shiftTypeId),
+          taskTypeId: parseInt(taskTypeId),
           status,
           date: new Date(date),
           isFollowupNeeded,
-          assignedTo,
-          updatedBy: req.user?.id,
+          assignedTo: parseInt(assignedTo),
         })
         .where(eq(tasks.id, parseInt(id)))
         .returning();
@@ -807,6 +786,33 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error updating task:', error);
       res.status(500).json({ message: 'Error updating task' });
+    }
+  });
+
+  // Admin: Delete task
+  app.delete("/api/admin/tasks/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // Check if task exists
+      const [existingTask] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, parseInt(id)))
+        .limit(1);
+
+      if (!existingTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      await db
+        .delete(tasks)
+        .where(eq(tasks.id, parseInt(id)));
+
+      res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      res.status(500).json({ message: 'Error deleting task' });
     }
   });
 
