@@ -84,7 +84,12 @@ function RequestsPage() {
     queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
 
-  // Get unique shift types from user's shifts
+  // Add new query for all shift types
+  const { data: allShiftTypes = [] } = useQuery<ShiftType[]>({
+    queryKey: ["/api/shift-types"],
+  });
+
+  // Get unique shift types from user's shifts for the first dropdown
   const userShiftTypes = shifts
     .filter(shift => shift.inspectorId === user?.id)
     .map(shift => ({
@@ -97,17 +102,10 @@ function RequestsPage() {
       self.findIndex(v => v.id === value.id) === index
     );
 
-  // Get all unique shift types
-  const allShiftTypes = shifts
-    .map(shift => ({
-      id: shift.shiftTypeId,
-      name: shift.shiftType.name,
-      startTime: shift.shiftType.startTime,
-      endTime: shift.shiftType.endTime
-    }))
-    .filter((value, index, self) =>
-      self.findIndex(v => v.id === value.id) === index
-    );
+  // Remove duplicates from allShiftTypes array
+  const uniqueShiftTypes = allShiftTypes.filter((value, index, self) =>
+    index === self.findIndex((t) => t.id === value.id)
+  );
 
   const createRequest = useMutation({
     mutationFn: async (data: RequestFormData) => {
@@ -477,7 +475,7 @@ function RequestsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {allShiftTypes.map((shiftType) => (
+                              {uniqueShiftTypes.map((shiftType) => (
                                 <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
                                   {shiftType.name} ({format(new Date(`2000-01-01T${shiftType.startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shiftType.endTime}`), 'h:mm a')})
                                 </SelectItem>
