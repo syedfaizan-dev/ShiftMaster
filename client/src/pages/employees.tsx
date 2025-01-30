@@ -20,6 +20,7 @@ import { Loader2, Pencil } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { User } from "@db/schema";
+import { TableContainer } from "@/components/ui/table-container";
 
 const employeeSchema = z.object({
   username: z.string().email("Invalid email format"),
@@ -49,7 +50,6 @@ function EmployeesPage() {
     queryKey: ["/api/admin/users"],
     enabled: user?.isAdmin,
   });
-
 
   const createEmployee = useMutation({
     mutationFn: async (data: EmployeeFormData) => {
@@ -111,14 +111,13 @@ function EmployeesPage() {
   if (!user?.isAdmin) {
     return (
       <Navbar>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
           <p>You do not have permission to view this page.</p>
         </div>
       </Navbar>
     );
   }
-
 
   const handleSubmit = (data: EmployeeFormData) => {
     if (editingEmployee) {
@@ -130,9 +129,9 @@ function EmployeesPage() {
 
   return (
     <Navbar>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Employees</h1>
+      <div className="p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold">Employees</h1>
           <Button onClick={() => {
             setEditingEmployee(null);
             form.reset();
@@ -147,39 +146,41 @@ function EmployeesPage() {
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map((employee) => (
-                <TableRow key={employee.id}>
-                  <TableCell>{employee.fullName}</TableCell>
-                  <TableCell>{employee.username}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingEmployee(employee);
-                        form.reset({
-                          username: employee.username,
-                          fullName: employee.fullName,
-                        });
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[200px]">Full Name</TableHead>
+                  <TableHead className="min-w-[200px]">Email</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {employees.map((employee) => (
+                  <TableRow key={employee.id}>
+                    <TableCell className="font-medium">{employee.fullName}</TableCell>
+                    <TableCell>{employee.username}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingEmployee(employee);
+                          form.reset({
+                            username: employee.username,
+                            fullName: employee.fullName,
+                          });
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
