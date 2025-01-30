@@ -69,7 +69,7 @@ export function TablePagination({
         pages.push('ellipsis');
       }
 
-      // Always show last page
+      // Always show last page if not already included
       if (!pages.includes(totalPages)) {
         pages.push(totalPages);
       }
@@ -114,7 +114,7 @@ export function TablePagination({
             </PaginationItem>
 
             {getPageNumbers().map((page, idx) => (
-              <PaginationItem key={idx} className="hidden sm:inline-flex">
+              <PaginationItem key={idx}>
                 {page === 'ellipsis' ? (
                   <PaginationEllipsis />
                 ) : (
