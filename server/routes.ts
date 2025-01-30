@@ -444,8 +444,8 @@ export function registerRoutes(app: Express): Server {
         .values({
           requesterId: req.user!.id,
           type,
-          shiftTypeId,
-          targetShiftTypeId,
+          shiftTypeId: type === "SHIFT_SWAP" ? shiftTypeId : null,
+          targetShiftTypeId: type === "SHIFT_SWAP" ? targetShiftTypeId : null,
           startDate: startDate ? new Date(startDate) : null,
           endDate: endDate ? new Date(endDate) : null,
           reason,
@@ -453,7 +453,17 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      res.json(newRequest);
+      // Include the related shift types in the response
+      const requestWithDetails = await db.query.requests.findFirst({
+        where: eq(requests.id, newRequest.id),
+        with: {
+          requester: true,
+          shiftType: true,
+          targetShiftType: true,
+        }
+      });
+
+      res.json(requestWithDetails);
     } catch (error) {
       console.error('Error creating request:', error);
       res.status(500).json({ message: 'Error creating request' });

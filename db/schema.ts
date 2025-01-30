@@ -47,8 +47,8 @@ export const requests = pgTable("requests", {
   requesterId: integer("requester_id").references(() => users.id).notNull(),
   type: text("type").notNull(),
   status: text("status").default('PENDING').notNull(),
-  shiftId: integer("shift_id").references(() => shifts.id),
-  targetShiftId: integer("target_shift_id").references(() => shifts.id),
+  shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id),
+  targetShiftTypeId: integer("target_shift_type_id").references(() => shiftTypes.id),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   reason: text("reason"),
@@ -72,13 +72,13 @@ export const requestsRelations = relations(requests, ({ one }) => ({
     fields: [requests.managerId],
     references: [users.id],
   }),
-  shift: one(shifts, {
-    fields: [requests.shiftId],
-    references: [shifts.id],
+  shiftType: one(shiftTypes, {
+    fields: [requests.shiftTypeId],
+    references: [shiftTypes.id],
   }),
-  targetShift: one(shifts, {
-    fields: [requests.targetShiftId],
-    references: [shifts.id],
+  targetShiftType: one(shiftTypes, {
+    fields: [requests.targetShiftTypeId],
+    references: [shiftTypes.id],
   }),
 }));
 
