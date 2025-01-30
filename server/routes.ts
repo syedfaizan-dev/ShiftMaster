@@ -967,15 +967,15 @@ export function registerRoutes(app: Express): Server {
       const stats = await db.execute(sql`
         WITH task_counts AS (
           SELECT 
-            t."shiftTypeId",
+            t.shift_type_id as "shiftTypeId",
             st.name as "shiftTypeName",
             COUNT(*) as total,
             COUNT(CASE WHEN t.status = 'PENDING' THEN 1 END) as pending,
             COUNT(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 END) as "inProgress",
             COUNT(CASE WHEN t.status = 'COMPLETED' THEN 1 END) as completed
           FROM tasks t
-          JOIN "shiftTypes" st ON t."shiftTypeId" = st.id
-          GROUP BY t."shiftTypeId", st.name
+          JOIN shift_types st ON t.shift_type_id = st.id
+          GROUP BY t.shift_type_id, st.name
         )
         SELECT 
           "shiftTypeId",
