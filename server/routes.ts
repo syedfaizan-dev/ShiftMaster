@@ -967,30 +967,38 @@ export function registerRoutes(app: Express): Server {
       const stats = await db.execute(sql`
         WITH task_counts AS (
           SELECT 
-            t.shiftTypeId,
-            st.name as shiftTypeName,
+            t."shiftTypeId",
+            st.name as "shiftTypeName",
             COUNT(*) as total,
             COUNT(CASE WHEN t.status = 'PENDING' THEN 1 END) as pending,
-            COUNT(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 END) as inProgress,
-            COUNT(CASE WHEN t.status ='COMPLETED' THEN 1 END) as completed
+            COUNT(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 END) as "inProgress",
+            COUNT(CASE WHEN t.status = 'COMPLETED' THEN 1 END) as completed
           FROM tasks t
-          JOIN shiftTypes st ON t.shiftTypeId = st.id
-          GROUP BY t.shiftTypeId, st.name
+          JOIN "shiftTypes" st ON t."shiftTypeId" = st.id
+          GROUP BY t."shiftTypeId", st.name
         )
         SELECT 
-          shiftTypeId,
-          shiftTypeName,
+          "shiftTypeId",
+          "shiftTypeName",
           total,
           pending,
-          inProgress,
+          "inProgress",
           completed
         FROM task_counts
-        ORDER BY shiftTypeName
+        ORDER BY "shiftTypeName"
       `);
 
+      console.log('Task statistics:', stats.rows);
       res.json(stats.rows);
     } catch (error) {
       console.error('Error fetching task statistics:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
       res.status(500).json({ message: 'Error fetching task statistics' });
     }
   });
