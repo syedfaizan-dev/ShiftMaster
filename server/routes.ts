@@ -429,9 +429,18 @@ export function registerRoutes(app: Express): Server {
       }
 
       let shiftId = null;
-      let targetShiftId = null;
 
       if (type === "SHIFT_SWAP") {
+        // Verify both shift types exist
+        const [currentShiftType, targetShiftType] = await Promise.all([
+          db.select().from(shiftTypes).where(eq(shiftTypes.id, shiftTypeId)).limit(1),
+          db.select().from(shiftTypes).where(eq(shiftTypes.id, targetShiftTypeId)).limit(1)
+        ]);
+
+        if (!currentShiftType[0] || !targetShiftType[0]) {
+          return res.status(400).json({ message: "Invalid shift type" });
+        }
+
         // Find the user's shift with the specified shiftTypeId
         const [userShift] = await db
           .select()
@@ -448,19 +457,7 @@ export function registerRoutes(app: Express): Server {
           return res.status(400).json({ message: "No matching shift found for the user" });
         }
 
-        // Find a shift with the target shift type
-        const [targetShift] = await db
-          .select()
-          .from(shifts)
-          .where(eq(shifts.shiftTypeId, targetShiftTypeId))
-          .limit(1);
-
-        if (!targetShift) {
-          return res.status(400).json({ message: "No matching target shift found" });
-        }
-
         shiftId = userShift.id;
-        targetShiftId = targetShift.id;
       }
 
       const [newRequest] = await db.insert(requests)
@@ -468,7 +465,7 @@ export function registerRoutes(app: Express): Server {
           requesterId: req.user!.id,
           type,
           shiftId,
-          targetShiftId,
+          targetShiftId: null, // This will be determined when the request is approved
           startDate: startDate ? new Date(startDate) : null,
           endDate: endDate ? new Date(endDate) : null,
           reason,
