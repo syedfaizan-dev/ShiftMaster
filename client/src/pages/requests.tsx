@@ -330,6 +330,18 @@ function RequestsPage() {
                               </>
                             )}
                           </div>
+                          <div>
+                            <p className="font-medium">Target Shift Type:</p>
+                            {request.metadata?.targetShiftTypeId && (
+                              <>
+                                <p>{allShiftTypes.find(st => st.id === request.metadata.targetShiftTypeId)?.name}</p>
+                                <p className="text-sm text-gray-500">
+                                  {format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.metadata.targetShiftTypeId)?.startTime}`), 'h:mm a')} -
+                                  {format(new Date(`2000-01-01T${allShiftTypes.find(st => st.id === request.metadata.targetShiftTypeId)?.endTime}`), 'h:mm a')}
+                                </p>
+                              </>
+                            )}
+                          </div>
                         </div>
                       )}
                     </TableCell>

@@ -469,7 +469,8 @@ export function registerRoutes(app: Express): Server {
           startDate: startDate ? new Date(startDate) : null,
           endDate: endDate ? new Date(endDate) : null,
           reason,
-          status: "PENDING"
+          status: "PENDING",
+          metadata: type === "SHIFT_SWAP" ? { targetShiftTypeId } : null
         })
         .returning();
 
