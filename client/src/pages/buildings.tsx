@@ -14,9 +14,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,6 +47,26 @@ type ShiftType = {
   endTime: string;
 };
 
+interface Building {
+  id: number;
+  name: string;
+  code: string;
+  area: string;
+  supervisorId: number;
+  supervisor?: {
+    id: number;
+    fullName: string;
+  };
+  coordinators: Array<{
+    id: number;
+    coordinator: {
+      id: number;
+      fullName: string;
+    };
+    shiftType: string;
+  }>;
+}
+
 const coordinatorSchema = z.object({
   coordinatorId: z.string().min(1, "Coordinator is required"),
   shiftType: z.string().min(1, "Shift type is required")
@@ -49,13 +82,13 @@ const buildingSchema = z.object({
 
 type BuildingFormData = z.infer<typeof buildingSchema>;
 
-export default function BuildingsPage() {
+function BuildingsPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
-  const [buildingToDelete, setBuildingToDelete] = useState<any>(null);
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [buildingToDelete, setBuildingToDelete] = useState<Building | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -75,7 +108,7 @@ export default function BuildingsPage() {
     name: "coordinators"
   });
 
-  const { data: buildings = [], isLoading } = useQuery({
+  const { data: buildings = [], isLoading } = useQuery<Building[]>({
     queryKey: ["/api/admin/buildings"],
     enabled: user?.isAdmin
   });
@@ -183,14 +216,14 @@ export default function BuildingsPage() {
     remove(index);
   };
 
-  const handleEdit = (building: any) => {
+  const handleEdit = (building: Building) => {
     setSelectedBuilding(building);
     form.reset({
       name: building.name,
       code: building.code,
       supervisorId: String(building.supervisorId),
       area: building.area,
-      coordinators: building.coordinators.map((coord: any) => ({
+      coordinators: building.coordinators.map((coord) => ({
         coordinatorId: String(coord.coordinator.id),
         shiftType: coord.shiftType
       }))
@@ -226,14 +259,14 @@ export default function BuildingsPage() {
     {
       header: "Supervisor",
       accessorKey: "supervisor",
-      cell: ({ row }) => row.original?.supervisor?.fullName || "Not assigned",
+      cell: ({ row }: { row: { original: Building } }) => row.original?.supervisor?.fullName || "Not assigned",
     },
     {
       header: "Coordinators",
       accessorKey: "coordinators",
-      cell: ({ row }) => (
+      cell: ({ row }: { row: { original: Building } }) => (
         <div className="flex flex-col gap-1">
-          {row.original?.coordinators?.map((coord: any) => (
+          {row.original?.coordinators?.map((coord) => (
             <Badge key={coord.id} variant="secondary">
               {coord.coordinator.fullName} ({coord.shiftType})
             </Badge>
@@ -244,7 +277,7 @@ export default function BuildingsPage() {
     {
       header: "Actions",
       id: "actions",
-      cell: ({ row }) => (
+      cell: ({ row }: { row: { original: Building } }) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
@@ -519,3 +552,5 @@ export default function BuildingsPage() {
     </Navbar>
   );
 }
+
+export default BuildingsPage;
