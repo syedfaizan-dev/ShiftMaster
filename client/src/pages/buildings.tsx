@@ -260,42 +260,51 @@ function BuildingsPage() {
     {
       header: "Supervisor",
       accessorKey: "supervisor",
-      cell: ({ row }) => row.original?.supervisor?.fullName || "Not assigned",
+      cell: ({ row }) => {
+        const building = row.original;
+        return building?.supervisor?.fullName || "Not assigned";
+      },
     },
     {
       header: "Coordinators",
       accessorKey: "coordinators",
-      cell: ({ row }) => (
-        <div className="flex flex-col gap-1">
-          {row.original?.coordinators?.map((coord) => (
-            <Badge key={coord.id} variant="secondary">
-              {coord.coordinator.fullName} ({coord.shiftType})
-            </Badge>
-          ))}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const building = row.original;
+        return (
+          <div className="flex flex-col gap-1">
+            {building?.coordinators?.map((coord) => (
+              <Badge key={coord.id} variant="secondary">
+                {coord.coordinator.fullName} ({coord.shiftType})
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       header: "Actions",
       id: "actions",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setBuildingToDelete(row.original)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const building = row.original;
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(building)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setBuildingToDelete(building)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
