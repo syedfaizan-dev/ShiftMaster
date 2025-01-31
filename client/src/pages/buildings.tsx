@@ -60,7 +60,7 @@ export default function BuildingsPage() {
 
         <div className="rounded-md border">
           <Table>
-            <TableHeader>
+            <TableHeader className="hidden md:table-header-group">
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Code</TableHead>
@@ -80,17 +80,26 @@ export default function BuildingsPage() {
                 );
 
                 return (
-                  <TableRow key={building.id}>
-                    <TableCell>{building.name}</TableCell>
-                    <TableCell>{building.code}</TableCell>
-                    <TableCell>{building.area}</TableCell>
-                    <TableCell>
+                  <TableRow 
+                    key={building.id}
+                    className="block md:table-row border-b md:border-b-0 p-4 md:p-0"
+                  >
+                    <TableCell className="block md:table-cell py-2 md:py-4 before:content-['Name_:'] md:before:content-none before:font-bold before:mr-2">
+                      {building.name}
+                    </TableCell>
+                    <TableCell className="block md:table-cell py-2 md:py-4 before:content-['Code_:'] md:before:content-none before:font-bold before:mr-2">
+                      {building.code}
+                    </TableCell>
+                    <TableCell className="block md:table-cell py-2 md:py-4 before:content-['Area_:'] md:before:content-none before:font-bold before:mr-2">
+                      {building.area}
+                    </TableCell>
+                    <TableCell className="block md:table-cell py-2 md:py-4 before:content-['Supervisor_:'] md:before:content-none before:font-bold before:mr-2">
                       {building.supervisor?.fullName || "Not assigned"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="block md:table-cell py-2 md:py-4 before:content-['Morning_Coordinator_:'] md:before:content-none before:font-bold before:mr-2">
                       {morningCoordinator?.coordinator.fullName || "Not assigned"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="block md:table-cell py-2 md:py-4 before:content-['Evening_Coordinator_:'] md:before:content-none before:font-bold before:mr-2">
                       {eveningCoordinator?.coordinator.fullName || "Not assigned"}
                     </TableCell>
                   </TableRow>
