@@ -7,7 +7,7 @@ import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
 import { getShifts } from "./routes/shifts";
 import { sql } from "drizzle-orm";
-import { getBuildings, createBuilding, assignCoordinator, updateBuildingSupervisor } from "./routes/buildings";
+import { getBuildings, createBuilding, updateBuilding, updateBuildingCoordinator } from "./routes/buildings";
 
 export const createShift = async (req: Request, res: Response) => {
   try {
@@ -1005,8 +1005,8 @@ export function registerRoutes(app: Express): Server {
   // Building management routes
   app.get("/api/admin/buildings", requireAdmin, getBuildings);
   app.post("/api/admin/buildings", requireAdmin, createBuilding);
-  app.post("/api/admin/buildings/:id/assign-coordinator", requireAdmin, assignCoordinator);
-  app.put("/api/admin/buildings/:id/supervisor", requireAdmin, updateBuildingSupervisor);
+  app.put("/api/admin/buildings/:id", requireAdmin, updateBuilding);
+  app.put("/api/admin/buildings/:id/coordinator", requireAdmin, updateBuildingCoordinator);
 
   const httpServer = createServer(app);
   return httpServer;

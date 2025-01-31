@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { users } from "../schema";
 
@@ -6,18 +6,8 @@ export const buildings = pgTable("buildings", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   code: text("code").notNull().unique(),
+  area: text("area").notNull(),
   supervisorId: integer("supervisor_id").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const buildingAreas = pgTable("building_areas", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  buildingId: integer("building_id")
-    .notNull()
-    .references(() => buildings.id),
-  isCentralArea: boolean("is_central_area").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -41,15 +31,7 @@ export const buildingsRelations = relations(buildings, ({ one, many }) => ({
     fields: [buildings.supervisorId],
     references: [users.id],
   }),
-  areas: many(buildingAreas),
   coordinators: many(buildingCoordinators),
-}));
-
-export const buildingAreasRelations = relations(buildingAreas, ({ one }) => ({
-  building: one(buildings, {
-    fields: [buildingAreas.buildingId],
-    references: [buildings.id],
-  }),
 }));
 
 export const buildingCoordinatorsRelations = relations(buildingCoordinators, ({ one }) => ({

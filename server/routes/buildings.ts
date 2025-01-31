@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "@db";
-import { buildings, buildingAreas, buildingCoordinators } from "@db/schema/buildings";
+import { buildings, buildingCoordinators } from "@db/schema/buildings";
 import { eq, and } from "drizzle-orm";
 
 // Get all buildings with their supervisors and coordinators
@@ -9,7 +9,6 @@ export const getBuildings = async (req: Request, res: Response) => {
     const allBuildings = await db.query.buildings.findMany({
       with: {
         supervisor: true,
-        areas: true,
         coordinators: {
           with: {
             coordinator: true,
@@ -27,18 +26,25 @@ export const getBuildings = async (req: Request, res: Response) => {
 // Create a new building
 export const createBuilding = async (req: Request, res: Response) => {
   try {
-    const { name, code, supervisorId, areas } = req.body;
-    
+    const { name, code, supervisorId, area, coordinators } = req.body;
+
+    // Create building first
     const [building] = await db.insert(buildings)
-      .values({ name, code, supervisorId })
+      .values({
+        name,
+        code,
+        area,
+        supervisorId: parseInt(supervisorId),
+      })
       .returning();
 
-    if (areas && areas.length > 0) {
-      await db.insert(buildingAreas)
-        .values(areas.map((area: { name: string; isCentralArea: boolean }) => ({
-          name: area.name,
+    // Then create coordinator assignments
+    if (coordinators && coordinators.length > 0) {
+      await db.insert(buildingCoordinators)
+        .values(coordinators.map((coord: { coordinatorId: string; shiftType: string }) => ({
           buildingId: building.id,
-          isCentralArea: area.isCentralArea,
+          coordinatorId: parseInt(coord.coordinatorId),
+          shiftType: coord.shiftType,
         })));
     }
 
@@ -49,50 +55,63 @@ export const createBuilding = async (req: Request, res: Response) => {
   }
 };
 
-// Assign coordinator to a building
-export const assignCoordinator = async (req: Request, res: Response) => {
-  try {
-    const { buildingId, coordinatorId, shiftType } = req.body;
-
-    // Check if there's already a coordinator for this shift
-    const existingCoordinator = await db.query.buildingCoordinators.findFirst({
-      where: and(
-        eq(buildingCoordinators.buildingId, buildingId),
-        eq(buildingCoordinators.shiftType, shiftType)
-      ),
-    });
-
-    if (existingCoordinator) {
-      return res.status(400).json({
-        message: `A coordinator for ${shiftType} shift is already assigned to this building`,
-      });
-    }
-
-    const [assignment] = await db.insert(buildingCoordinators)
-      .values({ buildingId, coordinatorId, shiftType })
-      .returning();
-
-    res.status(201).json(assignment);
-  } catch (error) {
-    console.error("Error assigning coordinator:", error);
-    res.status(500).json({ message: "Error assigning coordinator" });
-  }
-};
-
-// Update building supervisor
-export const updateBuildingSupervisor = async (req: Request, res: Response) => {
+// Update building details
+export const updateBuilding = async (req: Request, res: Response) => {
   try {
     const { buildingId } = req.params;
-    const { supervisorId } = req.body;
+    const { name, code, supervisorId, area } = req.body;
 
     const [updated] = await db.update(buildings)
-      .set({ supervisorId })
+      .set({
+        name,
+        code,
+        area,
+        supervisorId: parseInt(supervisorId),
+      })
       .where(eq(buildings.id, parseInt(buildingId)))
       .returning();
 
     res.json(updated);
   } catch (error) {
-    console.error("Error updating building supervisor:", error);
-    res.status(500).json({ message: "Error updating building supervisor" });
+    console.error("Error updating building:", error);
+    res.status(500).json({ message: "Error updating building" });
+  }
+};
+
+// Update building coordinator
+export const updateBuildingCoordinator = async (req: Request, res: Response) => {
+  try {
+    const { buildingId } = req.params;
+    const { coordinatorId, shiftType } = req.body;
+
+    // Check if there's already a coordinator for this shift
+    const [existing] = await db.select()
+      .from(buildingCoordinators)
+      .where(
+        and(
+          eq(buildingCoordinators.buildingId, parseInt(buildingId)),
+          eq(buildingCoordinators.shiftType, shiftType)
+        )
+      );
+
+    if (existing) {
+      // Update existing coordinator
+      await db.update(buildingCoordinators)
+        .set({ coordinatorId: parseInt(coordinatorId) })
+        .where(eq(buildingCoordinators.id, existing.id));
+    } else {
+      // Add new coordinator
+      await db.insert(buildingCoordinators)
+        .values({
+          buildingId: parseInt(buildingId),
+          coordinatorId: parseInt(coordinatorId),
+          shiftType,
+        });
+    }
+
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("Error updating building coordinator:", error);
+    res.status(500).json({ message: "Error updating building coordinator" });
   }
 };

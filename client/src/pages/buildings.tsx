@@ -2,14 +2,6 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,13 +14,7 @@ import { Loader2, Pencil, Plus, Minus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-import { TablePagination } from "@/components/table-pagination";
-import { Checkbox } from "@/components/ui/checkbox";
-
-const areaSchema = z.object({
-  name: z.string().min(1, "Area name is required"),
-  isCentralArea: z.boolean().default(false)
-});
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 
 const coordinatorSchema = z.object({
   coordinatorId: z.string().min(1, "Coordinator is required"),
@@ -41,8 +27,8 @@ const buildingSchema = z.object({
   name: z.string().min(1, "Building name is required"),
   code: z.string().min(1, "Building code is required"),
   supervisorId: z.string().min(1, "Supervisor is required"),
-  areas: z.array(areaSchema).min(1, "At least one area is required"),
-  coordinators: z.array(coordinatorSchema)
+  area: z.string().min(1, "Area is required"),
+  coordinators: z.array(coordinatorSchema).min(1, "At least one coordinator is required")
 });
 
 type BuildingFormData = z.infer<typeof buildingSchema>;
@@ -61,8 +47,8 @@ export default function BuildingsPage() {
       name: "",
       code: "",
       supervisorId: "",
-      areas: [{ name: "", isCentralArea: false }],
-      coordinators: []
+      area: "",
+      coordinators: [{ coordinatorId: "", shiftType: "MORNING" }]
     }
   });
 
@@ -71,12 +57,23 @@ export default function BuildingsPage() {
     enabled: user?.isAdmin
   });
 
+  // Query for admin users only to be set as supervisors
+  const { data: supervisors = [] } = useQuery({
+    queryKey: ["/api/admin/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/users");
+      const users = await response.json();
+      return users.filter((user: any) => user.isAdmin);
+    },
+    enabled: user?.isAdmin
+  });
+
+  // Query for managers who can be coordinators
   const { data: managers = [] } = useQuery({
     queryKey: ["/api/admin/managers"],
     enabled: user?.isAdmin
   });
 
-  // Calculate pagination
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const currentBuildings = buildings.slice(startIndex, endIndex);
@@ -107,39 +104,63 @@ export default function BuildingsPage() {
     },
   });
 
-  const assignCoordinator = useMutation({
-    mutationFn: async ({ buildingId, coordinatorId, shiftType }: { buildingId: number; coordinatorId: string; shiftType: string }) => {
-      const res = await fetch(`/api/admin/buildings/${buildingId}/assign-coordinator`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coordinatorId, shiftType }),
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Coordinator assigned successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/buildings"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
-      });
-    },
-  });
-
-  const addArea = () => {
-    const currentAreas = form.getValues("areas");
-    form.setValue("areas", [...currentAreas, { name: "", isCentralArea: false }]);
+  const addCoordinator = () => {
+    const currentCoordinators = form.getValues("coordinators");
+    form.setValue("coordinators", [...currentCoordinators, { coordinatorId: "", shiftType: "MORNING" }]);
   };
 
-  const removeArea = (index: number) => {
-    const currentAreas = form.getValues("areas");
-    form.setValue("areas", currentAreas.filter((_, i) => i !== index));
+  const removeCoordinator = (index: number) => {
+    const currentCoordinators = form.getValues("coordinators");
+    form.setValue("coordinators", currentCoordinators.filter((_, i) => i !== index));
   };
+
+  const columns = [
+    {
+      header: "Name",
+      accessorKey: "name",
+    },
+    {
+      header: "Code",
+      accessorKey: "code",
+    },
+    {
+      header: "Area",
+      accessorKey: "area",
+    },
+    {
+      header: "Supervisor",
+      accessorKey: "supervisor",
+      cell: (value: any) => value?.fullName || "Not assigned",
+    },
+    {
+      header: "Coordinators",
+      accessorKey: "coordinators",
+      cell: (coordinators: any[]) => (
+        <div className="flex flex-col gap-1">
+          {coordinators?.map((coord: any) => (
+            <Badge key={coord.id} variant="secondary">
+              {coord.coordinator.fullName} ({coord.shiftType})
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      header: "Actions",
+      accessorKey: "id",
+      cell: (value: number) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            // Handle edit
+          }}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      ),
+    },
+  ];
 
   if (!user?.isAdmin) {
     return (
@@ -170,75 +191,29 @@ export default function BuildingsPage() {
           <div className="flex justify-center p-4">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
+        ) : buildings.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Buildings</AlertTitle>
+            <AlertDescription>
+              There are no buildings in the system yet.
+            </AlertDescription>
+          </Alert>
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Supervisor</TableHead>
-                  <TableHead>Areas</TableHead>
-                  <TableHead>Coordinators</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentBuildings.map((building: any) => (
-                  <TableRow key={building.id}>
-                    <TableCell>{building.name}</TableCell>
-                    <TableCell>{building.code}</TableCell>
-                    <TableCell>
-                      {building.supervisor?.fullName || "Not assigned"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        {building.areas?.map((area: any) => (
-                          <Badge
-                            key={area.id}
-                            variant={area.isCentralArea ? "default" : "outline"}
-                          >
-                            {area.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {building.coordinators?.map((coord: any) => (
-                          <div key={coord.id} className="flex items-center gap-2">
-                            <Badge variant="secondary">
-                              {coord.coordinator.fullName} ({coord.shiftType})
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            // Handle edit
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={buildings.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
+            <ResponsiveTable
+              columns={columns}
+              data={currentBuildings}
             />
+
+            <div className="mt-4">
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={buildings.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
           </>
         )}
 
@@ -279,10 +254,24 @@ export default function BuildingsPage() {
 
                 <FormField
                   control={form.control}
+                  name="area"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Area</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter area name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="supervisorId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Supervisor</FormLabel>
+                      <FormLabel>Supervisor (Admin)</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -290,9 +279,9 @@ export default function BuildingsPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {managers.map((manager: any) => (
-                            <SelectItem key={manager.id} value={String(manager.id)}>
-                              {manager.fullName}
+                          {supervisors.map((supervisor: any) => (
+                            <SelectItem key={supervisor.id} value={String(supervisor.id)}>
+                              {supervisor.fullName}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -304,38 +293,54 @@ export default function BuildingsPage() {
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">Areas</h3>
-                    <Button type="button" variant="outline" size="sm" onClick={addArea}>
+                    <h3 className="text-lg font-semibold">Shift Coordinators</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addCoordinator}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Area
+                      Add Coordinator
                     </Button>
                   </div>
-                  {form.getValues("areas").map((_, index) => (
+                  {form.getValues("coordinators").map((_, index) => (
                     <div key={index} className="flex gap-4 items-start">
                       <FormField
                         control={form.control}
-                        name={`areas.${index}.name`}
+                        name={`coordinators.${index}.coordinatorId`}
                         render={({ field }) => (
                           <FormItem className="flex-1">
-                            <FormControl>
-                              <Input {...field} placeholder="Area name" />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select coordinator" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {managers.map((manager: any) => (
+                                  <SelectItem key={manager.id} value={String(manager.id)}>
+                                    {manager.fullName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                       <FormField
                         control={form.control}
-                        name={`areas.${index}.isCentralArea`}
+                        name={`coordinators.${index}.shiftType`}
                         render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 h-10">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">Central Area</FormLabel>
+                          <FormItem className="flex-1">
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select shift type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="MORNING">Morning</SelectItem>
+                                <SelectItem value="EVENING">Evening</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -344,7 +349,7 @@ export default function BuildingsPage() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeArea(index)}
+                          onClick={() => removeCoordinator(index)}
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
