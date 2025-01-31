@@ -39,6 +39,7 @@ import Navbar from "@/components/navbar";
 import * as z from "zod";
 import { TablePagination } from "@/components/table-pagination";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
+import type { ColumnDef } from "@tanstack/react-table";
 
 type ShiftType = {
   id: number;
@@ -243,34 +244,30 @@ function BuildingsPage() {
     }
   };
 
-  const columns = [
+  const columns: ColumnDef<Building>[] = [
     {
       header: "Name",
       accessorKey: "name",
-      cell: ({ row }: { row: { original: Building } }) => row.original.name,
     },
     {
       header: "Code",
       accessorKey: "code",
-      cell: ({ row }: { row: { original: Building } }) => row.original.code,
     },
     {
       header: "Area",
       accessorKey: "area",
-      cell: ({ row }: { row: { original: Building } }) => row.original.area,
     },
     {
       header: "Supervisor",
       accessorKey: "supervisor",
-      cell: ({ row }: { row: { original: Building } }) => 
-        row.original.supervisor?.fullName || "Not assigned",
+      cell: ({ row }) => row.original?.supervisor?.fullName || "Not assigned",
     },
     {
       header: "Coordinators",
       accessorKey: "coordinators",
-      cell: ({ row }: { row: { original: Building } }) => (
+      cell: ({ row }) => (
         <div className="flex flex-col gap-1">
-          {row.original.coordinators?.map((coord) => (
+          {row.original?.coordinators?.map((coord) => (
             <Badge key={coord.id} variant="secondary">
               {coord.coordinator.fullName} ({coord.shiftType})
             </Badge>
@@ -281,7 +278,7 @@ function BuildingsPage() {
     {
       header: "Actions",
       id: "actions",
-      cell: ({ row }: { row: { original: Building } }) => (
+      cell: ({ row }) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
