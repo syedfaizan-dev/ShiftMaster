@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil, Plus, Minus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -57,6 +57,12 @@ export default function BuildingsPage() {
     }
   });
 
+  // Add useFieldArray hook for managing dynamic coordinator fields
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "coordinators"
+  });
+
   const { data: buildings = [], isLoading } = useQuery({
     queryKey: ["/api/admin/buildings"],
     enabled: user?.isAdmin
@@ -68,14 +74,9 @@ export default function BuildingsPage() {
     enabled: user?.isAdmin
   });
 
-  // Query for admin users only to be set as supervisors
+  // Query for all users who can be supervisors
   const { data: supervisors = [] } = useQuery({
     queryKey: ["/api/admin/users"],
-    queryFn: async () => {
-      const response = await fetch("/api/admin/users");
-      const users = await response.json();
-      return users.filter((user: any) => user.isAdmin);
-    },
     enabled: user?.isAdmin
   });
 
@@ -116,13 +117,11 @@ export default function BuildingsPage() {
   });
 
   const addCoordinator = () => {
-    const currentCoordinators = form.getValues("coordinators");
-    form.setValue("coordinators", [...currentCoordinators, { coordinatorId: "", shiftType: "" }]);
+    append({ coordinatorId: "", shiftType: "" });
   };
 
   const removeCoordinator = (index: number) => {
-    const currentCoordinators = form.getValues("coordinators");
-    form.setValue("coordinators", currentCoordinators.filter((_, i) => i !== index));
+    remove(index);
   };
 
   const columns = [
@@ -282,7 +281,7 @@ export default function BuildingsPage() {
                   name="supervisorId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Supervisor (Admin)</FormLabel>
+                      <FormLabel>Supervisor</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -310,8 +309,8 @@ export default function BuildingsPage() {
                       Add Coordinator
                     </Button>
                   </div>
-                  {form.getValues("coordinators").map((_, index) => (
-                    <div key={index} className="flex gap-4 items-start">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="flex gap-4 items-start">
                       <FormField
                         control={form.control}
                         name={`coordinators.${index}.coordinatorId`}
