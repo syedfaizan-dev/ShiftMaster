@@ -226,14 +226,14 @@ export default function BuildingsPage() {
     {
       header: "Supervisor",
       accessorKey: "supervisor",
-      cell: (value: any) => value?.fullName || "Not assigned",
+      cell: ({ row }) => row.original?.supervisor?.fullName || "Not assigned",
     },
     {
       header: "Coordinators",
       accessorKey: "coordinators",
-      cell: (coordinators: any[]) => (
+      cell: ({ row }) => (
         <div className="flex flex-col gap-1">
-          {coordinators?.map((coord: any) => (
+          {row.original?.coordinators?.map((coord: any) => (
             <Badge key={coord.id} variant="secondary">
               {coord.coordinator.fullName} ({coord.shiftType})
             </Badge>
@@ -243,20 +243,20 @@ export default function BuildingsPage() {
     },
     {
       header: "Actions",
-      accessorKey: "id",
-      cell: (info: any) => (
+      id: "actions",
+      cell: ({ row }) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handleEdit(info.row.original)}
+            onClick={() => handleEdit(row.original)}
           >
             <Pencil className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setBuildingToDelete(info.row.original)}
+            onClick={() => setBuildingToDelete(row.original)}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
