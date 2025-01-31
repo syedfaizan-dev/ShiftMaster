@@ -2,14 +2,6 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -24,6 +16,7 @@ import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { User } from "@db/schema";
 import { TablePagination } from "@/components/table-pagination";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,9 +45,8 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5); // Changed default to 5
+  const [pageSize, setPageSize] = useState(5);
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -71,19 +63,17 @@ export default function UsersPage() {
     enabled: user?.isAdmin,
   });
 
-  // Calculate pagination values
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const currentUsers = users.slice(startIndex, endIndex);
 
-  // Handle pagination changes
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setCurrentPage(1); // Reset to first page when changing page size
+    setCurrentPage(1);
   };
 
   const createUser = useMutation({
@@ -214,6 +204,76 @@ export default function UsersPage() {
     return "employee";
   };
 
+  const columns = [
+    {
+      header: "Full Name",
+      accessorKey: "fullName",
+    },
+    {
+      header: "Email",
+      accessorKey: "username",
+    },
+    {
+      header: "Role",
+      accessorKey: "role",
+      cell: (_: any, user: User) => {
+        const roleDetails = getRoleDetails(user);
+        return (
+          <Badge variant={roleDetails.variant}>
+            {roleDetails.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      header: "Actions",
+      accessorKey: "id",
+      cell: (_: any, user: User) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setEditingUser(user);
+              form.reset({
+                username: user.username,
+                fullName: user.fullName,
+                role: getUserRole(user),
+              });
+              setIsDialogOpen(true);
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the user
+                  and all associated data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteUser.mutate(user.id)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <Navbar>
       <div className="p-6">
@@ -239,83 +299,22 @@ export default function UsersPage() {
           </div>
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Full Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentUsers.map((user) => {
-                  const roleDetails = getRoleDetails(user);
-                  return (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.fullName}</TableCell>
-                      <TableCell>{user.username}</TableCell>
-                      <TableCell>
-                        <Badge variant={roleDetails.variant}>
-                          {roleDetails.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingUser(user);
-                              form.reset({
-                                username: user.username,
-                                fullName: user.fullName,
-                                role: getUserRole(user),
-                              });
-                              setIsDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the user
-                                  and all associated data.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteUser.mutate(user.id)}
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="rounded-md border">
+              <ResponsiveTable
+                columns={columns}
+                data={currentUsers}
+              />
+            </div>
 
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={users.length}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
+            <div className="mt-4">
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={users.length}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </div>
           </>
         )}
 
