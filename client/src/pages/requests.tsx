@@ -319,44 +319,56 @@ function RequestsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="space-y-1">
-                <p className="font-medium text-sm">Current Shift:</p>
-                {row.shiftType && (
+              {row.shiftTypeId && (
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">Current Shift:</p>
                   <div className="text-sm">
-                    <p>{row.shiftType.name}</p>
-                    <p className="text-gray-500">
-                      {format(
-                        new Date(`2000-01-01T${row.shiftType.startTime}`),
-                        "h:mm a",
-                      )}{" "}
-                      -
-                      {format(
-                        new Date(`2000-01-01T${row.shiftType.endTime}`),
-                        "h:mm a",
-                      )}
-                    </p>
+                    {row.shiftType ? (
+                      <>
+                        <p>{row.shiftType.name}</p>
+                        <p className="text-gray-500">
+                          {format(
+                            new Date(`2000-01-01T${row.shiftType.startTime}`),
+                            "h:mm a"
+                          )}{" "}
+                          -
+                          {format(
+                            new Date(`2000-01-01T${row.shiftType.endTime}`),
+                            "h:mm a"
+                          )}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-gray-500">Shift details not available</p>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="space-y-1">
-                <p className="font-medium text-sm">Target Shift:</p>
-                {row.targetShiftType && (
+                </div>
+              )}
+              {row.targetShiftTypeId && (
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">Target Shift:</p>
                   <div className="text-sm">
-                    <p>{row.targetShiftType.name}</p>
-                    <p className="text-gray-500">
-                      {format(
-                        new Date(`2000-01-01T${row.targetShiftType.startTime}`),
-                        "h:mm a",
-                      )}{" "}
-                      -
-                      {format(
-                        new Date(`2000-01-01T${row.targetShiftType.endTime}`),
-                        "h:mm a",
-                      )}
-                    </p>
+                    {row.targetShiftType ? (
+                      <>
+                        <p>{row.targetShiftType.name}</p>
+                        <p className="text-gray-500">
+                          {format(
+                            new Date(`2000-01-01T${row.targetShiftType.startTime}`),
+                            "h:mm a"
+                          )}{" "}
+                          -
+                          {format(
+                            new Date(`2000-01-01T${row.targetShiftType.endTime}`),
+                            "h:mm a"
+                          )}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-gray-500">Target shift details not available</p>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -152,6 +152,8 @@ export type RequestWithRelations = Request & {
   requester?: User;
   reviewer?: User | null;
   manager?: User | null;
+  shiftType?: typeof shiftTypes.$inferSelect;
+  targetShiftType?: typeof shiftTypes.$inferSelect;
 };
 
 export const taskTypes = pgTable("task_types", {
