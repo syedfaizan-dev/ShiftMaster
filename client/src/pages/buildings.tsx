@@ -3,6 +3,14 @@ import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -37,7 +45,6 @@ import { Loader2, Pencil, Plus, Minus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { TablePagination } from "@/components/table-pagination";
 
 type ShiftType = {
@@ -243,61 +250,6 @@ function BuildingsPage() {
     }
   };
 
-  const columns = [
-    {
-      header: "Name",
-      accessorKey: "name",
-    },
-    {
-      header: "Code",
-      accessorKey: "code",
-    },
-    {
-      header: "Area",
-      accessorKey: "area",
-    },
-    {
-      header: "Supervisor",
-      accessorKey: "supervisor",
-      cell: ({ row }: { row: { original: Building } }) => row.original?.supervisor?.fullName || "Not assigned",
-    },
-    {
-      header: "Coordinators",
-      accessorKey: "coordinators",
-      cell: ({ row }: { row: { original: Building } }) => (
-        <div className="flex flex-col gap-1">
-          {row.original?.coordinators?.map((coord) => (
-            <Badge key={coord.id} variant="secondary">
-              {coord.coordinator.fullName} ({coord.shiftType})
-            </Badge>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: "Actions",
-      id: "actions",
-      cell: ({ row }: { row: { original: Building } }) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(row.original)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setBuildingToDelete(row.original)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -336,10 +288,59 @@ function BuildingsPage() {
           </Alert>
         ) : (
           <>
-            <ResponsiveTable
-              columns={columns}
-              data={currentBuildings}
-            />
+            <div className="w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Area</TableHead>
+                    <TableHead>Supervisor</TableHead>
+                    <TableHead>Coordinators</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentBuildings.map((building) => (
+                    <TableRow key={building.id}>
+                      <TableCell>{building.name}</TableCell>
+                      <TableCell>{building.code}</TableCell>
+                      <TableCell>{building.area}</TableCell>
+                      <TableCell>
+                        {building.supervisor?.fullName || "Not assigned"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {building.coordinators?.map((coord) => (
+                            <Badge key={coord.id} variant="secondary">
+                              {coord.coordinator.fullName} ({coord.shiftType})
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(building)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setBuildingToDelete(building)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
             <div className="mt-4">
               <TablePagination
