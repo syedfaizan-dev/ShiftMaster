@@ -16,11 +16,16 @@ import Navbar from "@/components/navbar";
 import * as z from "zod";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 
+type ShiftType = {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+};
+
 const coordinatorSchema = z.object({
   coordinatorId: z.string().min(1, "Coordinator is required"),
-  shiftType: z.enum(["MORNING", "EVENING"], {
-    required_error: "Shift type is required"
-  })
+  shiftType: z.string().min(1, "Shift type is required")
 });
 
 const buildingSchema = z.object({
@@ -48,12 +53,18 @@ export default function BuildingsPage() {
       code: "",
       supervisorId: "",
       area: "",
-      coordinators: [{ coordinatorId: "", shiftType: "MORNING" }]
+      coordinators: [{ coordinatorId: "", shiftType: "" }]
     }
   });
 
   const { data: buildings = [], isLoading } = useQuery({
     queryKey: ["/api/admin/buildings"],
+    enabled: user?.isAdmin
+  });
+
+  // Query for shift types
+  const { data: shiftTypes = [] } = useQuery<ShiftType[]>({
+    queryKey: ["/api/shift-types"],
     enabled: user?.isAdmin
   });
 
@@ -106,7 +117,7 @@ export default function BuildingsPage() {
 
   const addCoordinator = () => {
     const currentCoordinators = form.getValues("coordinators");
-    form.setValue("coordinators", [...currentCoordinators, { coordinatorId: "", shiftType: "MORNING" }]);
+    form.setValue("coordinators", [...currentCoordinators, { coordinatorId: "", shiftType: "" }]);
   };
 
   const removeCoordinator = (index: number) => {
@@ -336,8 +347,11 @@ export default function BuildingsPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="MORNING">Morning</SelectItem>
-                                <SelectItem value="EVENING">Evening</SelectItem>
+                                {shiftTypes.map((shiftType) => (
+                                  <SelectItem key={shiftType.id} value={shiftType.name}>
+                                    {shiftType.name} ({shiftType.startTime} - {shiftType.endTime})
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />
