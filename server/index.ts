@@ -68,7 +68,14 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
   });
 
+  // Important: Setup API routes before Vite middleware
   if (app.get("env") === "development") {
+    // Only serve static assets through Vite in development
+    app.use("/api", (req, res, next) => {
+      if (!res.headersSent) {
+        next();
+      }
+    });
     await setupVite(app, server);
   } else {
     serveStatic(app);

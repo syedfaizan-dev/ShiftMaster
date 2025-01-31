@@ -78,6 +78,7 @@ export function sendShiftAssignmentEmail(userEmail: string, shiftDetails: any) {
   return sendEmail({
     to: userEmail,
     subject,
+    text: 'New Shift Assignment',
     html,
   });
 }

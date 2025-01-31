@@ -2,7 +2,32 @@ import { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
 import { shifts, users, roles, shiftTypes } from "@db/schema";
-import { sendShiftAssignmentEmail } from "../utils/email";
+import { sendShiftAssignmentEmail, sendEmail } from "../utils/email";
+
+// Test route for email functionality
+export async function testEmail(req: Request, res: Response) {
+  try {
+    console.log('Testing email functionality...');
+
+    const result = await sendEmail({
+      to: req.query.email as string || process.env.SMTP_USER,
+      subject: 'Test Email from Workforce Management System',
+      text: 'This is a test email to verify the email sending functionality.',
+      html: '<h1>Test Email</h1><p>This is a test email to verify the email sending functionality.</p>'
+    });
+
+    if (result) {
+      console.log('Test email sent successfully');
+      res.json({ success: true, message: 'Test email sent successfully' });
+    } else {
+      console.log('Failed to send test email');
+      res.status(500).json({ success: false, message: 'Failed to send test email' });
+    }
+  } catch (error) {
+    console.error('Error in test email route:', error);
+    res.status(500).json({ success: false, message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+}
 
 export async function getShifts(req: Request, res: Response) {
   try {

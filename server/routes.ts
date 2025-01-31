@@ -5,7 +5,7 @@ import { db } from "@db";
 import { shifts, users, roles, requests, shiftTypes, tasks, taskTypes } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
-import { getShifts } from "./routes/shifts";
+import { getShifts, testEmail } from "./routes/shifts";
 import { sql } from "drizzle-orm";
 import { getBuildings, createBuilding, updateBuilding, updateBuildingCoordinator } from "./routes/buildings";
 
@@ -87,6 +87,21 @@ const updateShift = async (req: Request, res: Response) => {
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // Test email route
+  app.get("/api/test-email", async (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      console.log('Testing email endpoint hit with query:', req.query);
+      await testEmail(req, res);
+    } catch (error) {
+      console.error('Error in test email route:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
 
   // Middleware to check if user is authenticated
   const requireAuth = (req: Request, res: Response, next: NextFunction) => {
