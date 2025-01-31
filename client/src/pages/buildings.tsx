@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import Navbar from "@/components/navbar";
 import { useState } from "react";
 
 interface Building {
@@ -43,60 +44,62 @@ export default function BuildingsPage() {
   });
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <Navbar>Loading...</Navbar>;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Buildings</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Building
-        </Button>
-      </div>
-      
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Area</TableHead>
-              <TableHead>Supervisor</TableHead>
-              <TableHead>Morning Coordinator</TableHead>
-              <TableHead>Evening Coordinator</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {buildings.map((building) => {
-              const morningCoordinator = building.coordinators.find(
-                (c) => c.shiftType === "MORNING"
-              );
-              const eveningCoordinator = building.coordinators.find(
-                (c) => c.shiftType === "EVENING"
-              );
+    <Navbar>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold tracking-tight">Buildings</h1>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Building
+          </Button>
+        </div>
 
-              return (
-                <TableRow key={building.id}>
-                  <TableCell>{building.name}</TableCell>
-                  <TableCell>{building.code}</TableCell>
-                  <TableCell>{building.area}</TableCell>
-                  <TableCell>
-                    {building.supervisor?.fullName || "Not assigned"}
-                  </TableCell>
-                  <TableCell>
-                    {morningCoordinator?.coordinator.fullName || "Not assigned"}
-                  </TableCell>
-                  <TableCell>
-                    {eveningCoordinator?.coordinator.fullName || "Not assigned"}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Area</TableHead>
+                <TableHead>Supervisor</TableHead>
+                <TableHead>Morning Coordinator</TableHead>
+                <TableHead>Evening Coordinator</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {buildings.map((building) => {
+                const morningCoordinator = building.coordinators.find(
+                  (c) => c.shiftType === "MORNING"
+                );
+                const eveningCoordinator = building.coordinators.find(
+                  (c) => c.shiftType === "EVENING"
+                );
+
+                return (
+                  <TableRow key={building.id}>
+                    <TableCell>{building.name}</TableCell>
+                    <TableCell>{building.code}</TableCell>
+                    <TableCell>{building.area}</TableCell>
+                    <TableCell>
+                      {building.supervisor?.fullName || "Not assigned"}
+                    </TableCell>
+                    <TableCell>
+                      {morningCoordinator?.coordinator.fullName || "Not assigned"}
+                    </TableCell>
+                    <TableCell>
+                      {eveningCoordinator?.coordinator.fullName || "Not assigned"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-    </div>
+    </Navbar>
   );
 }
