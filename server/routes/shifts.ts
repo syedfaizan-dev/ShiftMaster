@@ -1,31 +1,94 @@
 import { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
-import { shifts, users, roles, shiftTypes } from "@db/schema";
-import { sendShiftAssignmentEmail, sendEmail } from "../utils/email";
+import { shifts, users, shiftTypes } from "@db/schema";
+import { sendEmail, sendShiftAssignmentEmail } from "../utils/email";
 
-// Test route for email functionality
+// Simple test endpoint for email
 export async function testEmail(req: Request, res: Response) {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email address is required' });
+  }
+
   try {
-    console.log('Testing email functionality...');
+    const success = await sendEmail(
+      email as string,
+      'Test Email',
+      '<h1>Test Email</h1><p>This is a test email from your workforce management system.</p>'
+    );
 
-    const result = await sendEmail({
-      to: req.query.email as string || process.env.SMTP_USER,
-      subject: 'Test Email from Workforce Management System',
-      text: 'This is a test email to verify the email sending functionality.',
-      html: '<h1>Test Email</h1><p>This is a test email to verify the email sending functionality.</p>'
-    });
-
-    if (result) {
-      console.log('Test email sent successfully');
-      res.json({ success: true, message: 'Test email sent successfully' });
+    if (success) {
+      res.json({ message: 'Test email sent successfully' });
     } else {
-      console.log('Failed to send test email');
-      res.status(500).json({ success: false, message: 'Failed to send test email' });
+      res.status(500).json({ message: 'Failed to send test email' });
     }
   } catch (error) {
-    console.error('Error in test email route:', error);
-    res.status(500).json({ success: false, message: error instanceof Error ? error.message : 'Unknown error' });
+    console.error('Test email error:', error);
+    res.status(500).json({ message: 'Error sending test email' });
+  }
+}
+
+// When creating a new shift, send email notification
+export async function createShift(req: Request, res: Response) {
+  try {
+    const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
+
+    // Get shift type details
+    const [shiftType] = await db
+      .select()
+      .from(shiftTypes)
+      .where(eq(shiftTypes.id, shiftTypeId))
+      .limit(1);
+
+    if (!shiftType) {
+      return res.status(400).json({ message: "Invalid shift type" });
+    }
+
+    // Create shift
+    const [newShift] = await db
+      .insert(shifts)
+      .values({
+        inspectorId,
+        roleId,
+        shiftTypeId,
+        week,
+        backupId,
+        createdBy: req.user?.id,
+      })
+      .returning();
+
+    // Send email to inspector
+    const [inspector] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, inspectorId))
+      .limit(1);
+
+    await sendShiftAssignmentEmail(inspector.username, {
+      shiftType,
+      week,
+    });
+
+    // Send email to backup if exists
+    if (backupId) {
+      const [backup] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, backupId))
+        .limit(1);
+
+      await sendShiftAssignmentEmail(backup.username, {
+        shiftType,
+        week,
+      });
+    }
+
+    res.json(newShift);
+  } catch (error) {
+    console.error('Error creating shift:', error);
+    res.status(500).json({ message: 'Error creating shift' });
   }
 }
 
@@ -89,91 +152,6 @@ export async function getShifts(req: Request, res: Response) {
     res.json(shiftsWithBackup);
   } catch (error) {
     console.error('Error fetching shifts:', error);
-    res.status(500).send((error as Error).message);
-  }
-}
-
-export async function createShift(req: Request, res: Response) {
-  try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).send("Not authorized - Admin access required");
-    }
-
-    const { startTime, endTime, ...rest } = req.body;
-
-    // Ensure dates are properly parsed
-    const parsedStartTime = new Date(startTime);
-    const parsedEndTime = new Date(endTime);
-
-    // Validate dates
-    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
-      return res.status(400).send("Invalid date format");
-    }
-
-    console.log('Creating new shift with data:', {
-      ...rest,
-      startTime: parsedStartTime,
-      endTime: parsedEndTime,
-      createdBy: req.user.id,
-    });
-
-    const [shift] = await db
-      .insert(shifts)
-      .values({
-        ...rest,
-        startTime: parsedStartTime,
-        endTime: parsedEndTime,
-        createdBy: req.user.id,
-      })
-      .returning();
-
-    console.log('Shift created successfully:', shift);
-
-    // Get inspector details for notification
-    const [inspector] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, shift.inspectorId))
-      .limit(1);
-
-    console.log('Found inspector:', inspector);
-
-    // Get shift type details for the email
-    const [shiftType] = await db
-      .select()
-      .from(shiftTypes)
-      .where(eq(shiftTypes.id, shift.shiftTypeId))
-      .limit(1);
-
-    console.log('Found shift type:', shiftType);
-
-    // Send email notification to the assigned inspector
-    const emailSent = await sendShiftAssignmentEmail(inspector.username, {
-      shiftType,
-      week: shift.week,
-    });
-
-    console.log('Email notification result:', { sent: emailSent, to: inspector.username });
-
-    // If there's a backup inspector, notify them too
-    if (shift.backupId) {
-      const [backup] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, shift.backupId))
-        .limit(1);
-
-      const backupEmailSent = await sendShiftAssignmentEmail(backup.username, {
-        shiftType,
-        week: shift.week,
-      });
-
-      console.log('Backup email notification result:', { sent: backupEmailSent, to: backup.username });
-    }
-
-    res.json(shift);
-  } catch (error) {
-    console.error('Error creating shift:', error);
     res.status(500).send((error as Error).message);
   }
 }
