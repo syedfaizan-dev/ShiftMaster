@@ -1,4 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import Navbar from "@/components/navbar";
 import {
   Table,
   TableBody,
@@ -7,10 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import Navbar from "@/components/navbar";
-import { useState } from "react";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
 interface Building {
   id: number;
@@ -32,6 +38,46 @@ interface Building {
 }
 
 export default function BuildingsPage() {
+  const columns: ColumnDef<Building>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+    },
+    {
+      accessorKey: "code",
+      header: "Code",
+    },
+    {
+      accessorKey: "area",
+      header: "Area",
+    },
+    {
+      accessorKey: "supervisor",
+      header: "Supervisor",
+      cell: ({ row }) => row.original.supervisor?.fullName || "Not assigned",
+    },
+    {
+      id: "morningCoordinator",
+      header: "Morning Coordinator",
+      cell: ({ row }) => {
+        const morningCoord = row.original.coordinators.find(
+          (c) => c.shiftType === "MORNING"
+        );
+        return morningCoord?.coordinator.fullName || "Not assigned";
+      },
+    },
+    {
+      id: "eveningCoordinator",
+      header: "Evening Coordinator",
+      cell: ({ row }) => {
+        const eveningCoord = row.original.coordinators.find(
+          (c) => c.shiftType === "EVENING"
+        );
+        return eveningCoord?.coordinator.fullName || "Not assigned";
+      },
+    },
+  ];
+
   const { data: buildings = [], isLoading } = useQuery<Building[]>({
     queryKey: ["buildings"],
     queryFn: async () => {
@@ -41,6 +87,13 @@ export default function BuildingsPage() {
       }
       return response.json();
     },
+  });
+
+  const table = useReactTable({
+    data: buildings,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   if (isLoading) {
@@ -61,41 +114,42 @@ export default function BuildingsPage() {
         <div className="rounded-md border">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Area</TableHead>
-                <TableHead>Supervisor</TableHead>
-                <TableHead>Morning Coordinator</TableHead>
-                <TableHead>Evening Coordinator</TableHead>
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {buildings.map((building) => {
-                const morningCoordinator = building.coordinators.find(
-                  (c) => c.shiftType === "MORNING"
-                );
-                const eveningCoordinator = building.coordinators.find(
-                  (c) => c.shiftType === "EVENING"
-                );
-
-                return (
-                  <TableRow key={building.id}>
-                    <TableCell>{building.name}</TableCell>
-                    <TableCell>{building.code}</TableCell>
-                    <TableCell>{building.area}</TableCell>
-                    <TableCell>
-                      {building.supervisor?.fullName || "Not assigned"}
-                    </TableCell>
-                    <TableCell>
-                      {morningCoordinator?.coordinator.fullName || "Not assigned"}
-                    </TableCell>
-                    <TableCell>
-                      {eveningCoordinator?.coordinator.fullName || "Not assigned"}
-                    </TableCell>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
                   </TableRow>
-                );
-              })}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No buildings found.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

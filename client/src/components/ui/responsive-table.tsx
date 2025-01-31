@@ -1,13 +1,21 @@
 import React from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table as BaseTable,
+  TableBody as BaseTableBody,
+  TableCell as BaseTableCell,
+  TableHead as BaseTableHead,
+  TableHeader as BaseTableHeader,
+  TableRow as BaseTableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+
+// Re-export the base table components
+export const Table = BaseTable;
+export const TableBody = BaseTableBody;
+export const TableCell = BaseTableCell;
+export const TableHead = BaseTableHead;
+export const TableHeader = BaseTableHeader;
+export const TableRow = BaseTableRow;
 
 interface Column {
   header: string;
