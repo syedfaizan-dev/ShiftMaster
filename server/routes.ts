@@ -7,6 +7,7 @@ import { eq, and, or, isNull } from "drizzle-orm";
 import { getNotifications, markNotificationAsRead } from "./routes/notifications";
 import { getShifts } from "./routes/shifts";
 import { sql } from "drizzle-orm";
+import { getBuildings, createBuilding, assignCoordinator, updateBuildingSupervisor } from "./routes/buildings";
 
 export const createShift = async (req: Request, res: Response) => {
   try {
@@ -963,16 +964,15 @@ export function registerRoutes(app: Express): Server {
 
   // Get task statistics grouped by shift type
   app.get("/api/admin/tasks/stats", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const stats = await db.execute(sql`
+    try {      const stats = await db.execute(sql`
         WITH task_counts AS (
           SELECT 
-            t.shift_type_id as "shiftTypeId",
-            st.name as "shiftTypeName",
-            COUNT(*) as total,
-            COUNT(CASE WHEN t.status = 'PENDING' THEN 1 END) as pending,
-            COUNT(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 END) as "inProgress",
-            COUNT(CASE WHEN t.status = 'COMPLETED' THEN 1 END) as completed
+            t.shift_type_id AS "shiftTypeId",
+            st.name AS "shiftTypeName",
+            COUNT(*) AS total,
+            COUNT(CASE WHEN t.status = 'PENDING' THEN 1 END) AS pending,
+            COUNT(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 END) AS "inProgress",
+            COUNT(CASE WHEN t.status = 'COMPLETED' THEN 1 END) AS completed
           FROM tasks t
           JOIN shift_types st ON t.shift_type_id = st.id
           GROUP BY t.shift_type_id, st.name
@@ -988,7 +988,6 @@ export function registerRoutes(app: Express): Server {
         ORDER BY "shiftTypeName"
       `);
 
-      console.log('Task statistics:', stats.rows);
       res.json(stats.rows);
     } catch (error) {
       console.error('Error fetching task statistics:', error);
@@ -1002,6 +1001,12 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: 'Error fetching task statistics' });
     }
   });
+
+  // Building management routes
+  app.get("/api/admin/buildings", requireAdmin, getBuildings);
+  app.post("/api/admin/buildings", requireAdmin, createBuilding);
+  app.post("/api/admin/buildings/:id/assign-coordinator", requireAdmin, assignCoordinator);
+  app.put("/api/admin/buildings/:id/supervisor", requireAdmin, updateBuildingSupervisor);
 
   const httpServer = createServer(app);
   return httpServer;

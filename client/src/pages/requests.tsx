@@ -72,7 +72,7 @@ function RequestsPage() {
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
@@ -89,15 +89,17 @@ function RequestsPage() {
   const { data: requests = [], isLoading } = useQuery<RequestWithRelations[]>({
     queryKey: ["/api/requests"],
   });
-  console.log("All Requests: ", requests);
+
   const { data: managers = [] } = useQuery<User[]>({
     queryKey: ["/api/admin/managers"],
     enabled: user?.isAdmin,
   });
 
-  const { data: shifts = [] } = useQuery<(Shift & {
-    shiftType: { startTime: string; endTime: string; name: string };
-  })[]>({
+  const { data: shifts = [] } = useQuery<
+    (Shift & {
+      shiftType: { startTime: string; endTime: string; name: string };
+    })[]
+  >({
     queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
   });
 
@@ -307,12 +309,16 @@ function RequestsPage() {
           </Alert>
         ) : (
           <div className="relative overflow-x-auto">
-            <div className="w-full rounded-lg border">
+            <div className="w-full">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px] min-w-[100px]">Type</TableHead>
-                    <TableHead className="w-[100px] min-w-[100px]">Status</TableHead>
+                    <TableHead className="w-[100px] min-w-[100px]">
+                      Type
+                    </TableHead>
+                    <TableHead className="w-[100px] min-w-[100px]">
+                      Status
+                    </TableHead>
                     <TableHead className="min-w-[150px]">Reason</TableHead>
                     {(user?.isAdmin || user?.isManager) && (
                       <TableHead className="min-w-[120px]">Requester</TableHead>
@@ -353,25 +359,38 @@ function RequestsPage() {
                           <div className="space-y-1">
                             <p className="font-medium text-sm">Leave Period:</p>
                             <p className="text-sm">
-                              {format(new Date(request.startDate!), "MMM d, yyyy")} -{" "}
-                              {format(new Date(request.endDate!), "MMM d, yyyy")}
+                              {format(
+                                new Date(request.startDate!),
+                                "MMM d, yyyy",
+                              )}{" "}
+                              -{" "}
+                              {format(
+                                new Date(request.endDate!),
+                                "MMM d, yyyy",
+                              )}
                             </p>
                           </div>
                         ) : (
                           <div className="space-y-2">
                             <div className="space-y-1">
-                              <p className="font-medium text-sm">Current Shift:</p>
+                              <p className="font-medium text-sm">
+                                Current Shift:
+                              </p>
                               {request.shiftType && (
                                 <div className="text-sm">
                                   <p>{request.shiftType.name}</p>
                                   <p className="text-gray-500">
                                     {format(
-                                      new Date(`2000-01-01T${request.shiftType.startTime}`),
+                                      new Date(
+                                        `2000-01-01T${request.shiftType.startTime}`,
+                                      ),
                                       "h:mm a",
                                     )}{" "}
                                     -
                                     {format(
-                                      new Date(`2000-01-01T${request.shiftType.endTime}`),
+                                      new Date(
+                                        `2000-01-01T${request.shiftType.endTime}`,
+                                      ),
                                       "h:mm a",
                                     )}
                                   </p>
@@ -379,18 +398,24 @@ function RequestsPage() {
                               )}
                             </div>
                             <div className="space-y-1">
-                              <p className="font-medium text-sm">Target Shift:</p>
+                              <p className="font-medium text-sm">
+                                Target Shift:
+                              </p>
                               {request.targetShiftType && (
                                 <div className="text-sm">
                                   <p>{request.targetShiftType.name}</p>
                                   <p className="text-gray-500">
                                     {format(
-                                      new Date(`2000-01-01T${request.targetShiftType.startTime}`),
+                                      new Date(
+                                        `2000-01-01T${request.targetShiftType.startTime}`,
+                                      ),
                                       "h:mm a",
                                     )}{" "}
                                     -
                                     {format(
-                                      new Date(`2000-01-01T${request.targetShiftType.endTime}`),
+                                      new Date(
+                                        `2000-01-01T${request.targetShiftType.endTime}`,
+                                      ),
                                       "h:mm a",
                                     )}
                                   </p>
@@ -412,9 +437,14 @@ function RequestsPage() {
                       <TableCell>
                         {request.reviewer ? (
                           <div className="text-sm space-y-1">
-                            <p className="whitespace-nowrap">By: {request.reviewer.fullName}</p>
+                            <p className="whitespace-nowrap">
+                              By: {request.reviewer.fullName}
+                            </p>
                             <p className="text-gray-500 whitespace-nowrap">
-                              {format(new Date(request.reviewedAt!), "MMM d, yyyy h:mm a")}
+                              {format(
+                                new Date(request.reviewedAt!),
+                                "MMM d, yyyy h:mm a",
+                              )}
                             </p>
                           </div>
                         ) : (
@@ -437,7 +467,7 @@ function RequestsPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
                                 align="end"
-                                style={{ position: 'fixed' }}
+                                style={{ position: "fixed" }}
                                 className="w-[200px] z-50"
                               >
                                 {user.isAdmin && !request.managerId && (
@@ -451,7 +481,8 @@ function RequestsPage() {
                                   </DropdownMenuItem>
                                 )}
                                 {(user.isAdmin ||
-                                  (user.isManager && request.managerId === user.id)) && (
+                                  (user.isManager &&
+                                    request.managerId === user.id)) && (
                                   <>
                                     <DropdownMenuItem
                                       onClick={() =>
