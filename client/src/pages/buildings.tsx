@@ -68,6 +68,18 @@ interface Building {
   }>;
 }
 
+interface Supervisor {
+  id: number;
+  fullName: string;
+  username: string;
+}
+
+interface Manager {
+  id: number;
+  fullName: string;
+  username: string;
+}
+
 const coordinatorSchema = z.object({
   coordinatorId: z.string().min(1, "Coordinator is required"),
   shiftType: z.string().min(1, "Shift type is required")
@@ -119,12 +131,12 @@ function BuildingsPage() {
     enabled: user?.isAdmin
   });
 
-  const { data: supervisors = [] } = useQuery({
+  const { data: supervisors = [] } = useQuery<Supervisor[]>({
     queryKey: ["/api/admin/admins"],
     enabled: user?.isAdmin
   });
 
-  const { data: managers = [] } = useQuery({
+  const { data: managers = [] } = useQuery<Manager[]>({
     queryKey: ["/api/admin/managers"],
     enabled: user?.isAdmin
   });
@@ -260,7 +272,7 @@ function BuildingsPage() {
     {
       header: "Supervisor",
       accessorKey: "supervisor",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: { original: Building } }) => {
         const building = row.original;
         return building?.supervisor?.fullName || "Not assigned";
       },
@@ -268,7 +280,7 @@ function BuildingsPage() {
     {
       header: "Coordinators",
       accessorKey: "coordinators",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: { original: Building } }) => {
         const building = row.original;
         return (
           <div className="flex flex-col gap-1">
@@ -284,7 +296,7 @@ function BuildingsPage() {
     {
       header: "Actions",
       id: "actions",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: { original: Building } }) => {
         const building = row.original;
         return (
           <div className="flex gap-2">
@@ -429,7 +441,7 @@ function BuildingsPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {supervisors.map((supervisor: any) => (
+                          {supervisors.map((supervisor) => (
                             <SelectItem key={supervisor.id} value={String(supervisor.id)}>
                               {supervisor.fullName}
                             </SelectItem>
@@ -463,7 +475,7 @@ function BuildingsPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {managers.map((manager: any) => (
+                                {managers.map((manager) => (
                                   <SelectItem key={manager.id} value={String(manager.id)}>
                                     {manager.fullName}
                                   </SelectItem>
@@ -511,8 +523,8 @@ function BuildingsPage() {
                   ))}
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={createBuilding.isPending || updateBuilding.isPending}
                 >
                   {(createBuilding.isPending || updateBuilding.isPending) ? (
@@ -529,8 +541,8 @@ function BuildingsPage() {
           </DialogContent>
         </Dialog>
 
-        <AlertDialog 
-          open={!!buildingToDelete} 
+        <AlertDialog
+          open={!!buildingToDelete}
           onOpenChange={(open) => !open && setBuildingToDelete(null)}
         >
           <AlertDialogContent>
