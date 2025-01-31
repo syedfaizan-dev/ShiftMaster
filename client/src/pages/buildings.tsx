@@ -6,7 +6,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableProvider,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -59,49 +58,47 @@ export default function BuildingsPage() {
           </Button>
         </div>
 
-        <TableProvider>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Area</TableHead>
-                  <TableHead>Supervisor</TableHead>
-                  <TableHead>Morning Coordinator</TableHead>
-                  <TableHead>Evening Coordinator</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {buildings.map((building) => {
-                  const morningCoordinator = building.coordinators.find(
-                    (c) => c.shiftType === "MORNING"
-                  );
-                  const eveningCoordinator = building.coordinators.find(
-                    (c) => c.shiftType === "EVENING"
-                  );
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Area</TableHead>
+                <TableHead>Supervisor</TableHead>
+                <TableHead>Morning Coordinator</TableHead>
+                <TableHead>Evening Coordinator</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {buildings.map((building) => {
+                const morningCoordinator = building.coordinators.find(
+                  (c) => c.shiftType === "MORNING"
+                );
+                const eveningCoordinator = building.coordinators.find(
+                  (c) => c.shiftType === "EVENING"
+                );
 
-                  return (
-                    <TableRow key={building.id}>
-                      <TableCell>{building.name}</TableCell>
-                      <TableCell>{building.code}</TableCell>
-                      <TableCell>{building.area}</TableCell>
-                      <TableCell>
-                        {building.supervisor?.fullName || "Not assigned"}
-                      </TableCell>
-                      <TableCell>
-                        {morningCoordinator?.coordinator.fullName || "Not assigned"}
-                      </TableCell>
-                      <TableCell>
-                        {eveningCoordinator?.coordinator.fullName || "Not assigned"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </TableProvider>
+                return (
+                  <TableRow key={building.id}>
+                    <TableCell>{building.name}</TableCell>
+                    <TableCell>{building.code}</TableCell>
+                    <TableCell>{building.area}</TableCell>
+                    <TableCell>
+                      {building.supervisor?.fullName || "Not assigned"}
+                    </TableCell>
+                    <TableCell>
+                      {morningCoordinator?.coordinator.fullName || "Not assigned"}
+                    </TableCell>
+                    <TableCell>
+                      {eveningCoordinator?.coordinator.fullName || "Not assigned"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </Navbar>
   );

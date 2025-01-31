@@ -6,7 +6,7 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  <div className="relative w-full overflow-auto rounded-lg border">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
@@ -20,7 +20,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b bg-muted/50 hidden md:table-header-group", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b bg-muted/50", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -43,7 +43,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0 hidden md:table-footer-group",
+      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -58,8 +58,8 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      "block md:table-row border-b md:border-b-0 p-4 md:p-0",
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted relative",
+      "group/row",  // Add group class for hover effects
       className
     )}
     {...props}
@@ -70,49 +70,35 @@ TableRow.displayName = "TableRow"
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, children, ...props }, ref) => {
-  // Convert children to string for data attribute
-  const headingText = React.Children.toArray(children).join("")
-
-  return (
-    <th
-      ref={ref}
-      className={cn(
-        "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-        "hidden md:table-cell", // Hide on mobile, show on desktop
-        className
-      )}
-      data-heading={headingText} // Store heading text for mobile labels
-      {...props}
-    >
-      {children}
-    </th>
-  )
-})
+>(({ className, ...props }, ref) => (
+  <th
+    ref={ref}
+    className={cn(
+      "h-12 px-4 text-left align-middle font-semibold text-muted-foreground tracking-wide",
+      "[&:has([role=checkbox])]:pr-0 whitespace-nowrap",
+      "border-r last:border-r-0",  // Add vertical borders except last
+      className
+    )}
+    {...props}
+  />
+))
 TableHead.displayName = "TableHead"
 
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => {
-  // Get the heading text from the closest th element
-  const headingText = React.useContext(TableContext)?.getHeadingForCell(props['data-column-index'] as number) || ''
-
-  return (
-    <td
-      ref={ref}
-      className={cn(
-        "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-        "block md:table-cell relative",
-        "before:content-[attr(data-heading)] before:absolute before:font-medium md:before:content-none before:top-2 before:left-4",
-        "pt-8 md:pt-4", // Extra padding top on mobile for label
-        className
-      )}
-      data-heading={headingText}
-      {...props}
-    />
-  )
-})
+>(({ className, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn(
+      "p-4 align-middle [&:has([role=checkbox])]:pr-0",
+      "group-hover/row:text-foreground transition-colors duration-200",
+      "border-r last:border-r-0",  // Add vertical borders except last
+      className
+    )}
+    {...props}
+  />
+))
 TableCell.displayName = "TableCell"
 
 const TableCaption = React.forwardRef<
@@ -127,32 +113,6 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
-// Create a context to share table header information
-const TableContext = React.createContext<{
-  getHeadingForCell: (index: number) => string
-} | null>(null)
-
-// Provider component to manage table header information
-const TableProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [headings, setHeadings] = React.useState<string[]>([])
-
-  const getHeadingForCell = React.useCallback((index: number) => {
-    return headings[index] || ''
-  }, [headings])
-
-  React.useEffect(() => {
-    // Collect all table header texts on mount
-    const headers = document.querySelectorAll('th[data-heading]')
-    setHeadings(Array.from(headers).map(header => header.getAttribute('data-heading') || ''))
-  }, [])
-
-  return (
-    <TableContext.Provider value={{ getHeadingForCell }}>
-      {children}
-    </TableContext.Provider>
-  )
-}
-
 export {
   Table,
   TableHeader,
@@ -162,5 +122,4 @@ export {
   TableRow,
   TableCell,
   TableCaption,
-  TableProvider
 }
