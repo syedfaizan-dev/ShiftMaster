@@ -85,6 +85,13 @@ export async function createShift(req: Request, res: Response) {
       return res.status(400).send("Invalid date format");
     }
 
+    console.log('Creating new shift with data:', {
+      ...rest,
+      startTime: parsedStartTime,
+      endTime: parsedEndTime,
+      createdBy: req.user.id,
+    });
+
     const [shift] = await db
       .insert(shifts)
       .values({
@@ -95,12 +102,16 @@ export async function createShift(req: Request, res: Response) {
       })
       .returning();
 
+    console.log('Shift created successfully:', shift);
+
     // Get inspector details for notification
     const [inspector] = await db
       .select()
       .from(users)
       .where(eq(users.id, shift.inspectorId))
       .limit(1);
+
+    console.log('Found inspector:', inspector);
 
     // Get shift type details for the email
     const [shiftType] = await db
@@ -109,11 +120,15 @@ export async function createShift(req: Request, res: Response) {
       .where(eq(shiftTypes.id, shift.shiftTypeId))
       .limit(1);
 
+    console.log('Found shift type:', shiftType);
+
     // Send email notification to the assigned inspector
-    await sendShiftAssignmentEmail(inspector.username, {
+    const emailSent = await sendShiftAssignmentEmail(inspector.username, {
       shiftType,
       week: shift.week,
     });
+
+    console.log('Email notification result:', { sent: emailSent, to: inspector.username });
 
     // If there's a backup inspector, notify them too
     if (shift.backupId) {
@@ -123,10 +138,12 @@ export async function createShift(req: Request, res: Response) {
         .where(eq(users.id, shift.backupId))
         .limit(1);
 
-      await sendShiftAssignmentEmail(backup.username, {
+      const backupEmailSent = await sendShiftAssignmentEmail(backup.username, {
         shiftType,
         week: shift.week,
       });
+
+      console.log('Backup email notification result:', { sent: backupEmailSent, to: backup.username });
     }
 
     res.json(shift);
