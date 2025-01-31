@@ -80,6 +80,7 @@ function RequestsPage() {
   const { data: requests = [], isLoading } = useQuery<RequestWithRelations[]>({
     queryKey: ["/api/requests"],
   });
+  console.log("Table Data:", requests);
 
   const { data: managers = [] } = useQuery<User[]>({
     queryKey: ["/api/admin/managers"],
@@ -267,7 +268,7 @@ function RequestsPage() {
       accessorKey: "type",
       cell: (value: string) => (
         <span className="capitalize whitespace-nowrap">
-          {value.toLowerCase().replace("_", " ")}
+          {value?.toLowerCase().replace("_", " ")}
         </span>
       ),
     },
@@ -288,7 +289,9 @@ function RequestsPage() {
       header: "Reason",
       accessorKey: "reason",
       cell: (value: string) => (
-        <span className="max-w-[200px] truncate">{value}</span>
+        <span className="max-w-[200px] truncate">
+          {value}
+        </span>
       ),
     },
     ...(user?.isAdmin || user?.isManager
@@ -296,7 +299,7 @@ function RequestsPage() {
           {
             header: "Requester",
             accessorKey: "requester",
-            cell: (value: { fullName: string }) => (
+            cell: (value: { fullName: string } | null) => (
               <span className="whitespace-nowrap">
                 {value?.fullName || "Unknown"}
               </span>
@@ -307,14 +310,14 @@ function RequestsPage() {
     {
       header: "Details",
       accessorKey: "type",
-      cell: (value: string, row: RequestWithRelations) => (
+      cell: (_: any, row: RequestWithRelations) => (
         <div>
-          {value === "LEAVE" ? (
+          {row.type === "LEAVE" ? (
             <div className="space-y-1">
               <p className="font-medium text-sm">Leave Period:</p>
               <p className="text-sm">
-                {format(new Date(row.startDate!), "MMM d, yyyy")} -{" "}
-                {format(new Date(row.endDate!), "MMM d, yyyy")}
+                {row.startDate && format(new Date(row.startDate), "MMM d, yyyy")} -{" "}
+                {row.endDate && format(new Date(row.endDate), "MMM d, yyyy")}
               </p>
             </div>
           ) : (
@@ -329,12 +332,12 @@ function RequestsPage() {
                         <p className="text-gray-500">
                           {format(
                             new Date(`2000-01-01T${row.shiftType.startTime}`),
-                            "h:mm a"
+                            "h:mm a",
                           )}{" "}
                           -
                           {format(
                             new Date(`2000-01-01T${row.shiftType.endTime}`),
-                            "h:mm a"
+                            "h:mm a",
                           )}
                         </p>
                       </>
@@ -354,12 +357,12 @@ function RequestsPage() {
                         <p className="text-gray-500">
                           {format(
                             new Date(`2000-01-01T${row.targetShiftType.startTime}`),
-                            "h:mm a"
+                            "h:mm a",
                           )}{" "}
                           -
                           {format(
                             new Date(`2000-01-01T${row.targetShiftType.endTime}`),
-                            "h:mm a"
+                            "h:mm a",
                           )}
                         </p>
                       </>
@@ -395,9 +398,11 @@ function RequestsPage() {
           {value ? (
             <div className="text-sm space-y-1">
               <p className="whitespace-nowrap">By: {value.fullName}</p>
-              <p className="text-gray-500 whitespace-nowrap">
-                {format(new Date(row.reviewedAt!), "MMM d, yyyy h:mm a")}
-              </p>
+              {row.reviewedAt && (
+                <p className="text-gray-500 whitespace-nowrap">
+                  {format(new Date(row.reviewedAt), "MMM d, yyyy h:mm a")}
+                </p>
+              )}
             </div>
           ) : (
             <span className="text-gray-500">-</span>
@@ -410,7 +415,7 @@ function RequestsPage() {
           {
             header: "Actions",
             accessorKey: "id",
-            cell: (value: number, row: RequestWithRelations) =>
+            cell: (_: any, row: RequestWithRelations) =>
               (user.isAdmin ||
                 (user.isManager && row.managerId === user.id)) &&
               row.status === "PENDING" ? (

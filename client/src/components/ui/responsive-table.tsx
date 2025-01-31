@@ -20,7 +20,7 @@ export const TableRow = BaseTableRow;
 interface Column {
   header: string;
   accessorKey: string;
-  cell?: (value: any) => React.ReactNode;
+  cell?: (value: any, row?: any) => React.ReactNode;
 }
 
 interface ResponsiveTableProps {
@@ -37,18 +37,18 @@ export function ResponsiveTable({ columns, data, children }: ResponsiveTableProp
         <Table>
           <TableHeader>
             <TableRow>
-              {columns.map((column) => (
-                <TableHead key={column.accessorKey}>{column.header}</TableHead>
+              {columns.map((column, idx) => (
+                <TableHead key={`${column.accessorKey}-${idx}`}>{column.header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.map((row, rowIndex) => (
-              <TableRow key={rowIndex}>
-                {columns.map((column) => (
-                  <TableCell key={column.accessorKey}>
+              <TableRow key={`row-${rowIndex}`}>
+                {columns.map((column, colIndex) => (
+                  <TableCell key={`${column.accessorKey}-${rowIndex}-${colIndex}`}>
                     {column.cell
-                      ? column.cell(row[column.accessorKey])
+                      ? column.cell(row[column.accessorKey], row)
                       : row[column.accessorKey]}
                   </TableCell>
                 ))}
@@ -61,16 +61,16 @@ export function ResponsiveTable({ columns, data, children }: ResponsiveTableProp
       {/* Mobile View - Cards */}
       <div className="space-y-4 md:hidden">
         {data.map((row, rowIndex) => (
-          <Card key={rowIndex}>
+          <Card key={`card-${rowIndex}`}>
             <CardContent className="pt-6">
-              {columns.map((column) => (
-                <div key={column.accessorKey} className="flex justify-between py-1">
+              {columns.map((column, colIndex) => (
+                <div key={`${column.accessorKey}-${rowIndex}-${colIndex}`} className="flex justify-between py-1">
                   <span className="font-medium text-muted-foreground">
                     {column.header}:
                   </span>
                   <span>
                     {column.cell
-                      ? column.cell(row[column.accessorKey])
+                      ? column.cell(row[column.accessorKey], row)
                       : row[column.accessorKey]}
                   </span>
                 </div>

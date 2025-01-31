@@ -3,6 +3,9 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { type InferSelectModel } from "drizzle-orm";
 
+export type ShiftType = typeof shiftTypes.$inferSelect;
+export type InsertShiftType = typeof shiftTypes.$inferInsert;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
