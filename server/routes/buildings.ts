@@ -6,17 +6,25 @@ import { eq, and } from "drizzle-orm";
 // Get all buildings with their supervisors and coordinators
 export const getBuildings = async (req: Request, res: Response) => {
   try {
-    const allBuildings = await db.query.buildings.findMany({
-      with: {
-        supervisor: true,
-        coordinators: {
-          with: {
-            coordinator: true,
-          },
-        },
-      },
-    });
-    res.json(allBuildings);
+    const allBuildings = await db.select().from(buildings).leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
+
+    // Format the response to match the expected structure
+    const formattedBuildings = allBuildings.reduce((acc: any[], curr) => {
+      const existingBuilding = acc.find(b => b.id === curr.buildings.id);
+      if (existingBuilding) {
+        if (curr.building_coordinators) {
+          existingBuilding.coordinators.push(curr.building_coordinators);
+        }
+      } else {
+        acc.push({
+          ...curr.buildings,
+          coordinators: curr.building_coordinators ? [curr.building_coordinators] : []
+        });
+      }
+      return acc;
+    }, []);
+
+    res.json(formattedBuildings);
   } catch (error) {
     console.error("Error fetching buildings:", error);
     res.status(500).json({ message: "Error fetching buildings" });
@@ -48,7 +56,12 @@ export const createBuilding = async (req: Request, res: Response) => {
         })));
     }
 
-    res.status(201).json(building);
+    const createdBuilding = await db.select()
+      .from(buildings)
+      .where(eq(buildings.id, building.id))
+      .leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
+
+    res.status(201).json(createdBuilding[0]);
   } catch (error) {
     console.error("Error creating building:", error);
     res.status(500).json({ message: "Error creating building" });
