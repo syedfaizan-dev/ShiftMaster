@@ -15,7 +15,6 @@ import ShiftTypes from "@/pages/shift-types";
 import Tasks from "@/pages/tasks";
 import Users from "@/pages/users";
 import TaskTypes from "@/pages/task-types";
-import BuildingsPage from "@/pages/buildings";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -47,7 +46,6 @@ function Router() {
           <Route path="/shift-types" component={ShiftTypes} />
           <Route path="/tasks" component={Tasks} />
           <Route path="/task-types" component={TaskTypes} />
-          <Route path="/buildings" component={BuildingsPage} />
         </>
       )}
       <Route path="/requests" component={Requests} />
