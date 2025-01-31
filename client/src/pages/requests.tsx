@@ -2,16 +2,9 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import {
   Form,
   FormControl,
@@ -66,9 +59,7 @@ function RequestsPage() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [assignManagerDialogOpen, setAssignManagerDialogOpen] = useState(false);
-  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
-    null,
-  );
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -269,6 +260,204 @@ function RequestsPage() {
     }
   };
 
+  // Table columns definition
+  const columns = [
+    {
+      header: "Type",
+      accessorKey: "type",
+      cell: (value: string) => (
+        <span className="capitalize whitespace-nowrap">
+          {value.toLowerCase().replace("_", " ")}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+      cell: (value: string) => (
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
+            value,
+          )}`}
+        >
+          {value}
+        </span>
+      ),
+    },
+    {
+      header: "Reason",
+      accessorKey: "reason",
+      cell: (value: string) => (
+        <span className="max-w-[200px] truncate">{value}</span>
+      ),
+    },
+    ...(user?.isAdmin || user?.isManager
+      ? [
+          {
+            header: "Requester",
+            accessorKey: "requester",
+            cell: (value: { fullName: string }) => (
+              <span className="whitespace-nowrap">
+                {value?.fullName || "Unknown"}
+              </span>
+            ),
+          },
+        ]
+      : []),
+    {
+      header: "Details",
+      accessorKey: "type",
+      cell: (value: string, row: RequestWithRelations) => (
+        <div>
+          {value === "LEAVE" ? (
+            <div className="space-y-1">
+              <p className="font-medium text-sm">Leave Period:</p>
+              <p className="text-sm">
+                {format(new Date(row.startDate!), "MMM d, yyyy")} -{" "}
+                {format(new Date(row.endDate!), "MMM d, yyyy")}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <p className="font-medium text-sm">Current Shift:</p>
+                {row.shiftType && (
+                  <div className="text-sm">
+                    <p>{row.shiftType.name}</p>
+                    <p className="text-gray-500">
+                      {format(
+                        new Date(`2000-01-01T${row.shiftType.startTime}`),
+                        "h:mm a",
+                      )}{" "}
+                      -
+                      {format(
+                        new Date(`2000-01-01T${row.shiftType.endTime}`),
+                        "h:mm a",
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium text-sm">Target Shift:</p>
+                {row.targetShiftType && (
+                  <div className="text-sm">
+                    <p>{row.targetShiftType.name}</p>
+                    <p className="text-gray-500">
+                      {format(
+                        new Date(`2000-01-01T${row.targetShiftType.startTime}`),
+                        "h:mm a",
+                      )}{" "}
+                      -
+                      {format(
+                        new Date(`2000-01-01T${row.targetShiftType.endTime}`),
+                        "h:mm a",
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Assigned To",
+      accessorKey: "manager",
+      cell: (value: { fullName: string } | null) => (
+        <span className="whitespace-nowrap">
+          {value ? (
+            <span className="text-sm font-medium">{value.fullName}</span>
+          ) : (
+            <span className="text-gray-500">-</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      header: "Review Info",
+      accessorKey: "reviewer",
+      cell: (value: { fullName: string } | null, row: RequestWithRelations) => (
+        <div>
+          {value ? (
+            <div className="text-sm space-y-1">
+              <p className="whitespace-nowrap">By: {value.fullName}</p>
+              <p className="text-gray-500 whitespace-nowrap">
+                {format(new Date(row.reviewedAt!), "MMM d, yyyy h:mm a")}
+              </p>
+            </div>
+          ) : (
+            <span className="text-gray-500">-</span>
+          )}
+        </div>
+      ),
+    },
+    ...(user?.isAdmin || user?.isManager
+      ? [
+          {
+            header: "Actions",
+            accessorKey: "id",
+            cell: (value: number, row: RequestWithRelations) =>
+              (user.isAdmin ||
+                (user.isManager && row.managerId === user.id)) &&
+              row.status === "PENDING" ? (
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    style={{ position: "fixed" }}
+                    className="w-[200px] z-50"
+                  >
+                    {user.isAdmin && !row.managerId && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedRequestId(row.id);
+                          setAssignManagerDialogOpen(true);
+                        }}
+                      >
+                        Reassign Manager
+                      </DropdownMenuItem>
+                    )}
+                    {(user.isAdmin ||
+                      (user.isManager && row.managerId === user.id)) && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            updateRequestStatus.mutate({
+                              id: row.id,
+                              status: "APPROVED",
+                            })
+                          }
+                        >
+                          Approve Request
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() =>
+                            updateRequestStatus.mutate({
+                              id: row.id,
+                              status: "REJECTED",
+                            })
+                          }
+                        >
+                          Reject Request
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null,
+          },
+        ]
+      : []),
+  ];
+
   // Calculate pagination values
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -283,7 +472,7 @@ function RequestsPage() {
     setPageSize(newSize);
     setCurrentPage(1); // Reset to first page when changing page size
   };
-  console.log(requests);
+
   return (
     <Navbar>
       <div className="p-4 md:p-6">
@@ -310,211 +499,10 @@ function RequestsPage() {
         ) : (
           <div className="relative overflow-x-auto">
             <div className="w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px] min-w-[100px]">
-                      Type
-                    </TableHead>
-                    <TableHead className="w-[100px] min-w-[100px]">
-                      Status
-                    </TableHead>
-                    <TableHead className="min-w-[150px]">Reason</TableHead>
-                    {(user?.isAdmin || user?.isManager) && (
-                      <TableHead className="min-w-[120px]">Requester</TableHead>
-                    )}
-                    <TableHead className="min-w-[200px]">Details</TableHead>
-                    <TableHead className="min-w-[120px]">Assigned To</TableHead>
-                    <TableHead className="min-w-[150px]">Review Info</TableHead>
-                    {(user?.isAdmin || user?.isManager) && (
-                      <TableHead className="w-[70px]">Actions</TableHead>
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="capitalize whitespace-nowrap">
-                        {request.type.toLowerCase().replace("_", " ")}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
-                            request.status,
-                          )}`}
-                        >
-                          {request.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {request.reason}
-                      </TableCell>
-                      {(user?.isAdmin || user?.isManager) && (
-                        <TableCell className="whitespace-nowrap">
-                          {request.requester?.fullName || "Unknown"}
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        {request.type === "LEAVE" ? (
-                          <div className="space-y-1">
-                            <p className="font-medium text-sm">Leave Period:</p>
-                            <p className="text-sm">
-                              {format(
-                                new Date(request.startDate!),
-                                "MMM d, yyyy",
-                              )}{" "}
-                              -{" "}
-                              {format(
-                                new Date(request.endDate!),
-                                "MMM d, yyyy",
-                              )}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="space-y-1">
-                              <p className="font-medium text-sm">
-                                Current Shift:
-                              </p>
-                              {request.shiftType && (
-                                <div className="text-sm">
-                                  <p>{request.shiftType.name}</p>
-                                  <p className="text-gray-500">
-                                    {format(
-                                      new Date(
-                                        `2000-01-01T${request.shiftType.startTime}`,
-                                      ),
-                                      "h:mm a",
-                                    )}{" "}
-                                    -
-                                    {format(
-                                      new Date(
-                                        `2000-01-01T${request.shiftType.endTime}`,
-                                      ),
-                                      "h:mm a",
-                                    )}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <p className="font-medium text-sm">
-                                Target Shift:
-                              </p>
-                              {request.targetShiftType && (
-                                <div className="text-sm">
-                                  <p>{request.targetShiftType.name}</p>
-                                  <p className="text-gray-500">
-                                    {format(
-                                      new Date(
-                                        `2000-01-01T${request.targetShiftType.startTime}`,
-                                      ),
-                                      "h:mm a",
-                                    )}{" "}
-                                    -
-                                    {format(
-                                      new Date(
-                                        `2000-01-01T${request.targetShiftType.endTime}`,
-                                      ),
-                                      "h:mm a",
-                                    )}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {request.manager ? (
-                          <span className="text-sm font-medium">
-                            {request.manager.fullName}
-                          </span>
-                        ) : (
-                          <span className="text-gray-500">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {request.reviewer ? (
-                          <div className="text-sm space-y-1">
-                            <p className="whitespace-nowrap">
-                              By: {request.reviewer.fullName}
-                            </p>
-                            <p className="text-gray-500 whitespace-nowrap">
-                              {format(
-                                new Date(request.reviewedAt!),
-                                "MMM d, yyyy h:mm a",
-                              )}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-gray-500">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {(user?.isAdmin ||
-                          (user?.isManager && request.managerId === user.id)) &&
-                          request.status === "PENDING" && (
-                            <DropdownMenu modal={false}>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  className="relative h-8 w-8 p-0"
-                                >
-                                  <span className="sr-only">Open menu</span>
-                                  <Settings className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                style={{ position: "fixed" }}
-                                className="w-[200px] z-50"
-                              >
-                                {user.isAdmin && !request.managerId && (
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedRequestId(request.id);
-                                      setAssignManagerDialogOpen(true);
-                                    }}
-                                  >
-                                    Reassign Manager
-                                  </DropdownMenuItem>
-                                )}
-                                {(user.isAdmin ||
-                                  (user.isManager &&
-                                    request.managerId === user.id)) && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        updateRequestStatus.mutate({
-                                          id: request.id,
-                                          status: "APPROVED",
-                                        })
-                                      }
-                                    >
-                                      Approve Request
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={() =>
-                                        updateRequestStatus.mutate({
-                                          id: request.id,
-                                          status: "REJECTED",
-                                        })
-                                      }
-                                    >
-                                      Reject Request
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                columns={columns}
+                data={currentRequests}
+              />
             </div>
 
             <div className="mt-4">
