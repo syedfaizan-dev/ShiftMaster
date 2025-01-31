@@ -1,42 +1,51 @@
 import { Request, Response } from "express";
 import { db } from "@db";
 import { buildings, buildingCoordinators } from "@db/schema/buildings";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { users } from "@db/schema";
 
 // Get all buildings with their supervisors and coordinators
 export const getBuildings = async (req: Request, res: Response) => {
   try {
-    const result = await db.select({
-      buildings,
-      supervisor: users,
-      coordinators: buildingCoordinators
-    })
-    .from(buildings)
-    .leftJoin(users, eq(buildings.supervisorId, users.id))
-    .leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
+    // First get all buildings
+    const buildingsData = await db.select().from(buildings);
 
-    // Format the response
-    const formattedBuildings = result.reduce((acc: any[], curr) => {
-      const existingBuilding = acc.find(b => b.id === curr.buildings.id);
-      if (existingBuilding) {
-        if (curr.coordinators) {
-          existingBuilding.coordinators.push(curr.coordinators);
-        }
-      } else {
-        acc.push({
-          ...curr.buildings,
-          supervisor: curr.supervisor,
-          coordinators: curr.coordinators ? [curr.coordinators] : []
-        });
-      }
-      return acc;
-    }, []);
+    // Get coordinator data separately to avoid JOIN complexity
+    const formattedBuildings = await Promise.all(
+      buildingsData.map(async (building) => {
+        // Get supervisor data
+        const [supervisor] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, building.supervisorId!));
+
+        // Get coordinators data
+        const coordinatorsData = await db
+          .select({
+            coordinator: users,
+            shiftType: buildingCoordinators.shiftType,
+            id: buildingCoordinators.id
+          })
+          .from(buildingCoordinators)
+          .where(eq(buildingCoordinators.buildingId, building.id))
+          .leftJoin(users, eq(buildingCoordinators.coordinatorId, users.id));
+
+        return {
+          ...building,
+          supervisor,
+          coordinators: coordinatorsData.map(c => ({
+            id: c.id,
+            coordinator: c.coordinator,
+            shiftType: c.shiftType
+          }))
+        };
+      })
+    );
 
     res.json(formattedBuildings);
   } catch (error) {
     console.error("Error fetching buildings:", error);
-    res.status(500).json({ message: "Error fetching buildings" });
+    res.status(500).json({ message: "Error fetching buildings", error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -44,6 +53,8 @@ export const getBuildings = async (req: Request, res: Response) => {
 export const createBuilding = async (req: Request, res: Response) => {
   try {
     const { name, code, supervisorId, area, coordinators } = req.body;
+
+    console.log("Creating building with data:", { name, code, supervisorId, area, coordinators });
 
     // Create building first
     const [building] = await db.insert(buildings)
@@ -55,41 +66,56 @@ export const createBuilding = async (req: Request, res: Response) => {
       })
       .returning();
 
+    console.log("Building created:", building);
+
     // Then create coordinator assignments
     if (coordinators && coordinators.length > 0) {
-      await Promise.all(
-        coordinators.map((coord: { coordinatorId: string; shiftType: string }) =>
-          db.insert(buildingCoordinators).values({
+      const coordinatorPromises = coordinators.map((coord: { coordinatorId: string; shiftType: string }) =>
+        db.insert(buildingCoordinators)
+          .values({
             buildingId: building.id,
             coordinatorId: parseInt(coord.coordinatorId),
-            shiftType: coord.shiftType,
+            shiftType: coord.shiftType.toUpperCase(), // Normalize shift type to uppercase
           })
-        )
+          .returning()
       );
+
+      await Promise.all(coordinatorPromises);
     }
 
-    // Fetch the created building with its relationships
-    const result = await db.select({
-      buildings,
-      supervisor: users,
-      coordinators: buildingCoordinators
-    })
-    .from(buildings)
-    .where(eq(buildings.id, building.id))
-    .leftJoin(users, eq(buildings.supervisorId, users.id))
-    .leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
+    // Fetch the complete building data with relationships
+    const [supervisor] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, building.supervisorId!));
 
-    // Format the response
+    const coordinatorsData = await db
+      .select({
+        coordinator: users,
+        shiftType: buildingCoordinators.shiftType,
+        id: buildingCoordinators.id
+      })
+      .from(buildingCoordinators)
+      .where(eq(buildingCoordinators.buildingId, building.id))
+      .leftJoin(users, eq(buildingCoordinators.coordinatorId, users.id));
+
     const createdBuilding = {
-      ...result[0].buildings,
-      supervisor: result[0].supervisor,
-      coordinators: result[0].coordinators ? [result[0].coordinators] : []
+      ...building,
+      supervisor,
+      coordinators: coordinatorsData.map(c => ({
+        id: c.id,
+        coordinator: c.coordinator,
+        shiftType: c.shiftType
+      }))
     };
 
     res.status(201).json(createdBuilding);
   } catch (error) {
     console.error("Error creating building:", error);
-    res.status(500).json({ message: "Error creating building" });
+    res.status(500).json({ 
+      message: "Error creating building", 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
 };
 
@@ -112,7 +138,10 @@ export const updateBuilding = async (req: Request, res: Response) => {
     res.json(updated);
   } catch (error) {
     console.error("Error updating building:", error);
-    res.status(500).json({ message: "Error updating building" });
+    res.status(500).json({ 
+      message: "Error updating building",
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -126,10 +155,8 @@ export const updateBuildingCoordinator = async (req: Request, res: Response) => 
     const [existing] = await db.select()
       .from(buildingCoordinators)
       .where(
-        and(
-          eq(buildingCoordinators.buildingId, parseInt(buildingId)),
-          eq(buildingCoordinators.shiftType, shiftType)
-        )
+        eq(buildingCoordinators.buildingId, parseInt(buildingId)),
+        eq(buildingCoordinators.shiftType, shiftType.toUpperCase()) // Normalize shift type
       );
 
     if (existing) {
@@ -143,13 +170,13 @@ export const updateBuildingCoordinator = async (req: Request, res: Response) => 
         .values({
           buildingId: parseInt(buildingId),
           coordinatorId: parseInt(coordinatorId),
-          shiftType,
+          shiftType: shiftType.toUpperCase(), // Normalize shift type
         });
     }
 
     res.sendStatus(200);
   } catch (error) {
     console.error("Error updating building coordinator:", error);
-    res.status(500).json({ message: "Error updating building coordinator" });
+    res.status(500).json({ message: "Error updating building coordinator", error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
