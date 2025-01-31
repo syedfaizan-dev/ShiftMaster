@@ -105,6 +105,83 @@ function BuildingsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
+  const columns: ColumnDef<Building>[] = [
+    {
+      header: "Building Name",
+      accessorKey: "name",
+    },
+    {
+      header: "Area",
+      accessorKey: "area",
+    },
+    {
+      header: "Building Supervisor",
+      accessorKey: "supervisor",
+      cell: ({ row }: { row: { original: Building } }) => {
+        const building = row.original;
+        return building?.supervisor?.fullName || "Not assigned";
+      },
+    },
+    {
+      header: "Shift Coordinator (Shift 1)",
+      accessorKey: "coordinators",
+      cell: ({ row }: { row: { original: Building } }) => {
+        const building = row.original;
+        const coordinator = building.coordinators.find(c => c.shiftType === "Morning Shift");
+        return coordinator?.coordinator?.fullName || "Not assigned";
+      },
+    },
+    {
+      header: "Shift Coordinator (Shift 2)",
+      accessorKey: "coordinators",
+      cell: ({ row }: { row: { original: Building } }) => {
+        const building = row.original;
+        const coordinator = building.coordinators.find(c => c.shiftType === "Evening Shift");
+        return coordinator?.coordinator?.fullName || "Not assigned";
+      },
+    },
+    {
+      header: "Shift Time (Supervisor)",
+      accessorKey: "shiftTime",
+      cell: () => "6 AM - 2 PM",
+    },
+    {
+      header: "Shift Time (Coordinator 1)",
+      accessorKey: "shiftTime1",
+      cell: () => "6 AM - 2 PM",
+    },
+    {
+      header: "Shift Time (Coordinator 2)",
+      accessorKey: "shiftTime2",
+      cell: () => "2 PM - 10 PM",
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: ({ row }: { row: { original: Building } }) => {
+        const building = row.original;
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(building)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setBuildingToDelete(building)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
   const form = useForm<BuildingFormData>({
     resolver: zodResolver(buildingSchema),
     defaultValues: {
@@ -256,69 +333,6 @@ function BuildingsPage() {
     }
   };
 
-  const columns: ColumnDef<Building>[] = [
-    {
-      header: "Name",
-      accessorKey: "name",
-    },
-    {
-      header: "Code",
-      accessorKey: "code",
-    },
-    {
-      header: "Area",
-      accessorKey: "area",
-    },
-    {
-      header: "Supervisor",
-      accessorKey: "supervisor",
-      cell: ({ row }: { row: { original: Building } }) => {
-        const building = row.original;
-        return building?.supervisor?.fullName || "Not assigned";
-      },
-    },
-    {
-      header: "Coordinators",
-      accessorKey: "coordinators",
-      cell: ({ row }: { row: { original: Building } }) => {
-        const building = row.original;
-        return (
-          <div className="flex flex-col gap-1">
-            {building?.coordinators?.map((coord) => (
-              <Badge key={coord.id} variant="secondary">
-                {coord.coordinator.fullName} ({coord.shiftType})
-              </Badge>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      header: "Actions",
-      id: "actions",
-      cell: ({ row }: { row: { original: Building } }) => {
-        const building = row.original;
-        return (
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleEdit(building)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setBuildingToDelete(building)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-        );
-      },
-    },
-  ];
 
   if (!user?.isAdmin) {
     return (
@@ -358,10 +372,11 @@ function BuildingsPage() {
           </Alert>
         ) : (
           <>
-            <div className="w-full">
+            <div className="rounded-md border">
               <ResponsiveTable
-                columns={columns}
                 data={currentBuildings}
+                columns={columns}
+                pageSize={pageSize}
               />
             </div>
 
