@@ -1,19 +1,48 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 
 export default function UserTable() {
   const { data: users, isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
   });
+
+  const columns = [
+    {
+      header: "Full Name",
+      accessorKey: "fullName",
+    },
+    {
+      header: "Username",
+      accessorKey: "username",
+    },
+    {
+      header: "Role",
+      accessorKey: "role",
+      cell: (value: any, row: any) => (
+        <Badge
+          variant={
+            row.isAdmin
+              ? "admin"
+              : row.isManager
+                ? "manager"
+                : row.isInspector
+                  ? "inspector"
+                  : "employee"
+          }
+        >
+          {row.isAdmin
+            ? "Admin"
+            : row.isManager
+              ? "Manager"
+              : row.isInspector
+                ? "Inspector"
+                : "Employee"}
+        </Badge>
+      ),
+    },
+  ];
 
   if (isLoading) {
     return (
@@ -23,44 +52,5 @@ export default function UserTable() {
     );
   }
 
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Full Name</TableHead>
-          <TableHead>Username</TableHead>
-          <TableHead>Role</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {users?.map((user) => (
-          <TableRow key={user.id}>
-            <TableCell>{user.fullName}</TableCell>
-            <TableCell>{user.username}</TableCell>
-            <TableCell>
-              <Badge
-                variant={
-                  user.isAdmin
-                    ? "admin"
-                    : user.isManager
-                      ? "manager"
-                      : user.isInspector
-                        ? "inspector"
-                        : "employee"
-                }
-              >
-                {user.isAdmin
-                  ? "Admin"
-                  : user.isManager
-                    ? "Manager"
-                    : user.isInspector
-                      ? "Inspector"
-                      : "Employee"}
-              </Badge>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
+  return <ResponsiveTable columns={columns} data={users || []} />;
 }

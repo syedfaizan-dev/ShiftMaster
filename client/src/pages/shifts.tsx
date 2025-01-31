@@ -2,14 +2,7 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { TablePagination } from "@/components/table-pagination";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,10 +40,8 @@ export default function Shifts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(null);
   const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
-
-  // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5); // Set default to 5
+  const [pageSize, setPageSize] = useState(5);
 
   const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
     queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
@@ -61,14 +52,13 @@ export default function Shifts() {
   const endIndex = startIndex + pageSize;
   const currentShifts = shifts.slice(startIndex, endIndex);
 
-  // Handle pagination changes
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setCurrentPage(1); // Reset to first page when changing page size
+    setCurrentPage(1);
   };
 
   const deleteShift = useMutation({
@@ -100,6 +90,62 @@ export default function Shifts() {
     setIsDialogOpen(true);
   };
 
+  const columns = [
+    {
+      header: "Inspector Name",
+      accessorKey: "inspector",
+      cell: (value: { fullName: string }) => value?.fullName || 'Unknown',
+    },
+    {
+      header: "Role",
+      accessorKey: "role",
+      cell: (value: { name: string }) => value?.name || 'Unknown',
+    },
+    {
+      header: "Shift Type",
+      accessorKey: "shiftType",
+      cell: (value: { name: string }) => value?.name || 'Unknown',
+    },
+    {
+      header: "Time",
+      accessorKey: "shiftType",
+      cell: (value: { startTime: string; endTime: string }) => 
+        `${value?.startTime || 'N/A'} - ${value?.endTime || 'N/A'}`,
+    },
+    {
+      header: "Week",
+      accessorKey: "week",
+      cell: (value: string) => `Week ${value}`,
+    },
+    {
+      header: "Backup Inspector",
+      accessorKey: "backup",
+      cell: (value: { fullName: string } | null) => value?.fullName || "-",
+    },
+    ...(user?.isAdmin ? [{
+      header: "Actions",
+      accessorKey: "id",
+      cell: (_: any, row: ShiftWithRelations) => (
+        <div className="space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEdit(row)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShiftToDelete(row)}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    }] : []),
+  ];
+
   return (
     <Navbar>
       <div className="p-6">
@@ -123,53 +169,12 @@ export default function Shifts() {
           <p className="text-center text-gray-500">No shifts found</p>
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Inspector Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Shift Type</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Week</TableHead>
-                  <TableHead>Backup Inspector</TableHead>
-                  {user?.isAdmin && <TableHead>Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentShifts.map((shift) => (
-                  <TableRow key={shift.id}>
-                    <TableCell>{shift.inspector?.fullName || 'Unknown'}</TableCell>
-                    <TableCell>{shift.role?.name || 'Unknown'}</TableCell>
-                    <TableCell>{shift.shiftType?.name || 'Unknown'}</TableCell>
-                    <TableCell>
-                      {shift.shiftType?.startTime || 'N/A'} - {shift.shiftType?.endTime || 'N/A'}
-                    </TableCell>
-                    <TableCell>Week {shift.week}</TableCell>
-                    <TableCell>
-                      {shift.backup?.fullName || "-"}
-                    </TableCell>
-                    {user?.isAdmin && (
-                      <TableCell className="space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(shift)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setShiftToDelete(shift)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="rounded-md border">
+              <ResponsiveTable
+                columns={columns}
+                data={currentShifts}
+              />
+            </div>
 
             <TablePagination
               currentPage={currentPage}
