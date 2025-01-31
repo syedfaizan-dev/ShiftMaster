@@ -1,23 +1,8 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TablePagination } from "@/components/table-pagination";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import {
   Form,
   FormControl,
@@ -297,6 +282,96 @@ export default function Tasks() {
     }
   };
 
+  const columns = [
+    {
+      header: "Date",
+      accessorKey: "date",
+      cell: (value: string) => format(new Date(value), "MMM d, yyyy"),
+    },
+    {
+      header: "Inspector",
+      accessorKey: "inspector",
+      cell: (value: any) => value?.fullName || "Unknown",
+    },
+    {
+      header: "Shift Type",
+      accessorKey: "shiftType",
+      cell: (value: any) => value?.name || "Unknown",
+    },
+    {
+      header: "Task Type",
+      accessorKey: "taskType",
+      cell: (value: any) => value?.name || "Unknown",
+    },
+    {
+      header: "Description",
+      accessorKey: "taskType",
+      cell: (value: any) => value?.description || "Unknown",
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+    },
+    {
+      header: "Follow-up Needed",
+      accessorKey: "isFollowupNeeded",
+      cell: (value: boolean) => (value ? "Yes" : "No"),
+    },
+    {
+      header: "Assigned To",
+      accessorKey: "assignedEmployee",
+      cell: (value: any) => value?.fullName || "Unknown",
+    },
+    {
+      header: "Actions",
+      accessorKey: "id",
+      cell: (value: any) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleOpenDialog(value)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the task.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteTask.mutate(value)}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ),
+    },
+  ];
+
+  // Transform the data for the table
+  const transformedData = tasks.map((task) => ({
+    id: task.id,
+    date: task.date,
+    inspector: task.inspector,
+    shiftType: task.shiftType,
+    taskType: task.taskType,
+    status: task.status,
+    isFollowupNeeded: task.isFollowupNeeded,
+    assignedEmployee: task.assignedEmployee,
+  }));
+
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -346,6 +421,30 @@ export default function Tasks() {
           <h1 className="text-3xl font-bold">Tasks</h1>
           <Button onClick={() => handleOpenDialog()}>Create Task</Button>
         </div>
+
+        {isLoadingTasks ? (
+          <div className="flex justify-center p-4">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : tasks.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Tasks Found</AlertTitle>
+            <AlertDescription>
+              Create your first task to start managing work.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="rounded-md border">
+            <ResponsiveTable
+              columns={columns}
+              data={transformedData}
+              currentPage={currentPage}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
+        )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-h-[90vh] w-[90vw] max-w-[600px] overflow-y-auto">
@@ -578,98 +677,6 @@ export default function Tasks() {
             </div>
           </DialogContent>
         </Dialog>
-
-        {isLoadingTasks ? (
-          <div className="flex justify-center p-4">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : tasks.length === 0 ? (
-          <Alert>
-            <AlertTitle>No Tasks Found</AlertTitle>
-            <AlertDescription>
-              Create your first task to start managing work.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Inspector</TableHead>
-                  <TableHead>Shift Type</TableHead>
-                  <TableHead>Task Type</TableHead>
-                  <TableHead>Task Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Followup Needed</TableHead>
-                  <TableHead>Assigned To</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentTasks.map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell>
-                      {format(new Date(task.date), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell>{task.inspector?.fullName || "Unknown"}</TableCell>
-                    <TableCell>{task.shiftType?.name || "Unknown"}</TableCell>
-                    <TableCell>{task.taskType?.name || "Unknown"}</TableCell>
-                    <TableCell>{task.taskType?.description || "Unknown"}</TableCell>
-                    <TableCell>{task.status}</TableCell>
-                    <TableCell>{task.isFollowupNeeded ? "Yes" : "No"}</TableCell>
-                    <TableCell>
-                      {task.assignedEmployee?.fullName || "Unknown"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenDialog(task)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will
-                                permanently delete the task.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteTask.mutate(task.id)}
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={tasks.length}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
-          </>
-        )}
       </div>
     </Navbar>
   );

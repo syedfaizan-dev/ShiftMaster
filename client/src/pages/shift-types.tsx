@@ -12,26 +12,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import * as z from "zod";
-import { TablePagination } from "@/components/table-pagination";
 
 const shiftTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -49,10 +40,8 @@ function ShiftTypesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedShiftType, setSelectedShiftType] = useState<any>(null);
   const [shiftTypeToDelete, setShiftTypeToDelete] = useState<any>(null);
-
-  // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5); // Set default to 5
+  const [pageSize, setPageSize] = useState(5);
 
   const form = useForm<ShiftTypeFormData>({
     resolver: zodResolver(shiftTypeSchema),
@@ -67,6 +56,57 @@ function ShiftTypesPage() {
   const { data: shiftTypes = [], isLoading } = useQuery({
     queryKey: ["/api/shift-types"],
   });
+
+  const columns = [
+    {
+      header: "Name",
+      accessorKey: "name",
+    },
+    {
+      header: "Start Time",
+      accessorKey: "startTime",
+    },
+    {
+      header: "End Time",
+      accessorKey: "endTime",
+    },
+    {
+      header: "Description",
+      accessorKey: "description",
+      cell: (value: any) => value || "-",
+    },
+    {
+      header: "Actions",
+      accessorKey: "id",
+      cell: (value: any) => (
+        <div className="space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEdit(value)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShiftTypeToDelete(value)}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // Transform the data for the table
+  const transformedData = shiftTypes.map((shiftType: any) => ({
+    id: shiftType.id,
+    name: shiftType.name,
+    startTime: shiftType.startTime,
+    endTime: shiftType.endTime,
+    description: shiftType.description,
+  }));
 
   // Calculate pagination values
   const startIndex = (currentPage - 1) * pageSize;
@@ -223,53 +263,12 @@ function ShiftTypesPage() {
             </AlertDescription>
           </Alert>
         ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Start Time</TableHead>
-                  <TableHead>End Time</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentShiftTypes.map((shiftType: any) => (
-                  <TableRow key={shiftType.id}>
-                    <TableCell>{shiftType.name}</TableCell>
-                    <TableCell>{shiftType.startTime}</TableCell>
-                    <TableCell>{shiftType.endTime}</TableCell>
-                    <TableCell>{shiftType.description || "-"}</TableCell>
-                    <TableCell className="space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(shiftType)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShiftTypeToDelete(shiftType)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={shiftTypes.length}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
+          <div className="rounded-md border">
+            <ResponsiveTable
+              columns={columns}
+              data={transformedData}
             />
-          </>
+          </div>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
