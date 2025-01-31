@@ -2,23 +2,32 @@ import { Request, Response } from "express";
 import { db } from "@db";
 import { buildings, buildingCoordinators } from "@db/schema/buildings";
 import { eq, and } from "drizzle-orm";
+import { users } from "@db/schema";
 
 // Get all buildings with their supervisors and coordinators
 export const getBuildings = async (req: Request, res: Response) => {
   try {
-    const allBuildings = await db.select().from(buildings).leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
+    const result = await db.select({
+      buildings,
+      supervisor: users,
+      coordinators: buildingCoordinators
+    })
+    .from(buildings)
+    .leftJoin(users, eq(buildings.supervisorId, users.id))
+    .leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
 
-    // Format the response to match the expected structure
-    const formattedBuildings = allBuildings.reduce((acc: any[], curr) => {
+    // Format the response
+    const formattedBuildings = result.reduce((acc: any[], curr) => {
       const existingBuilding = acc.find(b => b.id === curr.buildings.id);
       if (existingBuilding) {
-        if (curr.building_coordinators) {
-          existingBuilding.coordinators.push(curr.building_coordinators);
+        if (curr.coordinators) {
+          existingBuilding.coordinators.push(curr.coordinators);
         }
       } else {
         acc.push({
           ...curr.buildings,
-          coordinators: curr.building_coordinators ? [curr.building_coordinators] : []
+          supervisor: curr.supervisor,
+          coordinators: curr.coordinators ? [curr.coordinators] : []
         });
       }
       return acc;
@@ -48,20 +57,36 @@ export const createBuilding = async (req: Request, res: Response) => {
 
     // Then create coordinator assignments
     if (coordinators && coordinators.length > 0) {
-      await db.insert(buildingCoordinators)
-        .values(coordinators.map((coord: { coordinatorId: string; shiftType: string }) => ({
-          buildingId: building.id,
-          coordinatorId: parseInt(coord.coordinatorId),
-          shiftType: coord.shiftType,
-        })));
+      await Promise.all(
+        coordinators.map((coord: { coordinatorId: string; shiftType: string }) =>
+          db.insert(buildingCoordinators).values({
+            buildingId: building.id,
+            coordinatorId: parseInt(coord.coordinatorId),
+            shiftType: coord.shiftType,
+          })
+        )
+      );
     }
 
-    const createdBuilding = await db.select()
-      .from(buildings)
-      .where(eq(buildings.id, building.id))
-      .leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
+    // Fetch the created building with its relationships
+    const result = await db.select({
+      buildings,
+      supervisor: users,
+      coordinators: buildingCoordinators
+    })
+    .from(buildings)
+    .where(eq(buildings.id, building.id))
+    .leftJoin(users, eq(buildings.supervisorId, users.id))
+    .leftJoin(buildingCoordinators, eq(buildings.id, buildingCoordinators.buildingId));
 
-    res.status(201).json(createdBuilding[0]);
+    // Format the response
+    const createdBuilding = {
+      ...result[0].buildings,
+      supervisor: result[0].supervisor,
+      coordinators: result[0].coordinators ? [result[0].coordinators] : []
+    };
+
+    res.status(201).json(createdBuilding);
   } catch (error) {
     console.error("Error creating building:", error);
     res.status(500).json({ message: "Error creating building" });
