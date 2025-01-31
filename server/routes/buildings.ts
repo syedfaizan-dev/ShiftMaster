@@ -180,3 +180,31 @@ export const updateBuildingCoordinator = async (req: Request, res: Response) => 
     res.status(500).json({ message: "Error updating building coordinator", error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
+
+// Delete building and its coordinators
+export const deleteBuilding = async (req: Request, res: Response) => {
+  try {
+    const { buildingId } = req.params;
+
+    // First delete all coordinators associated with this building
+    await db.delete(buildingCoordinators)
+      .where(eq(buildingCoordinators.buildingId, parseInt(buildingId)));
+
+    // Then delete the building
+    const [deleted] = await db.delete(buildings)
+      .where(eq(buildings.id, parseInt(buildingId)))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Building not found" });
+    }
+
+    res.json(deleted);
+  } catch (error) {
+    console.error("Error deleting building:", error);
+    res.status(500).json({ 
+      message: "Error deleting building", 
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};

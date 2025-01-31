@@ -2,6 +2,16 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -10,11 +20,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Pencil, Plus, Minus } from "lucide-react";
+import { Loader2, Pencil, Plus, Minus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { TablePagination } from "@/components/table-pagination";
 
 type ShiftType = {
   id: number;
@@ -43,6 +54,8 @@ export default function BuildingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
+  const [buildingToDelete, setBuildingToDelete] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -57,7 +70,6 @@ export default function BuildingsPage() {
     }
   });
 
-  // Add useFieldArray hook for managing dynamic coordinator fields
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "coordinators"
@@ -68,19 +80,16 @@ export default function BuildingsPage() {
     enabled: user?.isAdmin
   });
 
-  // Query for shift types
   const { data: shiftTypes = [] } = useQuery<ShiftType[]>({
     queryKey: ["/api/shift-types"],
     enabled: user?.isAdmin
   });
 
-  // Query for all users who can be supervisors
   const { data: supervisors = [] } = useQuery({
     queryKey: ["/api/admin/admins"],
     enabled: user?.isAdmin
   });
 
-  // Query for managers who can be coordinators
   const { data: managers = [] } = useQuery({
     queryKey: ["/api/admin/managers"],
     enabled: user?.isAdmin
@@ -116,12 +125,89 @@ export default function BuildingsPage() {
     },
   });
 
+  const updateBuilding = useMutation({
+    mutationFn: async (data: BuildingFormData & { id: number }) => {
+      const res = await fetch(`/api/admin/buildings/${data.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Building updated successfully" });
+      setIsDialogOpen(false);
+      form.reset();
+      setSelectedBuilding(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/buildings"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
+  const deleteBuilding = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/admin/buildings/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Building deleted successfully" });
+      setBuildingToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/buildings"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
   const addCoordinator = () => {
     append({ coordinatorId: "", shiftType: "" });
   };
 
   const removeCoordinator = (index: number) => {
     remove(index);
+  };
+
+  const handleEdit = (building: any) => {
+    setSelectedBuilding(building);
+    form.reset({
+      name: building.name,
+      code: building.code,
+      supervisorId: String(building.supervisorId),
+      area: building.area,
+      coordinators: building.coordinators.map((coord: any) => ({
+        coordinatorId: String(coord.coordinator.id),
+        shiftType: coord.shiftType
+      }))
+    });
+    setIsDialogOpen(true);
+  };
+
+  const onSubmit = async (data: BuildingFormData) => {
+    try {
+      if (selectedBuilding) {
+        await updateBuilding.mutateAsync({ ...data, id: selectedBuilding.id });
+      } else {
+        await createBuilding.mutateAsync(data);
+      }
+    } catch (error) {
+      console.error('Building operation failed:', error);
+    }
   };
 
   const columns = [
@@ -158,16 +244,23 @@ export default function BuildingsPage() {
     {
       header: "Actions",
       accessorKey: "id",
-      cell: (value: number) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            // Handle edit
-          }}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+      cell: (info: any) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEdit(info.row.original)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setBuildingToDelete(info.row.original)}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -229,9 +322,11 @@ export default function BuildingsPage() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl">
-            <DialogTitle>Add New Building</DialogTitle>
+            <DialogTitle>
+              {selectedBuilding ? "Edit Building" : "Add New Building"}
+            </DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createBuilding.mutate(data))} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -371,20 +466,55 @@ export default function BuildingsPage() {
                   ))}
                 </div>
 
-                <Button type="submit" disabled={createBuilding.isPending}>
-                  {createBuilding.isPending ? (
+                <Button 
+                  type="submit" 
+                  disabled={createBuilding.isPending || updateBuilding.isPending}
+                >
+                  {(createBuilding.isPending || updateBuilding.isPending) ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      {selectedBuilding ? "Updating..." : "Creating..."}
                     </>
                   ) : (
-                    'Create Building'
+                    selectedBuilding ? 'Update Building' : 'Create Building'
                   )}
                 </Button>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog 
+          open={!!buildingToDelete} 
+          onOpenChange={(open) => !open && setBuildingToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Building</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete {buildingToDelete?.name}? This action cannot be undone.
+                All associated coordinators will also be removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => buildingToDelete && deleteBuilding.mutate(buildingToDelete.id)}
+                disabled={deleteBuilding.isPending}
+              >
+                {deleteBuilding.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Navbar>
   );
