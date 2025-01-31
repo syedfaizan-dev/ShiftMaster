@@ -1,96 +1,7 @@
 import { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
-import { shifts, users, shiftTypes } from "@db/schema";
-import { sendEmail, sendShiftAssignmentEmail } from "../utils/email";
-
-// Simple test endpoint for email
-export async function testEmail(req: Request, res: Response) {
-  const { email } = req.query;
-
-  if (!email) {
-    return res.status(400).json({ message: 'Email address is required' });
-  }
-
-  try {
-    const success = await sendEmail(
-      email as string,
-      'Test Email',
-      '<h1>Test Email</h1><p>This is a test email from your workforce management system.</p>'
-    );
-
-    if (success) {
-      res.json({ message: 'Test email sent successfully' });
-    } else {
-      res.status(500).json({ message: 'Failed to send test email' });
-    }
-  } catch (error) {
-    console.error('Test email error:', error);
-    res.status(500).json({ message: 'Error sending test email' });
-  }
-}
-
-// When creating a new shift, send email notification
-export async function createShift(req: Request, res: Response) {
-  try {
-    const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
-
-    // Get shift type details
-    const [shiftType] = await db
-      .select()
-      .from(shiftTypes)
-      .where(eq(shiftTypes.id, shiftTypeId))
-      .limit(1);
-
-    if (!shiftType) {
-      return res.status(400).json({ message: "Invalid shift type" });
-    }
-
-    // Create shift
-    const [newShift] = await db
-      .insert(shifts)
-      .values({
-        inspectorId,
-        roleId,
-        shiftTypeId,
-        week,
-        backupId,
-        createdBy: req.user?.id,
-      })
-      .returning();
-
-    // Send email to inspector
-    const [inspector] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, inspectorId))
-      .limit(1);
-
-    await sendShiftAssignmentEmail(inspector.username, {
-      shiftType,
-      week,
-    });
-
-    // Send email to backup if exists
-    if (backupId) {
-      const [backup] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, backupId))
-        .limit(1);
-
-      await sendShiftAssignmentEmail(backup.username, {
-        shiftType,
-        week,
-      });
-    }
-
-    res.json(newShift);
-  } catch (error) {
-    console.error('Error creating shift:', error);
-    res.status(500).json({ message: 'Error creating shift' });
-  }
-}
+import { shifts, users, roles, shiftTypes } from "@db/schema";
 
 export async function getShifts(req: Request, res: Response) {
   try {
@@ -156,6 +67,82 @@ export async function getShifts(req: Request, res: Response) {
   }
 }
 
+export async function createShift(req: Request, res: Response) {
+  try {
+    if (!req.user?.isAdmin) {
+      return res.status(403).send("Not authorized - Admin access required");
+    }
+
+    const { startTime, endTime, ...rest } = req.body;
+
+    // Ensure dates are properly parsed
+    const parsedStartTime = new Date(startTime);
+    const parsedEndTime = new Date(endTime);
+
+    // Validate dates
+    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
+      return res.status(400).send("Invalid date format");
+    }
+
+    const [shift] = await db
+      .insert(shifts)
+      .values({
+        ...rest,
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
+        createdBy: req.user.id,
+      })
+      .returning();
+
+    // Get inspector details for notification
+    const [inspector] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, shift.inspectorId))
+      .limit(1);
+
+    // Get role details
+    const [role] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, shift.roleId))
+      .limit(1);
+
+    // Notify assigned inspector
+    await NotificationService.notifyShiftAssignment({
+      userId: inspector.id,
+      userEmail: inspector.username, // Assuming username is email
+      shiftId: shift.id,
+      startTime: parsedStartTime,
+      endTime: parsedEndTime,
+      role: role.name,
+    });
+
+    // If there's a backup inspector, notify them too
+    if (shift.backupId) {
+      const [backup] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, shift.backupId))
+        .limit(1);
+
+      await NotificationService.notifyShiftAssignment({
+        userId: backup.id,
+        userEmail: backup.username,
+        shiftId: shift.id,
+        startTime: parsedStartTime,
+        endTime: parsedEndTime,
+        role: `Backup ${role.name}`,
+      });
+    }
+
+    res.json(shift);
+  } catch (error) {
+    console.error('Error creating shift:', error);
+    res.status(500).send((error as Error).message);
+  }
+}
+
 export async function updateShift(req: Request, res: Response) {
   try {
     if (!req.user?.isAdmin) {
@@ -199,34 +186,6 @@ export async function updateShift(req: Request, res: Response) {
       })
       .where(eq(shifts.id, parseInt(id)))
       .returning();
-
-    // If inspector was changed, send notification to new inspector
-    if (inspectorId !== existingShift.inspectorId) {
-      const [newInspector] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, inspectorId))
-        .limit(1);
-
-      await sendShiftAssignmentEmail(newInspector.username, {
-        shiftType,
-        week: updatedShift.week,
-      });
-    }
-
-    // If backup was changed, send notification to new backup
-    if (backupId && backupId !== existingShift.backupId) {
-      const [newBackup] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, backupId))
-        .limit(1);
-
-      await sendShiftAssignmentEmail(newBackup.username, {
-        shiftType,
-        week: updatedShift.week,
-      });
-    }
 
     res.json(updatedShift);
   } catch (error) {

@@ -11,8 +11,6 @@ app.use((req, res, next) => {
 
   if (origin && allowedOrigins.some(allowed => origin.startsWith(allowed))) {
     res.header('Access-Control-Allow-Origin', origin);
-  } else {
-    res.header('Access-Control-Allow-Origin', '*'); // Allow all origins for /api routes
   }
 
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
@@ -29,7 +27,6 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -71,14 +68,7 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
   });
 
-  // Important: Setup API routes before Vite middleware
   if (app.get("env") === "development") {
-    // Only serve static assets through Vite in development
-    app.use("/api", (req, res, next) => {
-      if (!res.headersSent) {
-        next();
-      }
-    });
     await setupVite(app, server);
   } else {
     serveStatic(app);
