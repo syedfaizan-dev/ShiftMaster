@@ -2,7 +2,14 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { ResponsiveTable } from "@/components/ui/responsive-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -16,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { User } from "@db/schema";
+import { TablePagination } from "@/components/table-pagination";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,8 +52,9 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
+  // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(5); // Changed default to 5
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -62,90 +71,19 @@ export default function UsersPage() {
     enabled: user?.isAdmin,
   });
 
-  const getRoleDetails = (user: User): { label: string; variant: "default" | "destructive" | "outline" | "secondary" } => {
-    if (user?.isAdmin) return { label: "Admin", variant: "destructive" };
-    if (user?.isManager) return { label: "Manager", variant: "secondary" };
-    if (user?.isInspector) return { label: "Inspector", variant: "outline" };
-    return { label: "Employee", variant: "default" };
-  };
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentUsers = users.slice(startIndex, endIndex);
 
-  const columns = [
-    {
-      header: "Full Name",
-      accessorKey: "fullName",
-    },
-    {
-      header: "Email",
-      accessorKey: "username",
-    },
-    {
-      header: "Role",
-      accessorKey: "role",
-      cell: (value: User) => {
-        const roleDetails = getRoleDetails(value);
-        return (
-          <Badge variant={roleDetails.variant}>
-            {roleDetails.label}
-          </Badge>
-        );
-      },
-    },
-    {
-      header: "Actions",
-      accessorKey: "id",
-      cell: (value: User) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setEditingUser(value);
-              form.reset({
-                username: value.username,
-                fullName: value.fullName,
-                role: value.isAdmin ? "admin" : value.isManager ? "manager" : value.isInspector ? "inspector" : "employee",
-              });
-              setIsDialogOpen(true);
-            }}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the user
-                  and all associated data.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteUser.mutate(value.id)}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      ),
-    },
-  ];
-
+  // Handle pagination changes
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to first page when changing page size
   };
 
   const createUser = useMutation({
@@ -189,6 +127,7 @@ export default function UsersPage() {
         isManager: role === "manager",
         isInspector: role === "inspector",
       };
+      console.log('Updating user with payload:', payload);
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
         headers: {
@@ -199,7 +138,12 @@ export default function UsersPage() {
         credentials: "include",
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Update failed:', errorText);
+        throw new Error(errorText);
+      }
+
       return res.json();
     },
     onSuccess: () => {
@@ -210,6 +154,7 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
     },
     onError: (error: Error) => {
+      console.error('Update error:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -255,6 +200,20 @@ export default function UsersPage() {
     );
   }
 
+  const getRoleDetails = (user: User): { label: string; variant: "default" | "destructive" | "outline" | "secondary" } => {
+    if (user.isAdmin) return { label: "Admin", variant: "destructive" };
+    if (user.isManager) return { label: "Manager", variant: "secondary" };
+    if (user.isInspector) return { label: "Inspector", variant: "outline" };
+    return { label: "Employee", variant: "default" };
+  };
+
+  const getUserRole = (user: User): UserFormData["role"] => {
+    if (user.isAdmin) return "admin";
+    if (user.isManager) return "manager";
+    if (user.isInspector) return "inspector";
+    return "employee";
+  };
+
   return (
     <Navbar>
       <div className="p-6">
@@ -279,16 +238,85 @@ export default function UsersPage() {
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <div className="rounded-md border">
-            <ResponsiveTable
-              columns={columns}
-              data={users}
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Full Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentUsers.map((user) => {
+                  const roleDetails = getRoleDetails(user);
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.fullName}</TableCell>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>
+                        <Badge variant={roleDetails.variant}>
+                          {roleDetails.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingUser(user);
+                              form.reset({
+                                username: user.username,
+                                fullName: user.fullName,
+                                role: getUserRole(user),
+                              });
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the user
+                                  and all associated data.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteUser.mutate(user.id)}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            <TablePagination
               currentPage={currentPage}
+              totalItems={users.length}
               pageSize={pageSize}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
             />
-          </div>
+          </>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
