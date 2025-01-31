@@ -63,9 +63,9 @@ export default function UsersPage() {
   });
 
   const getRoleDetails = (user: User): { label: string; variant: "default" | "destructive" | "outline" | "secondary" } => {
-    if (user.isAdmin) return { label: "Admin", variant: "destructive" };
-    if (user.isManager) return { label: "Manager", variant: "secondary" };
-    if (user.isInspector) return { label: "Inspector", variant: "outline" };
+    if (user?.isAdmin) return { label: "Admin", variant: "destructive" };
+    if (user?.isManager) return { label: "Manager", variant: "secondary" };
+    if (user?.isInspector) return { label: "Inspector", variant: "outline" };
     return { label: "Employee", variant: "default" };
   };
 
