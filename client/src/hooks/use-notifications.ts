@@ -6,9 +6,19 @@ export function useNotifications() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: notifications = [] } = useQuery<Notification[]>({
+  const { data: notifications = [], error } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds for more responsive updates
+    staleTime: 5000, // Consider data stale after 5 seconds
+    retry: 3, // Retry failed requests 3 times
+    onError: (error) => {
+      console.error('Failed to fetch notifications:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load notifications. Please try again later.",
+      });
+    },
   });
 
   const markAsRead = useMutation({
@@ -32,11 +42,12 @@ export function useNotifications() {
     },
   });
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
 
   return {
-    notifications,
+    notifications: notifications || [],
     unreadCount,
     markAsRead: markAsRead.mutate,
+    error,
   };
 }

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
 import { shifts, users, roles, shiftTypes } from "@db/schema";
+import { NotificationService } from "server/services/notification";
 
 export async function getShifts(req: Request, res: Response) {
   try {

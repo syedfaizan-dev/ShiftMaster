@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNotifications } from "@/hooks/use-notifications";
 import { format } from "date-fns";
+import type { Notification } from "@db/schema";
 
 export function NotificationBell() {
   const { notifications, unreadCount, markAsRead } = useNotifications();
@@ -25,12 +26,12 @@ export function NotificationBell() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[300px] max-h-[400px] overflow-y-auto">
-        {notifications.length === 0 ? (
+        {(!notifications || notifications.length === 0) ? (
           <div className="p-4 text-center text-sm text-gray-500">
             No notifications
           </div>
         ) : (
-          notifications.map((notification) => (
+          notifications.map((notification: Notification) => (
             <DropdownMenuItem
               key={notification.id}
               className="flex flex-col items-start gap-1 p-3 cursor-pointer"
@@ -44,7 +45,7 @@ export function NotificationBell() {
               </div>
               <p className="text-sm text-gray-500">{notification.message}</p>
               <span className="text-xs text-gray-400">
-                {format(new Date(notification.createdAt), "MMM d, h:mm a")}
+                {notification.createdAt && format(new Date(notification.createdAt), "MMM d, h:mm a")}
               </span>
             </DropdownMenuItem>
           ))
