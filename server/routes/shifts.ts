@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
 import { shifts, users, roles, shiftTypes } from "@db/schema";
+import { sendShiftAssignmentEmail } from "../utils/email";
 
 export async function getShifts(req: Request, res: Response) {
   try {
@@ -101,21 +102,17 @@ export async function createShift(req: Request, res: Response) {
       .where(eq(users.id, shift.inspectorId))
       .limit(1);
 
-    // Get role details
-    const [role] = await db
+    // Get shift type details for the email
+    const [shiftType] = await db
       .select()
-      .from(roles)
-      .where(eq(roles.id, shift.roleId))
+      .from(shiftTypes)
+      .where(eq(shiftTypes.id, shift.shiftTypeId))
       .limit(1);
 
-    // Notify assigned inspector
-    await NotificationService.notifyShiftAssignment({
-      userId: inspector.id,
-      userEmail: inspector.username, // Assuming username is email
-      shiftId: shift.id,
-      startTime: parsedStartTime,
-      endTime: parsedEndTime,
-      role: role.name,
+    // Send email notification to the assigned inspector
+    await sendShiftAssignmentEmail(inspector.username, {
+      shiftType,
+      week: shift.week,
     });
 
     // If there's a backup inspector, notify them too
@@ -126,13 +123,9 @@ export async function createShift(req: Request, res: Response) {
         .where(eq(users.id, shift.backupId))
         .limit(1);
 
-      await NotificationService.notifyShiftAssignment({
-        userId: backup.id,
-        userEmail: backup.username,
-        shiftId: shift.id,
-        startTime: parsedStartTime,
-        endTime: parsedEndTime,
-        role: `Backup ${role.name}`,
+      await sendShiftAssignmentEmail(backup.username, {
+        shiftType,
+        week: shift.week,
       });
     }
 
@@ -186,6 +179,34 @@ export async function updateShift(req: Request, res: Response) {
       })
       .where(eq(shifts.id, parseInt(id)))
       .returning();
+
+    // If inspector was changed, send notification to new inspector
+    if (inspectorId !== existingShift.inspectorId) {
+      const [newInspector] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, inspectorId))
+        .limit(1);
+
+      await sendShiftAssignmentEmail(newInspector.username, {
+        shiftType,
+        week: updatedShift.week,
+      });
+    }
+
+    // If backup was changed, send notification to new backup
+    if (backupId && backupId !== existingShift.backupId) {
+      const [newBackup] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, backupId))
+        .limit(1);
+
+      await sendShiftAssignmentEmail(newBackup.username, {
+        shiftType,
+        week: updatedShift.week,
+      });
+    }
 
     res.json(updatedShift);
   } catch (error) {
