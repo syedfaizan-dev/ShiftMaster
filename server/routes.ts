@@ -853,6 +853,25 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get all admin users
+  app.get("/api/admin/admins", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const admins = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+        })
+        .from(users)
+        .where(eq(users.isAdmin, true));
+
+      res.json(admins);
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+      res.status(500).json({ message: 'Error fetching admin users' });
+    }
+  });
+
   // Get inspectors by shift type
   app.get("/api/admin/shifts/inspectors/:shiftTypeId", requireAdmin, async (req: Request, res: Response) => {
     try {
@@ -949,7 +968,7 @@ export function registerRoutes(app: Express): Server {
   // Admin: Delete task type
   app.delete("/api/admin/task-types/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const { id }= req.params;
 
       await db
         .delete(taskTypes)

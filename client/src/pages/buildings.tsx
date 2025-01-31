@@ -76,7 +76,7 @@ export default function BuildingsPage() {
 
   // Query for all users who can be supervisors
   const { data: supervisors = [] } = useQuery({
-    queryKey: ["/api/admin/users"],
+    queryKey: ["/api/admin/admins"],
     enabled: user?.isAdmin
   });
 
