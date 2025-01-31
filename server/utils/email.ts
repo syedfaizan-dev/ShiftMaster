@@ -1,16 +1,26 @@
 import nodemailer from 'nodemailer';
 
-// Create a simple transporter with environment variables
+// Create reusable transporter with environment variables
 const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail', // e.g., 'gmail', 'outlook', etc.
+  service: process.env.EMAIL_SERVICE || 'gmail',
+  host: 'smtp.gmail.com', // Add explicit host for Gmail
+  port: 587, // Use TLS port
+  secure: false, // Use STARTTLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: false // Allow self-signed certificates
   }
 });
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   try {
+    // Verify transporter configuration
+    await transporter.verify();
+    console.log('Email service is ready');
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to,
@@ -18,11 +28,18 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       html
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully to:', to);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', info.messageId);
     return true;
   } catch (error) {
     console.error('Failed to send email:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+    }
     return false;
   }
 }
