@@ -2,24 +2,7 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -31,7 +14,16 @@ import { Loader2, Pencil, Trash2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import type { Role } from "@db/schema";
-import { TablePagination } from "@/components/table-pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const roleSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -47,10 +39,8 @@ function RolesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
-
-  // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5); // Set default to 5
+  const [pageSize, setPageSize] = useState(5);
 
   const form = useForm<RoleFormData>({
     resolver: zodResolver(roleSchema),
@@ -65,19 +55,67 @@ function RolesPage() {
     enabled: user?.isAdmin,
   });
 
-  // Calculate pagination values
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentRoles = roles.slice(startIndex, endIndex);
+  const columns = [
+    {
+      header: "Name",
+      accessorKey: "name",
+    },
+    {
+      header: "Description",
+      accessorKey: "description",
+      cell: (value: string | null) => value || "—",
+    },
+    {
+      header: "Actions",
+      accessorKey: "id",
+      cell: (value: any) => (
+        <div className="space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              const role = roles.find(r => r.id === value);
+              if (role) {
+                setEditingRole(role);
+                form.reset({
+                  name: role.name,
+                  description: role.description || "",
+                });
+                setIsDialogOpen(true);
+              }
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              const role = roles.find(r => r.id === value);
+              if (role) setRoleToDelete(role);
+            }}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
-  // Handle pagination changes
+  // Transform the data for the table
+  const transformedData = roles.map((role) => ({
+    id: role.id,
+    name: role.name,
+    description: role.description,
+  }));
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setCurrentPage(1); // Reset to first page when changing page size
+    setCurrentPage(1);
   };
 
   const createRole = useMutation({
@@ -114,8 +152,6 @@ function RolesPage() {
   const updateRole = useMutation({
     mutationFn: async (data: RoleFormData & { id: number }) => {
       const { id, ...updateData } = data;
-
-      // Send the update request
       const res = await fetch(`/api/admin/roles/${id}`, {
         method: "PUT",
         headers: { 
@@ -131,11 +167,7 @@ function RolesPage() {
         throw new Error(errorText || "Failed to update role");
       }
 
-      // For successful updates, return the updated data
-      return {
-        id,
-        ...updateData,
-      };
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Role updated successfully" });
@@ -224,56 +256,16 @@ function RolesPage() {
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentRoles.map((role) => (
-                  <TableRow key={role.id}>
-                    <TableCell>{role.name}</TableCell>
-                    <TableCell>{role.description || "—"}</TableCell>
-                    <TableCell className="space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditingRole(role);
-                          form.reset({
-                            name: role.name,
-                            description: role.description || "",
-                          });
-                          setIsDialogOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setRoleToDelete(role)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <TablePagination
+          <div className="rounded-md border">
+            <ResponsiveTable
+              columns={columns}
+              data={transformedData}
               currentPage={currentPage}
-              totalItems={roles.length}
               pageSize={pageSize}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
             />
-          </>
+          </div>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
