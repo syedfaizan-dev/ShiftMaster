@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Trash } from "lucide-react";
 import Navbar from "@/components/navbar";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { CreateBuildingModal } from "@/components/create-building-modal";
 
 interface Building {
   id: number;
@@ -81,10 +82,7 @@ export default function BuildingsPage() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Buildings</h1>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Building
-          </Button>
+          <CreateBuildingModal />
         </div>
 
         <div className="rounded-md border">
