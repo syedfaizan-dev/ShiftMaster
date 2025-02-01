@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
+import { Plus, Trash } from "lucide-react";
 // Define the form schema
 const buildingFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
