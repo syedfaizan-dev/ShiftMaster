@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { TablePagination } from "@/components/table-pagination";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +23,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
-import { ResponsiveTable } from "@/components/ui/responsive-table";
 import * as z from "zod";
 
 const shiftTypeSchema = z.object({
@@ -111,7 +112,7 @@ function ShiftTypesPage() {
   // Calculate pagination values
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const currentShiftTypes = shiftTypes.slice(startIndex, endIndex);
+
 
   // Handle pagination changes
   const handlePageChange = (page: number) => {
@@ -266,7 +267,14 @@ function ShiftTypesPage() {
           <div className="rounded-md border">
             <ResponsiveTable
               columns={columns}
-              data={transformedData}
+              data={transformedData.slice(startIndex, endIndex)}
+            />
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={transformedData.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
             />
           </div>
         )}

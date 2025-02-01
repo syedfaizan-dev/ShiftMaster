@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TablePagination } from "@/components/table-pagination";
 
 const roleSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -154,7 +155,7 @@ function RolesPage() {
       const { id, ...updateData } = data;
       const res = await fetch(`/api/admin/roles/${id}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
@@ -234,6 +235,10 @@ function RolesPage() {
     }
   };
 
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+
   return (
     <Navbar>
       <div className="p-6">
@@ -259,8 +264,11 @@ function RolesPage() {
           <div className="rounded-md border">
             <ResponsiveTable
               columns={columns}
-              data={transformedData}
+              data={transformedData.slice(startIndex, endIndex)}
+            />
+            <TablePagination
               currentPage={currentPage}
+              totalItems={transformedData.length}
               pageSize={pageSize}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
@@ -301,8 +309,8 @@ function RolesPage() {
                     </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={createRole.isPending || updateRole.isPending}
                 >
                   {createRole.isPending || updateRole.isPending ? (
