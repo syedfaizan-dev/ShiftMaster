@@ -54,6 +54,20 @@ export const createBuilding = async (req: Request, res: Response) => {
   try {
     const { name, code, supervisorId, area, coordinators } = req.body;
 
+    // Check if building code already exists
+    const [existingBuilding] = await db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.code, code))
+      .limit(1);
+
+    if (existingBuilding) {
+      return res.status(400).json({ 
+        message: "Building code already exists",
+        error: `A building with code "${code}" already exists. Please use a different code.`
+      });
+    }
+
     console.log("Creating building with data:", { name, code, supervisorId, area, coordinators });
 
     // Create building first

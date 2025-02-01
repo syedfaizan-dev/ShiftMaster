@@ -83,7 +83,10 @@ export function CreateBuildingModal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
       });
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create building');
+      }
       return response.json();
     },
     onSuccess: () => {
