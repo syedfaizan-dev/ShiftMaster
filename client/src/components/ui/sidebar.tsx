@@ -179,7 +179,7 @@ const Sidebar = React.forwardRef<
       return (
         <div
           className={cn(
-            "flex h-full w-fit flex-col bg-sidebar text-sidebar-foreground overflow-y-auto overflow-x-hidden",
+            "flex h-full w-fit max-w-full flex-col bg-sidebar text-sidebar-foreground overflow-y-auto overflow-x-hidden",
             className,
           )}
           ref={ref}
@@ -196,15 +196,10 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden overflow-y-auto overflow-x-hidden"
-            style={
-              {
-                "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-              } as React.CSSProperties
-            }
+            className="w-fit max-w-[85vw] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden overflow-y-auto overflow-x-hidden"
             side={side}
           >
-            <div className="flex h-full w-fit flex-col">{children}</div>
+            <div className="flex h-full w-fit max-w-full flex-col overflow-x-hidden">{children}</div>
           </SheetContent>
         </Sheet>
       );
@@ -221,7 +216,7 @@ const Sidebar = React.forwardRef<
       >
         <div
           className={cn(
-            "duration-200 relative h-svh w-fit bg-transparent transition-[width] ease-linear",
+            "duration-200 relative h-svh w-fit max-w-full bg-transparent transition-[width] ease-linear overflow-x-hidden",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
@@ -231,7 +226,7 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-fit transition-[left,right,width] ease-linear md:flex overflow-y-auto overflow-x-hidden",
+            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-fit max-w-[85vw] transition-[left,right,width] ease-linear md:flex overflow-y-auto overflow-x-hidden",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -244,7 +239,7 @@ const Sidebar = React.forwardRef<
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-fit flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
+            className="flex h-full w-fit max-w-full flex-col bg-sidebar overflow-x-hidden group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
           >
             {children}
           </div>
