@@ -1,6 +1,7 @@
 import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { users } from "../schema";
+import { shiftTypes } from "../schema";
 
 export const buildings = pgTable("buildings", {
   id: serial("id").primaryKey(),
@@ -20,7 +21,9 @@ export const buildingCoordinators = pgTable("building_coordinators", {
   coordinatorId: integer("coordinator_id")
     .notNull()
     .references(() => users.id),
-  shiftType: text("shift_type").notNull(), // 'MORNING' or 'EVENING'
+  shiftTypeId: integer("shift_type_id")
+    .notNull()
+    .references(() => shiftTypes.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -42,5 +45,9 @@ export const buildingCoordinatorsRelations = relations(buildingCoordinators, ({ 
   coordinator: one(users, {
     fields: [buildingCoordinators.coordinatorId],
     references: [users.id],
+  }),
+  shiftType: one(shiftTypes, {
+    fields: [buildingCoordinators.shiftTypeId],
+    references: [shiftTypes.id],
   }),
 }));

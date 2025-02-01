@@ -24,7 +24,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash } from "lucide-react";
 
-// Define the form schema
 const buildingFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().min(1, "Code is required"),
@@ -32,7 +31,7 @@ const buildingFormSchema = z.object({
   supervisorId: z.string().min(1, "Supervisor is required"),
   coordinators: z.array(z.object({
     coordinatorId: z.string().min(1, "Coordinator is required"),
-    shiftType: z.string().min(1, "Shift type is required")
+    shiftTypeId: z.string().min(1, "Shift type is required")
   })).min(1, "At least one coordinator is required")
 });
 
@@ -43,7 +42,6 @@ export function CreateBuildingModal() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get supervisors (admins) data
   const { data: admins = [] } = useQuery({
     queryKey: ["/api/admin/admins"],
     queryFn: async () => {
@@ -53,7 +51,6 @@ export function CreateBuildingModal() {
     }
   });
 
-  // Get coordinators (managers) data
   const { data: coordinators = [] } = useQuery({
     queryKey: ["/api/admin/managers"],
     queryFn: async () => {
@@ -63,7 +60,6 @@ export function CreateBuildingModal() {
     }
   });
 
-  // Get shift types data
   const { data: shiftTypes = [] } = useQuery({
     queryKey: ["/api/shift-types"],
     queryFn: async () => {
@@ -76,7 +72,7 @@ export function CreateBuildingModal() {
   const form = useForm<BuildingFormValues>({
     resolver: zodResolver(buildingFormSchema),
     defaultValues: {
-      coordinators: [{ coordinatorId: "", shiftType: "" }]
+      coordinators: [{ coordinatorId: "", shiftTypeId: "" }]
     }
   });
 
@@ -112,7 +108,7 @@ export function CreateBuildingModal() {
     const currentCoordinators = form.getValues("coordinators");
     form.setValue("coordinators", [
       ...currentCoordinators,
-      { coordinatorId: "", shiftType: "" }
+      { coordinatorId: "", shiftTypeId: "" }
     ]);
   };
 
@@ -230,16 +226,16 @@ export function CreateBuildingModal() {
                     <Label>Shift Type</Label>
                     <Select
                       onValueChange={value => 
-                        form.setValue(`coordinators.${index}.shiftType`, value)
+                        form.setValue(`coordinators.${index}.shiftTypeId`, value)
                       }
-                      defaultValue={form.getValues(`coordinators.${index}.shiftType`)}
+                      defaultValue={form.getValues(`coordinators.${index}.shiftTypeId`)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select shift type" />
                       </SelectTrigger>
                       <SelectContent>
                         {shiftTypes.map((shiftType: any) => (
-                          <SelectItem key={shiftType.id} value={shiftType.name}>
+                          <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
                             {shiftType.name}
                           </SelectItem>
                         ))}

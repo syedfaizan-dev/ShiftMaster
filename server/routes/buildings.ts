@@ -23,7 +23,7 @@ export const getBuildings = async (req: Request, res: Response) => {
         const coordinatorsData = await db
           .select({
             coordinator: users,
-            shiftType: buildingCoordinators.shiftType,
+            shiftTypeId: buildingCoordinators.shiftTypeId,
             id: buildingCoordinators.id
           })
           .from(buildingCoordinators)
@@ -36,7 +36,7 @@ export const getBuildings = async (req: Request, res: Response) => {
           coordinators: coordinatorsData.map(c => ({
             id: c.id,
             coordinator: c.coordinator,
-            shiftType: c.shiftType
+            shiftTypeId: c.shiftTypeId
           }))
         };
       })
@@ -70,12 +70,12 @@ export const createBuilding = async (req: Request, res: Response) => {
 
     // Then create coordinator assignments
     if (coordinators && coordinators.length > 0) {
-      const coordinatorPromises = coordinators.map((coord: { coordinatorId: string; shiftType: string }) =>
+      const coordinatorPromises = coordinators.map((coord: { coordinatorId: string; shiftTypeId: string }) =>
         db.insert(buildingCoordinators)
           .values({
             buildingId: building.id,
             coordinatorId: parseInt(coord.coordinatorId),
-            shiftType: coord.shiftType.toUpperCase(), // Normalize shift type to uppercase
+            shiftTypeId: parseInt(coord.shiftTypeId),
           })
           .returning()
       );
@@ -92,7 +92,7 @@ export const createBuilding = async (req: Request, res: Response) => {
     const coordinatorsData = await db
       .select({
         coordinator: users,
-        shiftType: buildingCoordinators.shiftType,
+        shiftTypeId: buildingCoordinators.shiftTypeId,
         id: buildingCoordinators.id
       })
       .from(buildingCoordinators)
@@ -105,7 +105,7 @@ export const createBuilding = async (req: Request, res: Response) => {
       coordinators: coordinatorsData.map(c => ({
         id: c.id,
         coordinator: c.coordinator,
-        shiftType: c.shiftType
+        shiftTypeId: c.shiftTypeId
       }))
     };
 
@@ -149,20 +149,22 @@ export const updateBuilding = async (req: Request, res: Response) => {
 export const updateBuildingCoordinator = async (req: Request, res: Response) => {
   try {
     const { buildingId } = req.params;
-    const { coordinatorId, shiftType } = req.body;
+    const { coordinatorId, shiftTypeId } = req.body;
 
     // Check if there's already a coordinator for this shift
     const [existing] = await db.select()
       .from(buildingCoordinators)
       .where(
-        eq(buildingCoordinators.buildingId, parseInt(buildingId)),
-        eq(buildingCoordinators.shiftType, shiftType.toUpperCase()) // Normalize shift type
+        eq(buildingCoordinators.buildingId, parseInt(buildingId))
       );
 
     if (existing) {
       // Update existing coordinator
       await db.update(buildingCoordinators)
-        .set({ coordinatorId: parseInt(coordinatorId) })
+        .set({ 
+          coordinatorId: parseInt(coordinatorId),
+          shiftTypeId: parseInt(shiftTypeId)
+        })
         .where(eq(buildingCoordinators.id, existing.id));
     } else {
       // Add new coordinator
@@ -170,7 +172,7 @@ export const updateBuildingCoordinator = async (req: Request, res: Response) => 
         .values({
           buildingId: parseInt(buildingId),
           coordinatorId: parseInt(coordinatorId),
-          shiftType: shiftType.toUpperCase(), // Normalize shift type
+          shiftTypeId: parseInt(shiftTypeId)
         });
     }
 

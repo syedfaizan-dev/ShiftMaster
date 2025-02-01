@@ -20,7 +20,10 @@ interface Building {
       id: number;
       fullName: string;
     };
-    shiftType: string;
+    shiftType: {
+      id: number;
+      name: string;
+    };
   }>;
 }
 
@@ -69,8 +72,8 @@ export default function BuildingsPage() {
   // Transform the data to match the column structure
   const transformedData = buildings.map(building => ({
     ...building,
-    morningCoordinator: building.coordinators.find(c => c.shiftType === "MORNING"),
-    eveningCoordinator: building.coordinators.find(c => c.shiftType === "EVENING"),
+    morningCoordinator: building.coordinators.find(c => c.shiftType.name.toUpperCase().includes('MORNING')),
+    eveningCoordinator: building.coordinators.find(c => c.shiftType.name.toUpperCase().includes('EVENING')),
   }));
 
   if (isLoading) {
