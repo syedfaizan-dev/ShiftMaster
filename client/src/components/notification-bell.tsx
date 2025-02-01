@@ -16,8 +16,8 @@ export function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button variant="secondary" size="icon" className="relative">
+          <Bell className="h-5 w-5 text-white" />
           {unreadCount > 0 && (
             <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white">
               {unreadCount}
@@ -25,8 +25,11 @@ export function NotificationBell() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[300px] max-h-[400px] overflow-y-auto">
-        {(!notifications || notifications.length === 0) ? (
+      <DropdownMenuContent
+        align="end"
+        className="w-[300px] max-h-[400px] overflow-y-auto"
+      >
+        {!notifications || notifications.length === 0 ? (
           <div className="p-4 text-center text-sm text-gray-500">
             No notifications
           </div>
@@ -35,7 +38,9 @@ export function NotificationBell() {
             <DropdownMenuItem
               key={notification.id}
               className="flex flex-col items-start gap-1 p-3 cursor-pointer"
-              onClick={() => !notification.isRead && markAsRead(notification.id)}
+              onClick={() =>
+                !notification.isRead && markAsRead(notification.id)
+              }
             >
               <div className="flex items-center gap-2 w-full">
                 <span className="font-medium">{notification.title}</span>
@@ -45,7 +50,8 @@ export function NotificationBell() {
               </div>
               <p className="text-sm text-gray-500">{notification.message}</p>
               <span className="text-xs text-gray-400">
-                {notification.createdAt && format(new Date(notification.createdAt), "MMM d, h:mm a")}
+                {notification.createdAt &&
+                  format(new Date(notification.createdAt), "MMM d, h:mm a")}
               </span>
             </DropdownMenuItem>
           ))
