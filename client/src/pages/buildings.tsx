@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash } from "lucide-react";
 import Navbar from "@/components/navbar";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { TablePagination } from "@/components/table-pagination";
 import { CreateBuildingModal } from "@/components/create-building-modal";
+import { useState } from "react";
 
 interface Building {
   id: number;
@@ -28,6 +30,9 @@ interface Building {
 }
 
 export default function BuildingsPage() {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
   const columns = [
     {
       header: "Name",
@@ -76,13 +81,27 @@ export default function BuildingsPage() {
     eveningCoordinator: building.coordinators.find(c => c.shiftType.name.toUpperCase().includes('EVENING')),
   }));
 
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
   if (isLoading) {
     return <Navbar>Loading...</Navbar>;
   }
 
   return (
     <Navbar>
-      <div className="space-y-4">
+      <div className="space-y-4 p-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Buildings</h1>
           <CreateBuildingModal />
@@ -91,7 +110,14 @@ export default function BuildingsPage() {
         <div className="rounded-md border">
           <ResponsiveTable 
             columns={columns}
-            data={transformedData}
+            data={transformedData.slice(startIndex, endIndex)}
+          />
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={transformedData.length}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
           />
         </div>
       </div>
