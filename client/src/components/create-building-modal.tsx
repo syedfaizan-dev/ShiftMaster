@@ -43,17 +43,17 @@ export function CreateBuildingModal() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get supervisors (managers) data
-  const { data: managers = [] } = useQuery({
-    queryKey: ["/api/admin/managers"],
+  // Get supervisors (admins) data
+  const { data: admins = [] } = useQuery({
+    queryKey: ["/api/admin/admins"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/managers");
-      if (!response.ok) throw new Error("Failed to fetch managers");
+      const response = await fetch("/api/admin/admins");
+      if (!response.ok) throw new Error("Failed to fetch admins");
       return response.json();
     }
   });
 
-  // Get coordinators (also managers) data
+  // Get coordinators (managers) data
   const { data: coordinators = [] } = useQuery({
     queryKey: ["/api/admin/managers"],
     queryFn: async () => {
@@ -174,9 +174,9 @@ export function CreateBuildingModal() {
                     <SelectValue placeholder="Select supervisor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {managers.map((manager: any) => (
-                      <SelectItem key={manager.id} value={manager.id.toString()}>
-                        {manager.fullName}
+                    {admins.map((admin: any) => (
+                      <SelectItem key={admin.id} value={admin.id.toString()}>
+                        {admin.fullName}
                       </SelectItem>
                     ))}
                   </SelectContent>
