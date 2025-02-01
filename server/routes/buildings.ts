@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "@db";
 import { buildings, buildingCoordinators } from "@db/schema/buildings";
 import { eq } from "drizzle-orm";
-import { users } from "@db/schema";
+import { users, shiftTypes } from "@db/schema";
 
 // Get all buildings with their supervisors and coordinators
 export const getBuildings = async (req: Request, res: Response) => {
@@ -19,16 +19,17 @@ export const getBuildings = async (req: Request, res: Response) => {
           .from(users)
           .where(eq(users.id, building.supervisorId!));
 
-        // Get coordinators data
+        // Get coordinators data with shift type information
         const coordinatorsData = await db
           .select({
             coordinator: users,
-            shiftTypeId: buildingCoordinators.shiftTypeId,
+            shiftType: shiftTypes,
             id: buildingCoordinators.id
           })
           .from(buildingCoordinators)
           .where(eq(buildingCoordinators.buildingId, building.id))
-          .leftJoin(users, eq(buildingCoordinators.coordinatorId, users.id));
+          .leftJoin(users, eq(buildingCoordinators.coordinatorId, users.id))
+          .leftJoin(shiftTypes, eq(buildingCoordinators.shiftTypeId, shiftTypes.id));
 
         return {
           ...building,
@@ -36,7 +37,7 @@ export const getBuildings = async (req: Request, res: Response) => {
           coordinators: coordinatorsData.map(c => ({
             id: c.id,
             coordinator: c.coordinator,
-            shiftTypeId: c.shiftTypeId
+            shiftType: c.shiftType
           }))
         };
       })
