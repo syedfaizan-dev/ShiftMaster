@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash } from "lucide-react";
+
 // Define the form schema
 const buildingFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -52,13 +53,13 @@ export function CreateBuildingModal() {
     }
   });
 
-  // Get inspectors data for coordinators
-  const { data: inspectors = [] } = useQuery({
-    queryKey: ["/api/admin/users"],
+  // Get coordinators (also managers) data
+  const { data: coordinators = [] } = useQuery({
+    queryKey: ["/api/admin/managers"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/users");
-      if (!response.ok) throw new Error("Failed to fetch inspectors");
-      return response.json().then(users => users.filter((user: any) => user.isInspector));
+      const response = await fetch("/api/admin/managers");
+      if (!response.ok) throw new Error("Failed to fetch coordinators");
+      return response.json();
     }
   });
 
@@ -207,9 +208,9 @@ export function CreateBuildingModal() {
                         <SelectValue placeholder="Select coordinator" />
                       </SelectTrigger>
                       <SelectContent>
-                        {inspectors.map((inspector: any) => (
-                          <SelectItem key={inspector.id} value={inspector.id.toString()}>
-                            {inspector.fullName}
+                        {coordinators.map((coordinator: any) => (
+                          <SelectItem key={coordinator.id} value={coordinator.id.toString()}>
+                            {coordinator.fullName}
                           </SelectItem>
                         ))}
                       </SelectContent>
