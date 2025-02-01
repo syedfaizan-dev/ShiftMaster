@@ -3,6 +3,7 @@ import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { TablePagination } from "@/components/table-pagination";
 import {
   Form,
   FormControl,
@@ -174,7 +175,7 @@ export default function Tasks() {
       const { id, ...updateData } = data;
       const res = await fetch(`/api/admin/tasks/${id}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
@@ -237,14 +238,14 @@ export default function Tasks() {
   const currentTasks = tasks.slice(startIndex, endIndex);
 
   // Handle pagination changes
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
 
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setCurrentPage(1);
-  };
+    const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        setCurrentPage(1);
+    };
 
   const handleOpenDialog = (task?: TaskWithRelations) => {
     if (task) {
@@ -437,8 +438,11 @@ export default function Tasks() {
           <div className="rounded-md border">
             <ResponsiveTable
               columns={columns}
-              data={transformedData}
+              data={transformedData.slice(startIndex, endIndex)}
+            />
+           <TablePagination
               currentPage={currentPage}
+              totalItems={transformedData.length}
               pageSize={pageSize}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
