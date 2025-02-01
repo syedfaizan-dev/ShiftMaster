@@ -32,7 +32,7 @@ const buildingFormSchema = z.object({
   supervisorId: z.string().min(1, "Supervisor is required"),
   coordinators: z.array(z.object({
     coordinatorId: z.string().min(1, "Coordinator is required"),
-    shiftType: z.enum(["MORNING", "EVENING"])
+    shiftType: z.string().min(1, "Shift type is required")
   })).min(1, "At least one coordinator is required")
 });
 
@@ -63,10 +63,20 @@ export function CreateBuildingModal() {
     }
   });
 
+  // Get shift types data
+  const { data: shiftTypes = [] } = useQuery({
+    queryKey: ["/api/shift-types"],
+    queryFn: async () => {
+      const response = await fetch("/api/shift-types");
+      if (!response.ok) throw new Error("Failed to fetch shift types");
+      return response.json();
+    }
+  });
+
   const form = useForm<BuildingFormValues>({
     resolver: zodResolver(buildingFormSchema),
     defaultValues: {
-      coordinators: [{ coordinatorId: "", shiftType: "MORNING" }]
+      coordinators: [{ coordinatorId: "", shiftType: "" }]
     }
   });
 
@@ -102,7 +112,7 @@ export function CreateBuildingModal() {
     const currentCoordinators = form.getValues("coordinators");
     form.setValue("coordinators", [
       ...currentCoordinators,
-      { coordinatorId: "", shiftType: "MORNING" }
+      { coordinatorId: "", shiftType: "" }
     ]);
   };
 
@@ -220,16 +230,19 @@ export function CreateBuildingModal() {
                     <Label>Shift Type</Label>
                     <Select
                       onValueChange={value => 
-                        form.setValue(`coordinators.${index}.shiftType`, value as "MORNING" | "EVENING")
+                        form.setValue(`coordinators.${index}.shiftType`, value)
                       }
                       defaultValue={form.getValues(`coordinators.${index}.shiftType`)}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select shift type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="MORNING">Morning</SelectItem>
-                        <SelectItem value="EVENING">Evening</SelectItem>
+                        {shiftTypes.map((shiftType: any) => (
+                          <SelectItem key={shiftType.id} value={shiftType.name}>
+                            {shiftType.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
