@@ -17,24 +17,24 @@ const transporter = nodemailer.createTransport({
 // Verify email connection on startup
 transporter.verify((error, success) => {
   if (error) {
-    console.error('Error verifying email transport:', error);
+    console.error("Error verifying email transport:", error);
   } else {
-    console.log('Email transport is ready');
+    console.log("Email transport is ready");
   }
 });
 
 export class NotificationService {
   static async createNotification(data: InsertNotification) {
     try {
-      console.log('Creating notification:', data);
+      console.log("Creating notification:", data);
       const [notification] = await db
         .insert(notifications)
         .values(data)
         .returning();
-      console.log('Notification created:', notification);
+      console.log("Notification created:", notification);
       return notification;
     } catch (error) {
-      console.error('Failed to create notification:', error);
+      console.error("Failed to create notification:", error);
       throw error;
     }
   }
@@ -49,16 +49,17 @@ export class NotificationService {
     html: string;
   }) {
     try {
-      console.log('Sending email to:', to);
+      console.log("Sending email to:", to);
       const result = await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"Workforce Manager" <no-reply@example.com>',
+        from:
+          process.env.SMTP_FROM || '"Workforce Manager" <no-reply@example.com>',
         to,
         subject,
         html,
       });
-      console.log('Email sent successfully:', result);
+      console.log("Email sent successfully:", result);
     } catch (error) {
-      console.error('Failed to send email:', error);
+      console.error("Failed to send email:", error);
       // Don't throw, we don't want to break the flow if email fails
     }
   }
@@ -67,56 +68,31 @@ export class NotificationService {
     userId,
     userEmail,
     shiftId,
-    startTime,
-    endTime,
     role,
   }: {
     userId: number;
     userEmail: string;
     shiftId: number;
-    startTime: Date;
-    endTime: Date;
     role: string;
   }) {
     try {
-      console.log('Notifying shift assignment:', { userId, shiftId, role });
-
-      // Create in-app notification with detailed metadata
-      const notification = await this.createNotification({
-        userId,
-        type: 'SHIFT_ASSIGNED',
-        title: 'New Shift Assignment',
-        message: `You have been assigned to a new shift as ${role}`,
-        metadata: {
-          shiftId,
-          type: 'shift_assignment',
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          role
-        },
-      });
-
       // Send email notification
       const emailHtml = `
         <h2>New Shift Assignment</h2>
         <p>You have been assigned to a new shift:</p>
         <ul>
           <li>Role: ${role}</li>
-          <li>Start: ${startTime.toLocaleString()}</li>
-          <li>End: ${endTime.toLocaleString()}</li>
         </ul>
         <p>Please log in to the system to view more details.</p>
       `;
 
       await this.sendEmail({
         to: userEmail,
-        subject: 'New Shift Assignment',
+        subject: "New Shift Assignment",
         html: emailHtml,
       });
-
-      return notification;
     } catch (error) {
-      console.error('Failed to notify shift assignment:', error);
+      console.error("Failed to notify shift assignment:", error);
       throw error;
     }
   }
@@ -131,11 +107,11 @@ export class NotificationService {
     userId: number;
     userEmail: string;
     shiftId: number;
-    type: 'update' | 'delete';
+    type: "update" | "delete";
     details: Record<string, any>;
   }) {
     try {
-      console.log('Notifying shift change:', { userId, shiftId, type });
+      console.log("Notifying shift change:", { userId, shiftId, type });
 
       // First verify if the user is assigned to this shift
       const [userShift] = await db
@@ -144,8 +120,13 @@ export class NotificationService {
         .where(eq(shifts.id, shiftId))
         .limit(1);
 
-      if (!userShift || (userShift.inspectorId !== userId && userShift.backupId !== userId)) {
-        console.log(`User ${userId} not associated with shift ${shiftId}, skipping notification`);
+      if (
+        !userShift ||
+        (userShift.inspectorId !== userId && userShift.backupId !== userId)
+      ) {
+        console.log(
+          `User ${userId} not associated with shift ${shiftId}, skipping notification`,
+        );
         return;
       }
 
@@ -153,32 +134,34 @@ export class NotificationService {
       const notification = await this.createNotification({
         userId,
         type: `SHIFT_${type.toUpperCase()}`,
-        title: `Shift ${type === 'update' ? 'Updated' : 'Deleted'}`,
-        message: `Your shift has been ${type === 'update' ? 'modified' : 'removed'}`,
+        title: `Shift ${type === "update" ? "Updated" : "Deleted"}`,
+        message: `Your shift has been ${type === "update" ? "modified" : "removed"}`,
         metadata: {
           shiftId,
           type: `shift_${type}`,
-          ...details
+          ...details,
         },
       });
 
       // Send email notification
       const emailHtml = `
-        <h2>Shift ${type === 'update' ? 'Update' : 'Cancellation'}</h2>
-        <p>Your shift has been ${type === 'update' ? 'modified' : 'cancelled'}.</p>
-        ${Object.entries(details).map(([key, value]) => `<p>${key}: ${value}</p>`).join('')}
+        <h2>Shift ${type === "update" ? "Update" : "Cancellation"}</h2>
+        <p>Your shift has been ${type === "update" ? "modified" : "cancelled"}.</p>
+        ${Object.entries(details)
+          .map(([key, value]) => `<p>${key}: ${value}</p>`)
+          .join("")}
         <p>Please log in to the system to view more details.</p>
       `;
 
       await this.sendEmail({
         to: userEmail,
-        subject: `Shift ${type === 'update' ? 'Update' : 'Cancellation'}`,
+        subject: `Shift ${type === "update" ? "Update" : "Cancellation"}`,
         html: emailHtml,
       });
 
       return notification;
     } catch (error) {
-      console.error('Failed to notify shift change:', error);
+      console.error("Failed to notify shift change:", error);
       throw error;
     }
   }
