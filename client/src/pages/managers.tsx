@@ -6,6 +6,7 @@ import { TablePagination } from "@/components/table-pagination";
 import { useState } from "react";
 import { CreateManagerModal } from "@/components/create-manager-modal";
 import { useToast } from "@/hooks/use-toast";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface Manager {
   id: number;
@@ -35,21 +36,21 @@ export default function ManagersPage() {
       cell: (value: any, row: any) => (
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => {
               setEditingManager(row);
               setIsEditModalOpen(true);
             }}
           >
-            Edit
+            <Pencil className="h-4 w-4" />
           </Button>
           <Button
-            variant="destructive"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => handleDelete(row.id)}
           >
-            Delete
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       ),
