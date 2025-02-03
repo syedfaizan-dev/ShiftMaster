@@ -209,6 +209,64 @@ export function registerRoutes(app: Express): Server {
     },
   );
 
+  // Admin: Create user
+  app.post(
+    "/api/admin/users",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { username, fullName, password, isInspector, isManager, isAdmin } = req.body;
+
+        // Check for required fields
+        if (!username || !fullName || !password) {
+          return res.status(400).json({ 
+            message: "Missing required fields",
+            error: "Username, full name, and password are required"
+          });
+        }
+
+        // Check if username already exists
+        const [existingUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.username, username))
+          .limit(1);
+
+        if (existingUser) {
+          return res.status(400).json({ 
+            message: "Username already exists",
+            error: "This email is already registered. Please use a different email."
+          });
+        }
+
+        // Create the user with specified role flags
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            username,
+            fullName,
+            password, // Note: In a real app, this should be hashed
+            isAdmin: isAdmin === true,
+            isManager: isManager === true,
+            isInspector: isInspector === true,
+          })
+          .returning();
+
+        console.log("Created new user:", newUser);
+
+        // Return the user without the password
+        const { password: _, ...userWithoutPassword } = newUser;
+        res.status(201).json(userWithoutPassword);
+      } catch (error) {
+        console.error("Error creating user:", error);
+        res.status(500).json({ 
+          message: "Error creating user",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    },
+  );
+
   // Admin: Update user
   app.put(
     "/api/admin/users/:id",
