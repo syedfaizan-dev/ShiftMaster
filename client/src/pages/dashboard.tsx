@@ -26,6 +26,9 @@ export default function Dashboard() {
 
   const { data: taskStats = [], isLoading } = useQuery<TaskStats[]>({
     queryKey: ["/api/admin/tasks/stats"],
+    onSuccess: (data) => {
+      console.log("Task stats received:", data);
+    },
   });
 
   const COLORS = {
@@ -35,7 +38,7 @@ export default function Dashboard() {
   };
 
   const transformDataForChart = (stats: TaskStats) => {
-    return [
+    const data = [
       {
         name: "Pending",
         value: stats.pending,
@@ -51,7 +54,10 @@ export default function Dashboard() {
         value: stats.completed,
         color: COLORS.completed,
       },
-    ].filter(item => item.value > 0); // Only include non-zero values
+    ].filter(item => item.value > 0);
+
+    console.log("Transformed data for", stats.shiftTypeName, ":", data);
+    return data;
   };
 
   return (
@@ -78,39 +84,47 @@ export default function Dashboard() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {taskStats.map((stat) => (
-              <Card key={stat.shiftTypeId} className="w-full">
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {stat.shiftTypeName}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={transformDataForChart(stat)}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius="60%"
-                          outerRadius="80%"
-                          label={(entry) => `${entry.name}: ${entry.value}`}
-                        >
-                          {transformDataForChart(stat).map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {taskStats.map((stat) => {
+              const chartData = transformDataForChart(stat);
+              console.log("Rendering chart for", stat.shiftTypeName, "with data:", chartData);
+              return (
+                <Card key={stat.shiftTypeId} className="w-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {stat.shiftTypeName}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={chartData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="60%"
+                            outerRadius="80%"
+                            fill="#8884d8"
+                            paddingAngle={2}
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.color}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [`${value} tasks`, '']} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
