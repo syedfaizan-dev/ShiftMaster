@@ -16,18 +16,28 @@ registerRoutes(app);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Internal Server Error" });
+  console.error("Error:", err.stack);
+  if (req.path.startsWith('/api/')) {
+    res.status(500).json({ message: "Internal Server Error" });
+  } else {
+    next(err);
+  }
+});
+
+// Handle API 404s
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ message: "API endpoint not found" });
 });
 
 // Static file serving should be last
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
 // Handle client-side routing
-app.get("*", (req, res) => {
-  // Only serve index.html for non-API routes
+app.get("*", (req, res, next) => {
   if (!req.path.startsWith("/api/")) {
     res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+  } else {
+    next();
   }
 });
 
