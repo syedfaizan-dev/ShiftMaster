@@ -14,11 +14,19 @@ type User = {
   isInspector: boolean;
 };
 
+type Building = {
+  id: number;
+  name: string;
+  code: string;
+  area: string;
+};
+
 type ShiftWithRelations = {
   id: number;
   inspectorId: number;
   roleId: number;
   shiftTypeId: number;
+  buildingId: number;
   week: number;
   backupId: number | null;
 };
@@ -32,6 +40,7 @@ const shiftSchema = z.object({
   inspectorId: z.string().min(1, "Inspector is required"),
   roleId: z.string().min(1, "Role is required"),
   shiftTypeId: z.string().min(1, "Shift type is required"),
+  buildingId: z.string().min(1, "Building is required"),
   week: z.string().min(1, "Week is required"),
   backupId: z.string().optional(),
 });
@@ -47,6 +56,7 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
       inspectorId: editShift ? editShift.inspectorId.toString() : "",
       roleId: editShift ? editShift.roleId.toString() : "",
       shiftTypeId: editShift ? editShift.shiftTypeId.toString() : "",
+      buildingId: editShift ? editShift.buildingId.toString() : "",
       week: editShift ? editShift.week.toString() : "",
       backupId: editShift?.backupId ? editShift.backupId.toString() : "",
     },
@@ -67,6 +77,10 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
     queryKey: ["/api/shift-types"],
   });
 
+  const { data: buildings } = useQuery<Building[]>({
+    queryKey: ["/api/admin/buildings"],
+  });
+
   const createShift = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch("/api/admin/shifts", {
@@ -77,6 +91,7 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
           inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           shiftTypeId: parseInt(data.shiftTypeId),
+          buildingId: parseInt(data.buildingId),
           backupId: data.backupId ? parseInt(data.backupId) : null,
         }),
         credentials: "include",
@@ -120,6 +135,7 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
           inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           shiftTypeId: parseInt(data.shiftTypeId),
+          buildingId: parseInt(data.buildingId),
           backupId: data.backupId ? parseInt(data.backupId) : null,
         }),
         credentials: "include",
@@ -233,6 +249,31 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
                     {shiftTypes?.map((type) => (
                       <SelectItem key={type.id} value={type.id.toString()}>
                         {type.name} ({type.startTime} - {type.endTime})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="buildingId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Building</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a building" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {buildings?.map((building) => (
+                      <SelectItem key={building.id} value={building.id.toString()}>
+                        {building.name} ({building.code})
                       </SelectItem>
                     ))}
                   </SelectContent>

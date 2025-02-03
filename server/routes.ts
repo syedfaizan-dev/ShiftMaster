@@ -10,6 +10,7 @@ import {
   shiftTypes,
   tasks,
   taskTypes,
+  buildings,
 } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import {
@@ -1281,6 +1282,54 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
+  
+  app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const allBuildings = await db.select().from(buildings);
+      res.json(allBuildings);
+    } catch (error) {
+      console.error("Error fetching buildings:", error);
+      res.status(500).json({ message: "Error fetching buildings" });
+    }
+  });
+  
+  // Create building
+  app.post("/api/admin/buildings", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { name, code, area } = req.body;
+  
+      // Check if building code already exists
+      const [existingBuilding] = await db
+        .select()
+        .from(buildings)
+        .where(eq(buildings.code, code))
+        .limit(1);
+  
+      if (existingBuilding) {
+        return res.status(400).json({
+          message: "Building code already exists",
+          error: `A building with code "${code}" already exists. Please use a different code.`
+        });
+      }
+  
+      const [newBuilding] = await db
+        .insert(buildings)
+        .values({
+          name,
+          code,
+          area: area || '',
+        })
+        .returning();
+  
+      res.status(201).json(newBuilding);
+    } catch (error) {
+      console.error("Error creating building:", error);
+      res.status(500).json({
+        message: "Error creating building",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
   const server = createServer(app);
   return server;
 }

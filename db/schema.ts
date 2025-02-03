@@ -3,6 +3,15 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { type InferSelectModel } from "drizzle-orm";
 
+export const buildings = pgTable("buildings", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  area: text("area").default(''),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export type ShiftType = typeof shiftTypes.$inferSelect;
 export type InsertShiftType = typeof shiftTypes.$inferInsert;
 
@@ -39,6 +48,7 @@ export const shifts = pgTable("shifts", {
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
   roleId: integer("role_id").references(() => roles.id).notNull(),
   shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
+  buildingId: integer("building_id").references(() => buildings.id).notNull(),
   week: text("week").notNull(),
   backupId: integer("backup_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -85,6 +95,10 @@ export const requestsRelations = relations(requests, ({ one }) => ({
   }),
 }));
 
+export const buildingsRelations = relations(buildings, ({ many }) => ({
+  shifts: many(shifts),
+}));
+
 export const shiftsRelations = relations(shifts, ({ one }) => ({
   inspector: one(users, {
     fields: [shifts.inspectorId],
@@ -101,6 +115,10 @@ export const shiftsRelations = relations(shifts, ({ one }) => ({
   shiftType: one(shiftTypes, {
     fields: [shifts.shiftTypeId],
     references: [shiftTypes.id],
+  }),
+    building: one(buildings, {
+    fields: [shifts.buildingId],
+    references: [buildings.id],
   }),
 }));
 
@@ -141,6 +159,9 @@ export const insertRoleSchema = createInsertSchema(roles);
 export const selectRoleSchema = createSelectSchema(roles);
 export const insertRequestSchema = createInsertSchema(requests);
 export const selectRequestSchema = createSelectSchema(requests);
+export const insertBuildingSchema = createInsertSchema(buildings);
+export const selectBuildingSchema = createSelectSchema(buildings);
+
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -150,6 +171,8 @@ export type Role = typeof roles.$inferSelect;
 export type InsertRole = typeof roles.$inferInsert;
 export type Request = typeof requests.$inferSelect;
 export type InsertRequest = typeof requests.$inferInsert;
+export type Building = typeof buildings.$inferSelect;
+export type InsertBuilding = typeof buildings.$inferInsert;
 
 export type RequestWithRelations = Request & {
   requester?: User;

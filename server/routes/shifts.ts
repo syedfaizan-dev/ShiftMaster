@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
-import { shifts, users, roles, shiftTypes } from "@db/schema";
+import { shifts, users, roles, shiftTypes, buildings } from "@db/schema";
 import { NotificationService } from "server/services/notification";
 
 export async function getShifts(req: Request, res: Response) {
@@ -12,6 +12,7 @@ export async function getShifts(req: Request, res: Response) {
         inspectorId: shifts.inspectorId,
         roleId: shifts.roleId,
         shiftTypeId: shifts.shiftTypeId,
+        buildingId: shifts.buildingId,
         week: shifts.week,
         backupId: shifts.backupId,
         inspector: {
@@ -29,11 +30,18 @@ export async function getShifts(req: Request, res: Response) {
           startTime: shiftTypes.startTime,
           endTime: shiftTypes.endTime,
         },
+        building: {
+          id: buildings.id,
+          name: buildings.name,
+          code: buildings.code,
+          area: buildings.area,
+        },
       })
       .from(shifts)
       .leftJoin(users, eq(shifts.inspectorId, users.id))
       .leftJoin(roles, eq(shifts.roleId, roles.id))
-      .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id));
+      .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id))
+      .leftJoin(buildings, eq(shifts.buildingId, buildings.id));
 
     // If not admin, only show user's shifts
     if (!req.user?.isAdmin) {
@@ -74,7 +82,7 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
-    const { startTime, endTime, ...rest } = req.body;
+    const { startTime, endTime, buildingId, ...rest } = req.body;
 
     // Ensure dates are properly parsed
     const parsedStartTime = new Date(startTime);
@@ -85,10 +93,22 @@ export async function createShift(req: Request, res: Response) {
       return res.status(400).send("Invalid date format");
     }
 
+    // Validate building exists
+    const [building] = await db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, buildingId))
+      .limit(1);
+
+    if (!building) {
+      return res.status(400).send("Invalid building ID");
+    }
+
     const [shift] = await db
       .insert(shifts)
       .values({
         ...rest,
+        buildingId,
         startTime: parsedStartTime,
         endTime: parsedEndTime,
         createdBy: req.user.id,
@@ -112,7 +132,7 @@ export async function createShift(req: Request, res: Response) {
     // Notify assigned inspector
     await NotificationService.notifyShiftAssignment({
       userId: inspector.id,
-      userEmail: inspector.username, // Assuming username is email
+      userEmail: inspector.username,
       shiftId: shift.id,
       startTime: parsedStartTime,
       endTime: parsedEndTime,
@@ -151,7 +171,7 @@ export async function updateShift(req: Request, res: Response) {
     }
 
     const { id } = req.params;
-    const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
+    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
 
     // Validate that the shift exists
     const [existingShift] = await db
@@ -175,6 +195,17 @@ export async function updateShift(req: Request, res: Response) {
       return res.status(400).json({ message: "Invalid shift type" });
     }
 
+    // Validate building exists
+    const [building] = await db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, buildingId))
+      .limit(1);
+
+    if (!building) {
+      return res.status(400).json({ message: "Invalid building ID" });
+    }
+
     // Update the shift
     const [updatedShift] = await db
       .update(shifts)
@@ -182,6 +213,7 @@ export async function updateShift(req: Request, res: Response) {
         inspectorId,
         roleId,
         shiftTypeId,
+        buildingId,
         week,
         backupId,
       })
