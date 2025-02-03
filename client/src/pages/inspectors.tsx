@@ -52,30 +52,21 @@ export default function InspectorsPage() {
 
   const { data: inspectors = [], isLoading } = useQuery<Inspector[]>({
     queryKey: ["/api/admin/inspectors"],
-    queryFn: async () => {
-      const response = await fetch("/api/admin/inspectors", {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch inspectors");
-      }
-      return response.json();
-    },
   });
 
   const createInspector = useMutation({
     mutationFn: async (data: z.infer<typeof inspectorSchema>) => {
-      const response = await fetch("/api/admin/users", {
+      const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ ...data, isInspector: true }),
+        credentials: "include",
       });
-      if (!response.ok) {
-        const error = await response.json();
+      if (!res.ok) {
+        const error = await res.json();
         throw new Error(error.message || "Failed to create inspector");
       }
-      return response.json();
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Inspector created successfully" });
@@ -95,7 +86,7 @@ export default function InspectorsPage() {
   const updateInspector = useMutation({
     mutationFn: async (data: z.infer<typeof editInspectorSchema> & { id: number }) => {
       const { id, ...updateData } = data;
-      const response = await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -105,11 +96,11 @@ export default function InspectorsPage() {
           ...(updateData.password && { password: updateData.password }),
         }),
       });
-      if (!response.ok) {
-        const error = await response.json();
+      if (!res.ok) {
+        const error = await res.json();
         throw new Error(error.message || "Failed to update inspector");
       }
-      return response.json();
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Inspector updated successfully" });
@@ -129,15 +120,15 @@ export default function InspectorsPage() {
 
   const deleteInspector = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(`/api/admin/users/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
-      if (!response.ok) {
-        const error = await response.json();
+      if (!res.ok) {
+        const error = await res.json();
         throw new Error(error.message || "Failed to delete inspector");
       }
-      return response.json();
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Inspector deleted successfully" });
@@ -195,9 +186,9 @@ export default function InspectorsPage() {
     },
     {
       header: "Actions",
-      accessorKey: "id",
-      cell: (row: any) => {
-        const inspector = inspectors.find(i => i.id === row.value);
+      id: "actions",
+      cell: (info: any) => {
+        const inspector = info.row?.original;
         if (!inspector) return null;
 
         return (
