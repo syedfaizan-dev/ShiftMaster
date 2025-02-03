@@ -30,12 +30,12 @@ export async function getShifts(req: Request, res: Response) {
           startTime: shiftTypes.startTime,
           endTime: shiftTypes.endTime,
         },
-        building: {
+        building: buildings ? {
           id: buildings.id,
           name: buildings.name,
           code: buildings.code,
           area: buildings.area,
-        },
+        } : null,
       })
       .from(shifts)
       .leftJoin(users, eq(shifts.inspectorId, users.id))
