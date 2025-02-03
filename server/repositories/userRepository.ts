@@ -38,9 +38,7 @@ class UserRepository {
         fullName: users.fullName,
         isAdmin: users.isAdmin,
         isManager: users.isManager,
-        isInspector: users.isInspector,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt
+        isInspector: users.isInspector
       })
       .from(users)
       .where(eq(users.isAdmin, true));
@@ -54,9 +52,7 @@ class UserRepository {
         fullName: users.fullName,
         isAdmin: users.isAdmin,
         isManager: users.isManager,
-        isInspector: users.isInspector,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt
+        isInspector: users.isInspector
       })
       .from(users)
       .where(eq(users.isManager, true));
@@ -70,9 +66,7 @@ class UserRepository {
         fullName: users.fullName,
         isAdmin: users.isAdmin,
         isManager: users.isManager,
-        isInspector: users.isInspector,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt
+        isInspector: users.isInspector
       })
       .from(users)
       .where(eq(users.isInspector, true));
@@ -86,9 +80,7 @@ class UserRepository {
         fullName: users.fullName,
         isAdmin: users.isAdmin,
         isManager: users.isManager,
-        isInspector: users.isInspector,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt
+        isInspector: users.isInspector
       })
       .from(users)
       .where(
