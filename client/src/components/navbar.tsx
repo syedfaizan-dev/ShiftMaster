@@ -14,9 +14,9 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
       {/* Fixed Top Navbar */}
       <div className="h-16 flex fixed top-0 left-0 right-0 z-50">
         {/* Primary color (for sidebar width) */}
-        <div className="absolute inset-0 w-64 bg-primary lg:block hidden" />
+        <div className="absolute inset-0 w-fit bg-primary lg:block hidden" />
         {/* Secondary color (remaining width) */}
-        <div className="absolute inset-0 lg:left-64 left-0 right-0" style={{ backgroundColor: '#04a3e0' }} />
+        <div className="absolute inset-0 lg:left-fit left-0 right-0" style={{ backgroundColor: '#04a3e0' }} />
         {/* Content */}
         <div className="relative flex items-center justify-between px-6 w-full">
           <div className="flex items-center gap-4">
@@ -53,8 +53,8 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
       <div className="flex pt-16 flex-1">
         {/* Fixed Left Navigation - Transform based on mobile menu state */}
         <div className={`
-          w-64 bg-gray-100 fixed left-0 top-16 bottom-0 border-r border-gray-200 
-          overflow-y-auto transition-transform duration-200 ease-in-out z-40
+          w-fit min-w-[16rem] bg-gray-100 fixed left-0 top-16 bottom-0 border-r border-gray-200 
+          overflow-y-auto overflow-x-hidden transition-transform duration-200 ease-in-out z-40
           lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>
           <nav className="p-4 space-y-2">
@@ -76,6 +76,15 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   >
                     <Group className="w-5 h-5" />
                     <span>Users</span>
+                  </button>
+                </Link>
+                <Link href="/managers">
+                  <button 
+                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Users className="w-5 h-5" />
+                    <span>Managers</span>
                   </button>
                 </Link>
                 <Link href="/buildings">

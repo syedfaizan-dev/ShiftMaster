@@ -16,6 +16,7 @@ import Tasks from "@/pages/tasks";
 import Users from "@/pages/users";
 import TaskTypes from "@/pages/task-types";
 import BuildingsPage from "./pages/buildings";
+import Managers from "@/pages/managers";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -38,12 +39,12 @@ function Router() {
         {user.isAdmin ? <Dashboard /> : <Redirect to="/shifts" />}
       </Route>
       <Route path="/shifts" component={Shifts} />
-      {/* Only admin can access these routes */}
       {user.isAdmin && (
         <>
           <Route path="/roles" component={Roles} />
           <Route path="/users" component={Users} />
           <Route path="/employees" component={Employees} />
+          <Route path="/managers" component={Managers} />
           <Route path="/shift-types" component={ShiftTypes} />
           <Route path="/tasks" component={Tasks} />
           <Route path="/task-types" component={TaskTypes} />
