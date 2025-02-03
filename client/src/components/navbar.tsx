@@ -14,6 +14,8 @@ import {
   Menu,
   UserCheck,
   Building2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
@@ -22,6 +24,7 @@ import { cn } from "@/lib/utils";
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [location] = useLocation();
 
   const isLinkActive = (path: string) => {
@@ -35,11 +38,13 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
           "flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700",
           {
             "bg-gray-200": isLinkActive(path),
+            "justify-center": isMinimized,
           }
         )}
+        onClick={() => setIsMobileMenuOpen(false)}
       >
         {icon}
-        <span>{label}</span>
+        {!isMinimized && <span>{label}</span>}
       </button>
     </Link>
   );
@@ -86,20 +91,36 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area with Fixed Left Navigation */}
       <div className="flex pt-16 flex-1">
-        {/* Fixed Left Navigation */}
+        {/* Fixed Left Navigation - Transform based on mobile menu state */}
         <div
           className={cn(
-            "fixed left-0 top-16 bottom-0 w-64 border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-transform duration-200 ease-in-out z-40 bg-gray-100",
+            "fixed left-0 top-16 bottom-0 border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-200 ease-in-out z-40 bg-gray-100",
             {
-              "translate-x-0": isMobileMenuOpen,
-              "-translate-x-full": !isMobileMenuOpen,
+              "w-64": !isMinimized,
+              "w-16z": isMinimized,
+              "translate-x-0": isMobileMenuOpen || !isMinimized,
+              "-translate-x-full": !isMobileMenuOpen && isMinimized,
               "lg:translate-x-0": true,
             }
           )}
         >
-          <nav className="p-4 space-y-4 mt-6">
+          {/* Minimize Toggle Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-2 top-2 hidden lg:flex"
+            onClick={() => setIsMinimized(!isMinimized)}
+          >
+            {isMinimized ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+
+          <nav className="p-4 space-y-2 mt-10">
             {user?.isAdmin && (
-              <div className="space-y-2">
+              <>
                 {renderNavLink("/", <LayoutDashboard className="w-5 h-5" />, "Dashboard")}
                 {renderNavLink("/buildings", <Building2 className="w-5 h-5" />, "Buildings")}
                 {renderNavLink("/users", <Group className="w-5 h-5" />, "Users")}
@@ -107,34 +128,53 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 {renderNavLink("/inspectors", <UserCheck className="w-5 h-5" />, "Inspectors")}
                 {renderNavLink("/tasks", <CheckSquare className="w-5 h-5" />, "Tasks")}
                 {renderNavLink("/task-types", <List className="w-5 h-5" />, "Task Types")}
-              </div>
+              </>
             )}
-            <div className="space-y-2">
-              {renderNavLink("/shifts", <Calendar className="w-5 h-5" />, "Shifts")}
-              {renderNavLink("/requests", <FileText className="w-5 h-5" />, "Requests")}
-            </div>
+            {renderNavLink("/shifts", <Calendar className="w-5 h-5" />, "Shifts")}
+            {renderNavLink("/requests", <FileText className="w-5 h-5" />, "Requests")}
             {user?.isAdmin && (
-              <div className="space-y-2">
+              <>
                 {renderNavLink("/roles", <Users className="w-5 h-5" />, "Roles")}
                 {renderNavLink("/shift-types", <Clock className="w-5 h-5" />, "Shift Types")}
-              </div>
+              </>
             )}
           </nav>
 
-          <div className="absolute bottom-0 w-64 p-4 bg-gray-100">
+          <div className={cn(
+            "absolute bottom-0 p-4 bg-gray-100",
+            {
+              "w-64": !isMinimized,
+              "w-16": isMinimized,
+            }
+          )}>
             <Button
               variant="outline"
-              className="w-full justify-start text-gray-700"
-              onClick={logout}
+              className={cn(
+                "text-gray-700",
+                {
+                  "w-full justify-start": !isMinimized,
+                  "w-full justify-center": isMinimized,
+                }
+              )}
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                logout();
+              }}
             >
               <LogOut className="w-4 h-4" />
-              <span className="ml-2">Logout</span>
+              {!isMinimized && <span className="ml-2">Logout</span>}
             </Button>
           </div>
         </div>
 
-        {/* Scrollable Content Area */}
-        <main className="flex-1 lg:ml-64 bg-background overflow-y-auto min-h-screen">
+        {/* Scrollable Content Area - Adjust margin based on screen size and sidebar state */}
+        <main className={cn(
+          "flex-1 bg-background overflow-y-auto min-h-screen transition-all duration-200",
+          {
+            "lg:ml-64": !isMinimized,
+            "lg:ml-16": isMinimized,
+          }
+        )}>
           {children}
         </main>
       </div>
