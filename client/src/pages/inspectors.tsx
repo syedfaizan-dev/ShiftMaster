@@ -307,7 +307,7 @@ export default function InspectorsPage() {
             </AlertDescription>
           </Alert>
         ) : (
-          <div className="rounded-md border">
+          <div>
             <ResponsiveTable columns={columns} data={paginatedData} />
             <TablePagination
               currentPage={currentPage}

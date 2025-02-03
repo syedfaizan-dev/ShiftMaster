@@ -4,9 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +45,10 @@ import {
 const userSchema = z.object({
   username: z.string().email("Invalid email format"),
   fullName: z.string().min(1, "Full name is required"),
-  password: z.string().min(8, "Password must be at least 8 characters").optional(),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .optional(),
   role: z.enum(["admin", "manager", "inspector", "employee"]),
 });
 
@@ -117,12 +133,12 @@ export default function UsersPage() {
         isManager: role === "manager",
         isInspector: role === "inspector",
       };
-      console.log('Updating user with payload:', payload);
+      console.log("Updating user with payload:", payload);
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify(payload),
         credentials: "include",
@@ -130,7 +146,7 @@ export default function UsersPage() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('Update failed:', errorText);
+        console.error("Update failed:", errorText);
         throw new Error(errorText);
       }
 
@@ -144,7 +160,7 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
     },
     onError: (error: Error) => {
-      console.error('Update error:', error);
+      console.error("Update error:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -190,7 +206,12 @@ export default function UsersPage() {
     );
   }
 
-  const getRoleDetails = (user: User): { label: string; variant: "default" | "destructive" | "outline" | "secondary" } => {
+  const getRoleDetails = (
+    user: User,
+  ): {
+    label: string;
+    variant: "default" | "destructive" | "outline" | "secondary";
+  } => {
     if (user.isAdmin) return { label: "Admin", variant: "destructive" };
     if (user.isManager) return { label: "Manager", variant: "secondary" };
     if (user.isInspector) return { label: "Inspector", variant: "outline" };
@@ -218,11 +239,7 @@ export default function UsersPage() {
       accessorKey: "role",
       cell: (_: any, user: User) => {
         const roleDetails = getRoleDetails(user);
-        return (
-          <Badge variant={roleDetails.variant}>
-            {roleDetails.label}
-          </Badge>
-        );
+        return <Badge variant={roleDetails.variant}>{roleDetails.label}</Badge>;
       },
     },
     {
@@ -255,15 +272,13 @@ export default function UsersPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the user
-                  and all associated data.
+                  This action cannot be undone. This will permanently delete the
+                  user and all associated data.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteUser.mutate(user.id)}
-                >
+                <AlertDialogAction onClick={() => deleteUser.mutate(user.id)}>
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -279,16 +294,18 @@ export default function UsersPage() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Users</h1>
-          <Button onClick={() => {
-            setEditingUser(null);
-            form.reset({
-              username: "",
-              fullName: "",
-              password: "",
-              role: "employee"
-            });
-            setIsDialogOpen(true);
-          }}>
+          <Button
+            onClick={() => {
+              setEditingUser(null);
+              form.reset({
+                username: "",
+                fullName: "",
+                password: "",
+                role: "employee",
+              });
+              setIsDialogOpen(true);
+            }}
+          >
             Add New User
           </Button>
         </div>
@@ -299,11 +316,8 @@ export default function UsersPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-md border">
-              <ResponsiveTable
-                columns={columns}
-                data={currentUsers}
-              />
+            <div>
+              <ResponsiveTable columns={columns} data={currentUsers} />
             </div>
 
             <div className="mt-4">
@@ -321,16 +335,19 @@ export default function UsersPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogTitle>
-              {editingUser ? 'Edit User' : 'Add New User'}
+              {editingUser ? "Edit User" : "Add New User"}
             </DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => {
-                if (editingUser) {
-                  updateUser.mutate({ ...data, id: editingUser.id });
-                } else {
-                  createUser.mutate(data);
-                }
-              })} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit((data) => {
+                  if (editingUser) {
+                    updateUser.mutate({ ...data, id: editingUser.id });
+                  } else {
+                    createUser.mutate(data);
+                  }
+                })}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -398,8 +415,11 @@ export default function UsersPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={createUser.isPending || updateUser.isPending}>
-                  {editingUser ? 'Update User' : 'Add User'}
+                <Button
+                  type="submit"
+                  disabled={createUser.isPending || updateUser.isPending}
+                >
+                  {editingUser ? "Update User" : "Add User"}
                 </Button>
               </form>
             </Form>

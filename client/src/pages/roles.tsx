@@ -5,7 +5,14 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -75,7 +82,7 @@ function RolesPage() {
             variant="ghost"
             size="icon"
             onClick={() => {
-              const role = roles.find(r => r.id === value);
+              const role = roles.find((r) => r.id === value);
               if (role) {
                 setEditingRole(role);
                 form.reset({
@@ -92,7 +99,7 @@ function RolesPage() {
             variant="ghost"
             size="icon"
             onClick={() => {
-              const role = roles.find(r => r.id === value);
+              const role = roles.find((r) => r.id === value);
               if (role) setRoleToDelete(role);
             }}
           >
@@ -157,7 +164,7 @@ function RolesPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify(updateData),
         credentials: "include",
@@ -231,27 +238,28 @@ function RolesPage() {
         await createRole.mutateAsync(data);
       }
     } catch (error: any) {
-      console.error('Form submission error:', error.message);
+      console.error("Form submission error:", error.message);
     }
   };
 
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
 
   return (
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Roles</h1>
-          <Button onClick={() => {
-            setEditingRole(null);
-            form.reset({
-              name: "",
-              description: "",
-            });
-            setIsDialogOpen(true);
-          }}>
+          <Button
+            onClick={() => {
+              setEditingRole(null);
+              form.reset({
+                name: "",
+                description: "",
+              });
+              setIsDialogOpen(true);
+            }}
+          >
             Create New Role
           </Button>
         </div>
@@ -261,7 +269,7 @@ function RolesPage() {
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div>
             <ResponsiveTable
               columns={columns}
               data={transformedData.slice(startIndex, endIndex)}
@@ -279,10 +287,13 @@ function RolesPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogTitle>
-              {editingRole ? 'Edit Role' : 'Create New Role'}
+              {editingRole ? "Edit Role" : "Create New Role"}
             </DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(handleSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="name"
@@ -316,10 +327,12 @@ function RolesPage() {
                   {createRole.isPending || updateRole.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {editingRole ? 'Updating...' : 'Creating...'}
+                      {editingRole ? "Updating..." : "Creating..."}
                     </>
+                  ) : editingRole ? (
+                    "Update Role"
                   ) : (
-                    editingRole ? 'Update Role' : 'Create Role'
+                    "Create Role"
                   )}
                 </Button>
               </form>
@@ -327,19 +340,25 @@ function RolesPage() {
           </DialogContent>
         </Dialog>
 
-        <AlertDialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>
+        <AlertDialog
+          open={!!roleToDelete}
+          onOpenChange={(open) => !open && setRoleToDelete(null)}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Role</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete the role "{roleToDelete?.name}"? This action cannot be undone.
+                Are you sure you want to delete the role "{roleToDelete?.name}"?
+                This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => roleToDelete && deleteRole.mutate(roleToDelete.id)}
+                onClick={() =>
+                  roleToDelete && deleteRole.mutate(roleToDelete.id)
+                }
                 disabled={deleteRole.isPending}
               >
                 {deleteRole.isPending ? (
@@ -348,7 +367,7 @@ function RolesPage() {
                     Deleting...
                   </>
                 ) : (
-                  'Delete'
+                  "Delete"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

@@ -40,13 +40,21 @@ export default function Shifts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(null);
-  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
+  const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(
+    null,
+  );
+  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(
+    null,
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
-  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
-    queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
+  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<
+    ShiftWithRelations[]
+  >({
+    queryKey: [
+      user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts",
+    ],
   });
 
   // Calculate pagination values
@@ -96,29 +104,29 @@ export default function Shifts() {
     {
       header: "Inspector Name",
       accessorKey: "inspector",
-      cell: (value: { fullName: string }) => value?.fullName || 'Unknown',
+      cell: (value: { fullName: string }) => value?.fullName || "Unknown",
     },
     {
       header: "Role",
       accessorKey: "role",
-      cell: (value: { name: string }) => value?.name || 'Unknown',
+      cell: (value: { name: string }) => value?.name || "Unknown",
     },
     {
       header: "Shift Type",
       accessorKey: "shiftType",
-      cell: (value: { name: string }) => value?.name || 'Unknown',
+      cell: (value: { name: string }) => value?.name || "Unknown",
     },
     {
       header: "Building",
       accessorKey: "building",
-      cell: (value: { name: string; code: string }) => 
-        value ? `${value.name} (${value.code})` : 'Unknown',
+      cell: (value: { name: string; code: string }) =>
+        value ? `${value.name} (${value.code})` : "Unknown",
     },
     {
       header: "Time",
       accessorKey: "shiftType",
-      cell: (value: { startTime: string; endTime: string }) => 
-        `${value?.startTime || 'N/A'} - ${value?.endTime || 'N/A'}`,
+      cell: (value: { startTime: string; endTime: string }) =>
+        `${value?.startTime || "N/A"} - ${value?.endTime || "N/A"}`,
     },
     {
       header: "Week",
@@ -130,28 +138,32 @@ export default function Shifts() {
       accessorKey: "backup",
       cell: (value: { fullName: string } | null) => value?.fullName || "-",
     },
-    ...(user?.isAdmin ? [{
-      header: "Actions",
-      accessorKey: "id",
-      cell: (_: any, row: ShiftWithRelations) => (
-        <div className="space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(row)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShiftToDelete(row)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
-    }] : []),
+    ...(user?.isAdmin
+      ? [
+          {
+            header: "Actions",
+            accessorKey: "id",
+            cell: (_: any, row: ShiftWithRelations) => (
+              <div className="space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEdit(row)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShiftToDelete(row)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -160,10 +172,12 @@ export default function Shifts() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shifts</h1>
           {user?.isAdmin && (
-            <Button onClick={() => {
-              setSelectedShift(null);
-              setIsDialogOpen(true);
-            }}>
+            <Button
+              onClick={() => {
+                setSelectedShift(null);
+                setIsDialogOpen(true);
+              }}
+            >
               Create New Shift
             </Button>
           )}
@@ -177,11 +191,8 @@ export default function Shifts() {
           <p className="text-center text-gray-500">No shifts found</p>
         ) : (
           <>
-            <div className="rounded-md border">
-              <ResponsiveTable
-                columns={columns}
-                data={currentShifts}
-              />
+            <div>
+              <ResponsiveTable columns={columns} data={currentShifts} />
             </div>
 
             <TablePagination
@@ -196,7 +207,9 @@ export default function Shifts() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogTitle>{selectedShift ? 'Edit Shift' : 'Create New Shift'}</DialogTitle>
+            <DialogTitle>
+              {selectedShift ? "Edit Shift" : "Create New Shift"}
+            </DialogTitle>
             <ShiftForm
               onSuccess={() => {
                 setIsDialogOpen(false);
@@ -207,19 +220,25 @@ export default function Shifts() {
           </DialogContent>
         </Dialog>
 
-        <AlertDialog open={!!shiftToDelete} onOpenChange={(open) => !open && setShiftToDelete(null)}>
+        <AlertDialog
+          open={!!shiftToDelete}
+          onOpenChange={(open) => !open && setShiftToDelete(null)}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Shift</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this shift? This action cannot be undone.
+                Are you sure you want to delete this shift? This action cannot
+                be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => shiftToDelete && deleteShift.mutate(shiftToDelete.id)}
+                onClick={() =>
+                  shiftToDelete && deleteShift.mutate(shiftToDelete.id)
+                }
                 disabled={deleteShift.isPending}
               >
                 {deleteShift.isPending ? (
@@ -228,7 +247,7 @@ export default function Shifts() {
                     Deleting...
                   </>
                 ) : (
-                  'Delete'
+                  "Delete"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

@@ -59,7 +59,9 @@ function RequestsPage() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [assignManagerDialogOpen, setAssignManagerDialogOpen] = useState(false);
-  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
+    null,
+  );
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -289,9 +291,7 @@ function RequestsPage() {
       header: "Reason",
       accessorKey: "reason",
       cell: (value: string) => (
-        <span className="max-w-[200px] truncate">
-          {value}
-        </span>
+        <span className="max-w-[200px] truncate">{value}</span>
       ),
     },
     ...(user?.isAdmin || user?.isManager
@@ -316,8 +316,9 @@ function RequestsPage() {
             <div className="space-y-1">
               <p className="font-medium text-sm">Leave Period:</p>
               <p className="text-sm">
-                {row.startDate && format(new Date(row.startDate), "MMM d, yyyy")} -{" "}
-                {row.endDate && format(new Date(row.endDate), "MMM d, yyyy")}
+                {row.startDate &&
+                  format(new Date(row.startDate), "MMM d, yyyy")}{" "}
+                - {row.endDate && format(new Date(row.endDate), "MMM d, yyyy")}
               </p>
             </div>
           ) : (
@@ -342,7 +343,9 @@ function RequestsPage() {
                         </p>
                       </>
                     ) : (
-                      <p className="text-gray-500">Shift details not available</p>
+                      <p className="text-gray-500">
+                        Shift details not available
+                      </p>
                     )}
                   </div>
                 </div>
@@ -356,18 +359,24 @@ function RequestsPage() {
                         <p>{row.targetShiftType.name}</p>
                         <p className="text-gray-500">
                           {format(
-                            new Date(`2000-01-01T${row.targetShiftType.startTime}`),
+                            new Date(
+                              `2000-01-01T${row.targetShiftType.startTime}`,
+                            ),
                             "h:mm a",
                           )}{" "}
                           -
                           {format(
-                            new Date(`2000-01-01T${row.targetShiftType.endTime}`),
+                            new Date(
+                              `2000-01-01T${row.targetShiftType.endTime}`,
+                            ),
                             "h:mm a",
                           )}
                         </p>
                       </>
                     ) : (
-                      <p className="text-gray-500">Target shift details not available</p>
+                      <p className="text-gray-500">
+                        Target shift details not available
+                      </p>
                     )}
                   </div>
                 </div>
@@ -416,8 +425,7 @@ function RequestsPage() {
             header: "Actions",
             accessorKey: "id",
             cell: (_: any, row: RequestWithRelations) =>
-              (user.isAdmin ||
-                (user.isManager && row.managerId === user.id)) &&
+              (user.isAdmin || (user.isManager && row.managerId === user.id)) &&
               row.status === "PENDING" ? (
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
@@ -426,11 +434,7 @@ function RequestsPage() {
                       <Settings className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    style={{ position: "fixed" }}
-                    className="w-[200px] z-50"
-                  >
+                  <DropdownMenuContent align="end">
                     {user.isAdmin && !row.managerId && (
                       <DropdownMenuItem
                         onClick={() => {
@@ -516,10 +520,7 @@ function RequestsPage() {
         ) : (
           <div className="relative overflow-x-auto">
             <div className="w-full">
-              <ResponsiveTable
-                columns={columns}
-                data={currentRequests}
-              />
+              <ResponsiveTable columns={columns} data={currentRequests} />
             </div>
 
             <div className="mt-4">

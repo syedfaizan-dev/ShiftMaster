@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogHeader,
+} from "@/components/ui/dialog";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { TablePagination } from "@/components/table-pagination";
 import {
@@ -74,8 +80,12 @@ export default function Tasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(null);
-  const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null);
+  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(
+    null,
+  );
+  const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(
+    null,
+  );
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -108,7 +118,9 @@ export default function Tasks() {
     queryKey: ["/api/shift-types"],
   });
 
-  const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<any[]>({
+  const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<
+    any[]
+  >({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
     enabled: !!selectedShiftType,
     queryFn: async () => {
@@ -118,15 +130,15 @@ export default function Tasks() {
         {
           credentials: "include",
           headers: {
-            "Accept": "application/json"
-          }
-        }
+            Accept: "application/json",
+          },
+        },
       );
       if (!response.ok) {
         throw new Error("Failed to fetch inspectors");
       }
       return response.json();
-    }
+    },
   });
 
   const { data: employees = [] } = useQuery<any[]>({
@@ -177,7 +189,7 @@ export default function Tasks() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify({
           ...updateData,
@@ -238,14 +250,14 @@ export default function Tasks() {
   const currentTasks = tasks.slice(startIndex, endIndex);
 
   // Handle pagination changes
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
-    const handlePageSizeChange = (newSize: number) => {
-        setPageSize(newSize);
-        setCurrentPage(1);
-    };
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
 
   const handleOpenDialog = (task?: TaskWithRelations) => {
     if (task) {
@@ -345,7 +357,8 @@ export default function Tasks() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the task.
+                  This action cannot be undone. This will permanently delete the
+                  task.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -435,12 +448,12 @@ export default function Tasks() {
             </AlertDescription>
           </Alert>
         ) : (
-          <div className="rounded-md border">
+          <div>
             <ResponsiveTable
               columns={columns}
               data={transformedData.slice(startIndex, endIndex)}
             />
-           <TablePagination
+            <TablePagination
               currentPage={currentPage}
               totalItems={transformedData.length}
               pageSize={pageSize}
@@ -453,9 +466,12 @@ export default function Tasks() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-h-[90vh] w-[90vw] max-w-[600px] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingTask ? 'Edit Task' : 'Create New Task'}</DialogTitle>
+              <DialogTitle>
+                {editingTask ? "Edit Task" : "Create New Task"}
+              </DialogTitle>
               <DialogDescription>
-                Fill in the details below to {editingTask ? 'update the' : 'create a new'} task.
+                Fill in the details below to{" "}
+                {editingTask ? "update the" : "create a new"} task.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
@@ -586,7 +602,9 @@ export default function Tasks() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="PENDING">Pending</SelectItem>
-                            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                            <SelectItem value="IN_PROGRESS">
+                              In Progress
+                            </SelectItem>
                             <SelectItem value="COMPLETED">Completed</SelectItem>
                           </SelectContent>
                         </Select>
@@ -673,7 +691,7 @@ export default function Tasks() {
                       {createTask.isPending || updateTask.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
-                      {editingTask ? 'Update Task' : 'Create Task'}
+                      {editingTask ? "Update Task" : "Create Task"}
                     </Button>
                   </div>
                 </form>

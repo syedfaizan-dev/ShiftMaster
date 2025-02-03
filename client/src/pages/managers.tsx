@@ -57,7 +57,11 @@ export default function ManagersPage() {
     },
   ];
 
-  const { data: managers = [], isLoading, refetch } = useQuery<Manager[]>({
+  const {
+    data: managers = [],
+    isLoading,
+    refetch,
+  } = useQuery<Manager[]>({
     queryKey: ["managers"],
     queryFn: async () => {
       const response = await fetch("/api/admin/managers");
@@ -119,8 +123,8 @@ export default function ManagersPage() {
           <CreateManagerModal onSuccess={refetch} />
         </div>
 
-        <div className="rounded-md border">
-          <ResponsiveTable 
+        <div>
+          <ResponsiveTable
             columns={columns}
             data={managers.slice(startIndex, endIndex)}
           />
