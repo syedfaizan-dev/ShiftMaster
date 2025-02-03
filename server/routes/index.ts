@@ -9,6 +9,7 @@ import { registerRequestRoutes } from "./requestRoutes";
 import { registerNotificationRoutes } from "./notificationRoutes";
 
 export function registerRoutes(app: Express) {
+  // Register all route modules
   registerAuthRoutes(app);
   registerUserRoutes(app);
   registerShiftRoutes(app);
