@@ -13,9 +13,11 @@ import Employees from "@/pages/employees";
 import Requests from "@/pages/requests";
 import ShiftTypes from "@/pages/shift-types";
 import Tasks from "@/pages/tasks";
-import Users from "@/pages/users";
 import TaskTypes from "@/pages/task-types";
 import BuildingsPage from "./pages/buildings";
+import AdminsPage from "@/pages/admins";
+import ManagersPage from "@/pages/managers";
+import InspectorsPage from "@/pages/inspectors";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -42,8 +44,10 @@ function Router() {
       {user.isAdmin && (
         <>
           <Route path="/roles" component={Roles} />
-          <Route path="/users" component={Users} />
-          <Route path="/employees" component={Employees} />
+          <Route path="/users/admins" component={AdminsPage} />
+          <Route path="/users/managers" component={ManagersPage} />
+          <Route path="/users/inspectors" component={InspectorsPage} />
+          <Route path="/users/employees" component={Employees} />
           <Route path="/shift-types" component={ShiftTypes} />
           <Route path="/tasks" component={Tasks} />
           <Route path="/task-types" component={TaskTypes} />
