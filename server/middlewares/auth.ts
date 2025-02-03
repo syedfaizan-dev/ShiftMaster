@@ -9,20 +9,22 @@ import { userService } from "../services/userService";
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "porygon-supremacy",
+    secret: process.env.REPL_ID || "workforce-management-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: {},
+    cookie: {
+      secure: app.get("env") === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
     store: new MemoryStore({
-      checkPeriod: 86400000,
+      checkPeriod: 86400000, // prune expired entries every 24h
     }),
   };
 
+  // Trust proxy in production
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie = {
-      secure: true,
-    };
   }
 
   app.use(session(sessionSettings));
@@ -48,7 +50,7 @@ export function setupAuth(app: Express) {
     })
   );
 
-  passport.serializeUser((user, done) => {
+  passport.serializeUser((user: Express.User, done) => {
     done(null, user.id);
   });
 
@@ -70,6 +72,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
   next();
 };
 
+// Admin middleware for protected routes
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Not authenticated" });

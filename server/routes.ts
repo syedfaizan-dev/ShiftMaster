@@ -1,6 +1,5 @@
 import { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./auth";
 import { db } from "@db";
 import {
   shifts,
@@ -24,6 +23,7 @@ import {
   updateBuilding,
   updateBuildingCoordinator,
 } from "./routes/buildings";
+import { requireAuth, requireAdmin } from "./middlewares/auth";
 
 export const createShift = async (req: Request, res: Response) => {
   try {
@@ -48,7 +48,7 @@ export const createShift = async (req: Request, res: Response) => {
         shiftTypeId,
         week,
         backupId,
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
       })
       .returning();
 
@@ -93,7 +93,7 @@ const updateShift = async (req: Request, res: Response) => {
         shiftTypeId,
         week,
         backupId,
-        updatedBy: req.user.id, // Assuming you have updatedBy field
+        updatedBy: req.user.id,
       })
       .where(eq(shifts.id, parseInt(id)))
       .returning();
@@ -106,16 +106,6 @@ const updateShift = async (req: Request, res: Response) => {
 };
 
 export function registerRoutes(app: Express): Server {
-  setupAuth(app);
-
-  // Middleware to check if user is authenticated
-  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    next();
-  };
-
   // Get basic user info for authenticated users
   app.get("/api/users", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -148,17 +138,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Error fetching roles" });
     }
   });
-
-  // Middleware to check if user is authenticated and is admin
-  const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    if (!req.user?.isAdmin) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-    next();
-  };
 
   // Notification routes
   app.get("/api/notifications", requireAuth, getNotifications);
@@ -1061,7 +1040,7 @@ export function registerRoutes(app: Express): Server {
     },
   );
 
-  // Get employees (users who are not admin, manager, or inspector)
+  // Get employees (users who are not admin, manager,or inspector)
   app.get(
     "/api/admin/employees",
     requireAdmin,

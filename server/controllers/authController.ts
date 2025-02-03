@@ -13,14 +13,18 @@ export class AuthController {
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { username } = result.data;
-      const existingUser = await userService.findByUsername(username);
+      const existingUser = await userService.findByUsername(result.data.username);
 
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
-      const newUser = await userService.createUser(result.data);
+      const newUser = await userService.createUser({
+        ...result.data,
+        isAdmin: false,
+        isManager: false,
+        isInspector: false,
+      });
 
       // Only log in if not being created by an admin
       if (!req.user?.isAdmin) {
@@ -45,13 +49,6 @@ export class AuthController {
   }
 
   async login(req: Request, res: Response, next: NextFunction) {
-    const result = insertUserSchema.safeParse(req.body);
-    if (!result.success) {
-      return res
-        .status(400)
-        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
-    }
-
     passport.authenticate("local", (err: any, user: Express.User, info: any) => {
       if (err) {
         return next(err);
