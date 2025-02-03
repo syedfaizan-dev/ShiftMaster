@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/navbar";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface Inspector {
   id: number;
@@ -61,7 +62,7 @@ export default function InspectorsPage() {
     },
   });
 
-  const columns = [
+  const columns: ColumnDef<Inspector>[] = [
     {
       header: "Full Name",
       accessorKey: "fullName",
@@ -72,9 +73,11 @@ export default function InspectorsPage() {
     },
     {
       header: "Actions",
-      accessorKey: "id",
+      id: "actions",
       cell: ({ row }) => {
-        const inspector = row.original as Inspector;
+        const inspector = row.original;
+        if (!inspector) return null;
+
         return (
           <div className="flex gap-2">
             <Button
@@ -183,6 +186,7 @@ export default function InspectorsPage() {
   // Calculate pagination values
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
+  const paginatedData = inspectors.slice(startIndex, endIndex);
 
   // Handle pagination changes
   const handlePageChange = (page: number) => {
@@ -234,7 +238,7 @@ export default function InspectorsPage() {
           <div className="rounded-md border">
             <ResponsiveTable 
               columns={columns}
-              data={inspectors.slice(startIndex, endIndex)}
+              data={paginatedData}
             />
             <TablePagination
               currentPage={currentPage}

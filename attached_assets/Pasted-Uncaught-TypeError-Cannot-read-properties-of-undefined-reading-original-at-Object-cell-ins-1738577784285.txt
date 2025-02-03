@@ -1,0 +1,42 @@
+Uncaught TypeError: Cannot read properties of undefined (reading 'original')
+    at Object.cell (inspectors.tsx:77:31)
+    at responsive-table.tsx:59:32
+    at Array.map (<anonymous>)
+    at responsive-table.tsx:54:26
+    at Array.map (<anonymous>)
+    at ResponsiveTable (responsive-table.tsx:52:19)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=d225d919:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=d225d919:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=d225d919:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=d225d919:3674:22)Understand this errorAI
+chunk-RPCDYKBN.js?v=d225d919:14032 The above error occurred in the <ResponsiveTable> component:
+
+    at ResponsiveTable (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/responsive-table.tsx:33:3)
+    at div
+    at div
+    at div
+    at main
+    at div
+    at div
+    at Navbar (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/navbar.tsx:24:34)
+    at InspectorsPage (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/pages/inspectors.tsx:45:41)
+    at Route (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d225d919:323:16)
+    at Switch (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d225d919:379:17)
+    at Router (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/App.tsx?v=CbdkZWQzUY15diTGOff92:40:31)
+    at QueryClientProvider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=d225d919:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=d225d919:14032Understand this errorAI
+chunk-RPCDYKBN.js?v=d225d919:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'original')
+    at Object.cell (inspectors.tsx:77:31)
+    at responsive-table.tsx:59:32
+    at Array.map (<anonymous>)
+    at responsive-table.tsx:54:26
+    at Array.map (<anonymous>)
+    at ResponsiveTable (responsive-table.tsx:52:19)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=d225d919:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=d225d919:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=d225d919:15914:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=d225d919:19753:22)
