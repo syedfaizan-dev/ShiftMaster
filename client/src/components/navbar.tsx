@@ -26,9 +26,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
   const getNavLinkClass = (path: string) => {
     const isActive = location === path;
     return `flex w-full items-center space-x-2 p-2 rounded-lg transition-colors ${
-      isActive
-        ? "bg-primary text-primary-foreground"
-        : "hover:bg-gray-200 text-gray-700"
+      isActive ? "bg-gray-200" : "hover:bg-gray-200 text-gray-700"
     }`;
   };
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog";
+import { TablePagination } from "@/components/table-pagination";
 import {
   Form,
   FormControl,
@@ -55,6 +56,8 @@ export default function Buildings() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   const form = useForm<BuildingFormData>({
     resolver: zodResolver(buildingSchema),
@@ -69,6 +72,11 @@ export default function Buildings() {
     queryKey: ["/api/admin/buildings"],
     enabled: user?.isAdmin,
   });
+
+    // Calculate pagination values
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const currentBuildings = buildings?.slice(startIndex, endIndex) || [];
 
   const createBuilding = useMutation({
     mutationFn: async (data: BuildingFormData) => {
@@ -145,6 +153,15 @@ export default function Buildings() {
       });
     },
   });
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
+    
+      const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        setCurrentPage(1);
+      };
 
   const handleOpenDialog = (building?: Building) => {
     if (building) {
@@ -255,7 +272,7 @@ export default function Buildings() {
           <Button onClick={() => handleOpenDialog()}>Add Building</Button>
         </div>
 
-        {buildings.length === 0 ? (
+        {buildings?.length === 0 ? (
           <Alert>
             <AlertTitle>No Buildings Found</AlertTitle>
             <AlertDescription>
@@ -263,12 +280,22 @@ export default function Buildings() {
             </AlertDescription>
           </Alert>
         ) : (
-          <div className="rounded-md border">
-            <ResponsiveTable
-              columns={columns}
-              data={buildings}
+          <>
+            <div className="rounded-md border">
+              <ResponsiveTable
+                columns={columns}
+                data={currentBuildings}
+              />
+            </div>
+
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={buildings?.length || 0}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
             />
-          </div>
+          </>
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
