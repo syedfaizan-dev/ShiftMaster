@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, LogOut, Users, FileText, Clock, CheckSquare, List, Group, Menu, Building } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, FileText, Clock, CheckSquare, List, Group, Menu, Building, UserCheck } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
 
@@ -85,6 +85,15 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   >
                     <Users className="w-5 h-5" />
                     <span>Managers</span>
+                  </button>
+                </Link>
+                <Link href="/inspectors">
+                  <button 
+                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <UserCheck className="w-5 h-5" />
+                    <span>Inspectors</span>
                   </button>
                 </Link>
                 <Link href="/buildings">
