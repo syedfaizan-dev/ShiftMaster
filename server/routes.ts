@@ -22,7 +22,8 @@ import { sql } from "drizzle-orm";
 
 export const createShift = async (req: Request, res: Response) => {
   try {
-    const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
+    const { inspectorId, roleId, shiftTypeId, week, backupId, buildingId } =
+      req.body;
 
     // Validate that the shift type exists
     const [shiftType] = await db
@@ -44,6 +45,7 @@ export const createShift = async (req: Request, res: Response) => {
         week,
         backupId,
         createdBy: req.user!.id,
+        buildingId,
       })
       .returning();
 
@@ -210,13 +212,20 @@ export function registerRoutes(app: Express): Server {
     requireAdmin,
     async (req: Request, res: Response) => {
       try {
-        const { username, fullName, password, isInspector, isManager, isAdmin } = req.body;
+        const {
+          username,
+          fullName,
+          password,
+          isInspector,
+          isManager,
+          isAdmin,
+        } = req.body;
 
         // Check for required fields
         if (!username || !fullName || !password) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             message: "Missing required fields",
-            error: "Username, full name, and password are required"
+            error: "Username, full name, and password are required",
           });
         }
 
@@ -228,9 +237,10 @@ export function registerRoutes(app: Express): Server {
           .limit(1);
 
         if (existingUser) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             message: "Username already exists",
-            error: "This email is already registered. Please use a different email."
+            error:
+              "This email is already registered. Please use a different email.",
           });
         }
 
@@ -254,9 +264,9 @@ export function registerRoutes(app: Express): Server {
         res.status(201).json(userWithoutPassword);
       } catch (error) {
         console.error("Error creating user:", error);
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Error creating user",
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     },
@@ -373,7 +383,7 @@ export function registerRoutes(app: Express): Server {
         console.error("Error deleting user:", error);
         res.status(500).json({
           message: "Error deleting user",
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     },
@@ -649,11 +659,9 @@ export function registerRoutes(app: Express): Server {
         } = req.body;
 
         if (type === "SHIFT_SWAP" && (!shiftTypeId || !targetShiftTypeId)) {
-          return res
-            .status(400)
-            .json({
-              message: "Shift type IDs are required for shift swap requests",
-            });
+          return res.status(400).json({
+            message: "Shift type IDs are required for shift swap requests",
+          });
         }
 
         if (type === "SHIFT_SWAP") {
@@ -1049,7 +1057,7 @@ export function registerRoutes(app: Express): Server {
         await db.delete(tasks).where(eq(tasks.id, parseInt(id)));
 
         res.json({ message: "Task deleted successfully" });
-      } catch(error) {
+      } catch (error) {
         console.error("Error deleting task:", error);
         res.status(500).json({ message: "Error deleting task" });
       }
@@ -1122,7 +1130,7 @@ export function registerRoutes(app: Express): Server {
             id: users.id,
             fullName: users.fullName,
             username: users.username,
-                    })
+          })
           .from(users)
           .innerJoin(shifts, eq(shifts.inspectorId, users.id))
           .where(
@@ -1282,157 +1290,174 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
-  
-  app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const allBuildings = await db.select().from(buildings);
-      res.json(allBuildings);
-    } catch (error) {
-      console.error("Error fetching buildings:", error);
-      res.status(500).json({ message: "Error fetching buildings" });
-    }
-  });
-  
+
+  app.get(
+    "/api/admin/buildings",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const allBuildings = await db.select().from(buildings);
+        res.json(allBuildings);
+      } catch (error) {
+        console.error("Error fetching buildings:", error);
+        res.status(500).json({ message: "Error fetching buildings" });
+      }
+    },
+  );
+
   // Create building
-  app.post("/api/admin/buildings", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { name, code, area } = req.body;
-  
-      // Check if building code already exists
-      const [existingBuilding] = await db
-        .select()
-        .from(buildings)
-        .where(eq(buildings.code, code))
-        .limit(1);
-  
-      if (existingBuilding) {
-        return res.status(400).json({
-          message: "Building code already exists",
-          error: `A building with code "${code}" already exists. Please use a different code.`
-        });
-      }
-  
-      const [newBuilding] = await db
-        .insert(buildings)
-        .values({
-          name,
-          code,
-          area: area || '',
-        })
-        .returning();
-  
-      res.status(201).json(newBuilding);
-    } catch (error) {
-      console.error("Error creating building:", error);
-      res.status(500).json({
-        message: "Error creating building",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-  // Admin: Update building
-  app.put("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { name, code, area } = req.body;
+  app.post(
+    "/api/admin/buildings",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { name, code, area } = req.body;
 
-      // Check if building exists
-      const [existingBuilding] = await db
-        .select()
-        .from(buildings)
-        .where(eq(buildings.id, parseInt(id)))
-        .limit(1);
-
-      if (!existingBuilding) {
-        return res.status(404).json({ 
-          message: "Building not found",
-          error: "The requested building does not exist"
-        });
-      }
-
-      // Check if code is being changed and if new code already exists
-      if (code !== existingBuilding.code) {
-        const [buildingWithCode] = await db
+        // Check if building code already exists
+        const [existingBuilding] = await db
           .select()
           .from(buildings)
           .where(eq(buildings.code, code))
           .limit(1);
 
-        if (buildingWithCode) {
+        if (existingBuilding) {
           return res.status(400).json({
             message: "Building code already exists",
-            error: `A building with code "${code}" already exists. Please use a different code.`
+            error: `A building with code "${code}" already exists. Please use a different code.`,
           });
         }
+
+        const [newBuilding] = await db
+          .insert(buildings)
+          .values({
+            name,
+            code,
+            area: area || "",
+          })
+          .returning();
+
+        res.status(201).json(newBuilding);
+      } catch (error) {
+        console.error("Error creating building:", error);
+        res.status(500).json({
+          message: "Error creating building",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
+    },
+  );
+  // Admin: Update building
+  app.put(
+    "/api/admin/buildings/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { name, code, area } = req.body;
 
-      // Update the building
-      const [updatedBuilding] = await db
-        .update(buildings)
-        .set({
-          name,
-          code,
-          area: area || '',
-          updatedAt: new Date(),
-        })
-        .where(eq(buildings.id, parseInt(id)))
-        .returning();
+        // Check if building exists
+        const [existingBuilding] = await db
+          .select()
+          .from(buildings)
+          .where(eq(buildings.id, parseInt(id)))
+          .limit(1);
 
-      res.json(updatedBuilding);
-    } catch (error) {
-      console.error("Error updating building:", error);
-      res.status(500).json({
-        message: "Error updating building",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
+        if (!existingBuilding) {
+          return res.status(404).json({
+            message: "Building not found",
+            error: "The requested building does not exist",
+          });
+        }
+
+        // Check if code is being changed and if new code already exists
+        if (code !== existingBuilding.code) {
+          const [buildingWithCode] = await db
+            .select()
+            .from(buildings)
+            .where(eq(buildings.code, code))
+            .limit(1);
+
+          if (buildingWithCode) {
+            return res.status(400).json({
+              message: "Building code already exists",
+              error: `A building with code "${code}" already exists. Please use a different code.`,
+            });
+          }
+        }
+
+        // Update the building
+        const [updatedBuilding] = await db
+          .update(buildings)
+          .set({
+            name,
+            code,
+            area: area || "",
+            updatedAt: new Date(),
+          })
+          .where(eq(buildings.id, parseInt(id)))
+          .returning();
+
+        res.json(updatedBuilding);
+      } catch (error) {
+        console.error("Error updating building:", error);
+        res.status(500).json({
+          message: "Error updating building",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+  );
 
   // Admin: Delete building
-  app.delete("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
+  app.delete(
+    "/api/admin/buildings/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
 
-      // Check if building exists
-      const [existingBuilding] = await db
-        .select()
-        .from(buildings)
-        .where(eq(buildings.id, parseInt(id)))
-        .limit(1);
+        // Check if building exists
+        const [existingBuilding] = await db
+          .select()
+          .from(buildings)
+          .where(eq(buildings.id, parseInt(id)))
+          .limit(1);
 
-      if (!existingBuilding) {
-        return res.status(404).json({
-          message: "Building not found",
-          error: "The requested building does not exist"
+        if (!existingBuilding) {
+          return res.status(404).json({
+            message: "Building not found",
+            error: "The requested building does not exist",
+          });
+        }
+
+        // Check if building has any associated shifts
+        const [shiftWithBuilding] = await db
+          .select()
+          .from(shifts)
+          .where(eq(shifts.buildingId, parseInt(id)))
+          .limit(1);
+
+        if (shiftWithBuilding) {
+          return res.status(400).json({
+            message: "Cannot delete building",
+            error:
+              "This building has associated shifts. Please reassign or delete the shifts first.",
+          });
+        }
+
+        // Delete the building
+        await db.delete(buildings).where(eq(buildings.id, parseInt(id)));
+
+        res.json({ message: "Building deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting building:", error);
+        res.status(500).json({
+          message: "Error deleting building",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-
-      // Check if building has any associated shifts
-      const [shiftWithBuilding] = await db
-        .select()
-        .from(shifts)
-        .where(eq(shifts.buildingId, parseInt(id)))
-        .limit(1);
-
-      if (shiftWithBuilding) {
-        return res.status(400).json({
-          message: "Cannot delete building",
-          error: "This building has associated shifts. Please reassign or delete the shifts first."
-        });
-      }
-
-      // Delete the building
-      await db.delete(buildings).where(eq(buildings.id, parseInt(id)));
-
-      res.json({ message: "Building deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting building:", error);
-      res.status(500).json({
-        message: "Error deleting building",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
+    },
+  );
   const server = createServer(app);
   return server;
 }

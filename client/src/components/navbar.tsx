@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,26 +14,50 @@ import {
   Menu,
   UserCheck,
   Building2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [location] = useLocation();
+
+  const isLinkActive = (path: string) => {
+    return location === path;
+  };
+
+  const renderNavLink = (path: string, icon: React.ReactNode, label: string) => (
+    <Link href={path}>
+      <button
+        className={cn(
+          "flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700",
+          {
+            "bg-gray-200": isLinkActive(path),
+            "justify-center": isMinimized,
+          }
+        )}
+        onClick={() => setIsMobileMenuOpen(false)}
+      >
+        {icon}
+        {!isMinimized && <span>{label}</span>}
+      </button>
+    </Link>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Fixed Top Navbar */}
       <div className="h-16 flex fixed top-0 left-0 right-0 z-50">
-        {/* Primary color (for sidebar width) */}
         <div className="absolute inset-0 w-fit bg-primary lg:block hidden" />
-        {/* Secondary color (remaining width) */}
         <div
           className="absolute inset-0 lg:left-fit left-0 right-0"
           style={{ backgroundColor: "#04a3e0" }}
         />
-        {/* Content */}
         <div className="relative flex items-center justify-between px-6 w-full">
           <div className="flex items-center gap-4">
             <Button
@@ -69,138 +93,88 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
       <div className="flex pt-16 flex-1">
         {/* Fixed Left Navigation - Transform based on mobile menu state */}
         <div
-          className={`
-          w-fit min-w-[16rem] bg-gray-100 fixed left-0 top-16 bottom-0 border-r border-gray-200 
-          overflow-y-auto overflow-x-hidden transition-transform duration-200 ease-in-out z-40
-          lg:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
+          className={cn(
+            "fixed left-0 top-16 bottom-0 border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-200 ease-in-out z-40 bg-gray-100",
+            {
+              "w-64": !isMinimized,
+              "w-16": isMinimized,
+              "translate-x-0": isMobileMenuOpen || !isMinimized,
+              "-translate-x-full": !isMobileMenuOpen && isMinimized,
+              "lg:translate-x-0": true,
+            }
+          )}
         >
-          <nav className="p-4 space-y-2">
+          {/* Minimize Toggle Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-2 top-2 hidden lg:flex"
+            onClick={() => setIsMinimized(!isMinimized)}
+          >
+            {isMinimized ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+
+          <nav className="p-4 space-y-2 mt-10">
             {user?.isAdmin && (
               <>
-                <Link href="/">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <LayoutDashboard className="w-5 h-5" />
-                    <span>Dashboard</span>
-                  </button>
-                </Link>
-                <Link href="/buildings">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Building2 className="w-5 h-5" />
-                    <span>Buildings</span>
-                  </button>
-                </Link>
-                <Link href="/users">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Group className="w-5 h-5" />
-                    <span>Users</span>
-                  </button>
-                </Link>
-                <Link href="/managers">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Users className="w-5 h-5" />
-                    <span>Managers</span>
-                  </button>
-                </Link>
-                <Link href="/inspectors">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <UserCheck className="w-5 h-5" />
-                    <span>Inspectors</span>
-                  </button>
-                </Link>
-                <Link href="/tasks">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <CheckSquare className="w-5 h-5" />
-                    <span>Tasks</span>
-                  </button>
-                </Link>
-                <Link href="/task-types">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <List className="w-5 h-5" />
-                    <span>Task Types</span>
-                  </button>
-                </Link>
+                {renderNavLink("/", <LayoutDashboard className="w-5 h-5" />, "Dashboard")}
+                {renderNavLink("/buildings", <Building2 className="w-5 h-5" />, "Buildings")}
+                {renderNavLink("/users", <Group className="w-5 h-5" />, "Users")}
+                {renderNavLink("/managers", <Users className="w-5 h-5" />, "Managers")}
+                {renderNavLink("/inspectors", <UserCheck className="w-5 h-5" />, "Inspectors")}
+                {renderNavLink("/tasks", <CheckSquare className="w-5 h-5" />, "Tasks")}
+                {renderNavLink("/task-types", <List className="w-5 h-5" />, "Task Types")}
               </>
             )}
-            <Link href="/shifts">
-              <button
-                className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Calendar className="w-5 h-5" />
-                <span>Shifts</span>
-              </button>
-            </Link>
-            <Link href="/requests">
-              <button
-                className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <FileText className="w-5 h-5" />
-                <span>Requests</span>
-              </button>
-            </Link>
+            {renderNavLink("/shifts", <Calendar className="w-5 h-5" />, "Shifts")}
+            {renderNavLink("/requests", <FileText className="w-5 h-5" />, "Requests")}
             {user?.isAdmin && (
               <>
-                <Link href="/roles">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Users className="w-5 h-5" />
-                    <span>Roles</span>
-                  </button>
-                </Link>
-                <Link href="/shift-types">
-                  <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Clock className="w-5 h-5" />
-                    <span>Shift Types</span>
-                  </button>
-                </Link>
+                {renderNavLink("/roles", <Users className="w-5 h-5" />, "Roles")}
+                {renderNavLink("/shift-types", <Clock className="w-5 h-5" />, "Shift Types")}
               </>
             )}
           </nav>
-          <div className="absolute bottom-0 w-64 p-4 bg-gray-100">
+
+          <div className={cn(
+            "absolute bottom-0 p-4 bg-gray-100",
+            {
+              "w-64": !isMinimized,
+              "w-16": isMinimized,
+            }
+          )}>
             <Button
               variant="outline"
-              className="w-full justify-start text-gray-700"
+              className={cn(
+                "text-gray-700",
+                {
+                  "w-full justify-start": !isMinimized,
+                  "w-full justify-center": isMinimized,
+                }
+              )}
               onClick={() => {
                 setIsMobileMenuOpen(false);
                 logout();
               }}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
+              <LogOut className="w-4 h-4" />
+              {!isMinimized && <span className="ml-2">Logout</span>}
             </Button>
           </div>
         </div>
 
-        {/* Scrollable Content Area - Adjust margin based on screen size */}
-        <main className="flex-1 lg:ml-64 bg-background overflow-y-auto min-h-screen">
+        {/* Scrollable Content Area - Adjust margin based on screen size and sidebar state */}
+        <main className={cn(
+          "flex-1 bg-background overflow-y-auto min-h-screen transition-all duration-200",
+          {
+            "lg:ml-64": !isMinimized,
+            "lg:ml-16": isMinimized,
+          }
+        )}>
           {children}
         </main>
       </div>

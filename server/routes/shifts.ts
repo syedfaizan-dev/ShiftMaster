@@ -30,12 +30,12 @@ export async function getShifts(req: Request, res: Response) {
           startTime: shiftTypes.startTime,
           endTime: shiftTypes.endTime,
         },
-        building: buildings ? {
+        building: {
           id: buildings.id,
           name: buildings.name,
           code: buildings.code,
           area: buildings.area,
-        } : null,
+        },
       })
       .from(shifts)
       .leftJoin(users, eq(shifts.inspectorId, users.id))
@@ -66,12 +66,12 @@ export async function getShifts(req: Request, res: Response) {
           return { ...shift, backup };
         }
         return { ...shift, backup: null };
-      })
+      }),
     );
 
     res.json(shiftsWithBackup);
   } catch (error) {
-    console.error('Error fetching shifts:', error);
+    console.error("Error fetching shifts:", error);
     res.status(500).send((error as Error).message);
   }
 }
@@ -159,7 +159,7 @@ export async function createShift(req: Request, res: Response) {
 
     res.json(shift);
   } catch (error) {
-    console.error('Error creating shift:', error);
+    console.error("Error creating shift:", error);
     res.status(500).send((error as Error).message);
   }
 }
@@ -171,7 +171,8 @@ export async function updateShift(req: Request, res: Response) {
     }
 
     const { id } = req.params;
-    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
+    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } =
+      req.body;
 
     // Validate that the shift exists
     const [existingShift] = await db
@@ -222,7 +223,7 @@ export async function updateShift(req: Request, res: Response) {
 
     res.json(updatedShift);
   } catch (error) {
-    console.error('Error updating shift:', error);
+    console.error("Error updating shift:", error);
     res.status(500).send((error as Error).message);
   }
 }
