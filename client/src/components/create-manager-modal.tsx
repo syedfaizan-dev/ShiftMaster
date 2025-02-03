@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 const managerSchema = z.object({
   username: z.string().min(1, "Username is required"),
   fullName: z.string().min(1, "Full name is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
 });
 
 interface CreateManagerModalProps {
@@ -22,12 +22,18 @@ interface CreateManagerModalProps {
     username: string;
     fullName: string;
   };
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CreateManagerModal({ onSuccess, manager }: CreateManagerModalProps) {
-  const [open, setOpen] = useState(false);
+export function CreateManagerModal({ onSuccess, manager, open, onOpenChange }: CreateManagerModalProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const isEditing = !!manager;
+
+  // Use controlled state if provided through props
+  const modalOpen = open ?? isOpen;
+  const setModalOpen = onOpenChange ?? setIsOpen;
 
   const form = useForm<z.infer<typeof managerSchema>>({
     resolver: zodResolver(managerSchema),
@@ -38,23 +44,38 @@ export function CreateManagerModal({ onSuccess, manager }: CreateManagerModalPro
     },
   });
 
+  // Reset form when manager prop changes
+  useEffect(() => {
+    if (manager) {
+      form.reset({
+        username: manager.username,
+        fullName: manager.fullName,
+        password: "", // Don't populate password field when editing
+      });
+    }
+  }, [manager, form]);
+
   const onSubmit = async (values: z.infer<typeof managerSchema>) => {
     try {
       const url = isEditing 
         ? `/api/admin/users/${manager.id}`
         : "/api/register";
-      
+
       const method = isEditing ? "PUT" : "POST";
-      
+
+      // Only include password if it's provided
+      const payload = {
+        ...values,
+        isManager: true,
+        ...((!isEditing || values.password) && { password: values.password }),
+      };
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...values,
-          isManager: true,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -66,7 +87,7 @@ export function CreateManagerModal({ onSuccess, manager }: CreateManagerModalPro
         description: `Manager ${isEditing ? "updated" : "created"} successfully`,
       });
 
-      setOpen(false);
+      setModalOpen(false);
       form.reset();
       onSuccess();
     } catch (error) {
@@ -79,13 +100,15 @@ export function CreateManagerModal({ onSuccess, manager }: CreateManagerModalPro
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Manager
-        </Button>
-      </DialogTrigger>
+    <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      {!isEditing && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Manager
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit" : "Add"} Manager</DialogTitle>

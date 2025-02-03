@@ -17,6 +17,7 @@ export default function ManagersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [editingManager, setEditingManager] = useState<Manager | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
 
   const columns = [
@@ -36,7 +37,10 @@ export default function ManagersPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setEditingManager(row)}
+            onClick={() => {
+              setEditingManager(row);
+              setIsEditModalOpen(true);
+            }}
           >
             Edit
           </Button>
@@ -133,8 +137,11 @@ export default function ManagersPage() {
             onSuccess={() => {
               refetch();
               setEditingManager(null);
+              setIsEditModalOpen(false);
             }}
             manager={editingManager}
+            open={isEditModalOpen}
+            onOpenChange={setIsEditModalOpen}
           />
         )}
       </div>
