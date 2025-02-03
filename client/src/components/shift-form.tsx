@@ -8,6 +8,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useUser } from "@/hooks/use-user";
 
+type User = {
+  id: number;
+  fullName: string;
+  isInspector: boolean;
+};
+
 type ShiftWithRelations = {
   id: number;
   inspectorId: number;
@@ -15,7 +21,6 @@ type ShiftWithRelations = {
   shiftTypeId: number;
   week: number;
   backupId: number | null;
-  // Add other relevant fields from your API response
 };
 
 type ShiftFormProps = {
@@ -47,9 +52,12 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
     },
   });
 
-  const { data: users } = useQuery<any[]>({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: [user?.isAdmin ? "/api/admin/users" : "/api/users"],
   });
+
+  // Filter users to only show inspectors
+  const inspectors = users.filter(user => user.isInspector);
 
   const { data: roles } = useQuery<any[]>({
     queryKey: [user?.isAdmin ? "/api/admin/roles" : "/api/roles"],
@@ -172,9 +180,9 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {users?.map((user) => (
-                      <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.fullName}
+                    {inspectors.map((inspector) => (
+                      <SelectItem key={inspector.id} value={inspector.id.toString()}>
+                        {inspector.fullName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -272,9 +280,9 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {users?.map((user) => (
-                      <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.fullName}
+                    {inspectors.map((inspector) => (
+                      <SelectItem key={inspector.id} value={inspector.id.toString()}>
+                        {inspector.fullName}
                       </SelectItem>
                     ))}
                   </SelectContent>
