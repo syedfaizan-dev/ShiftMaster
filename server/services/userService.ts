@@ -38,6 +38,22 @@ class UserService {
       password: hashedPassword,
     });
   }
+
+  async getAdmins(): Promise<Omit<User, "password">[]> {
+    return userRepository.findAdmins();
+  }
+
+  async getManagers(): Promise<Omit<User, "password">[]> {
+    return userRepository.findManagers();
+  }
+
+  async getInspectors(): Promise<Omit<User, "password">[]> {
+    return userRepository.findInspectors();
+  }
+
+  async getEmployees(): Promise<Omit<User, "password">[]> {
+    return userRepository.findEmployees();
+  }
 }
 
 export const userService = new UserService();

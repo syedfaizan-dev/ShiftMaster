@@ -1,6 +1,6 @@
 import { db } from "../config/database";
 import { users } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, not } from "drizzle-orm";
 import type { User } from "@db/schema";
 
 class UserRepository {
@@ -28,6 +28,76 @@ class UserRepository {
       .values(userData)
       .returning();
     return user;
+  }
+
+  async findAdmins(): Promise<Omit<User, "password">[]> {
+    return db
+      .select({
+        id: users.id,
+        username: users.username,
+        fullName: users.fullName,
+        isAdmin: users.isAdmin,
+        isManager: users.isManager,
+        isInspector: users.isInspector,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt
+      })
+      .from(users)
+      .where(eq(users.isAdmin, true));
+  }
+
+  async findManagers(): Promise<Omit<User, "password">[]> {
+    return db
+      .select({
+        id: users.id,
+        username: users.username,
+        fullName: users.fullName,
+        isAdmin: users.isAdmin,
+        isManager: users.isManager,
+        isInspector: users.isInspector,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt
+      })
+      .from(users)
+      .where(eq(users.isManager, true));
+  }
+
+  async findInspectors(): Promise<Omit<User, "password">[]> {
+    return db
+      .select({
+        id: users.id,
+        username: users.username,
+        fullName: users.fullName,
+        isAdmin: users.isAdmin,
+        isManager: users.isManager,
+        isInspector: users.isInspector,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt
+      })
+      .from(users)
+      .where(eq(users.isInspector, true));
+  }
+
+  async findEmployees(): Promise<Omit<User, "password">[]> {
+    return db
+      .select({
+        id: users.id,
+        username: users.username,
+        fullName: users.fullName,
+        isAdmin: users.isAdmin,
+        isManager: users.isManager,
+        isInspector: users.isInspector,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.isAdmin, false),
+          eq(users.isManager, false),
+          eq(users.isInspector, false)
+        )
+      );
   }
 }
 
