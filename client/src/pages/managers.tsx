@@ -6,7 +6,6 @@ import { TablePagination } from "@/components/table-pagination";
 import { useState } from "react";
 import { CreateManagerModal } from "@/components/create-manager-modal";
 import { useToast } from "@/hooks/use-toast";
-import type { ColumnDef } from "@tanstack/react-table";
 
 interface Manager {
   id: number;
@@ -20,7 +19,7 @@ export default function ManagersPage() {
   const [editingManager, setEditingManager] = useState<Manager | null>(null);
   const { toast } = useToast();
 
-  const columns: ColumnDef<Manager>[] = [
+  const columns = [
     {
       header: "Full Name",
       accessorKey: "fullName",
@@ -30,29 +29,26 @@ export default function ManagersPage() {
       accessorKey: "username",
     },
     {
-      id: "actions",
       header: "Actions",
-      cell: ({ row }) => {
-        const manager = row.original;
-        return (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditingManager(manager)}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => handleDelete(manager.id)}
-            >
-              Delete
-            </Button>
-          </div>
-        );
-      },
+      accessorKey: "id",
+      cell: (value: any, row: any) => (
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditingManager(row)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => handleDelete(row.id)}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
     },
   ];
 
