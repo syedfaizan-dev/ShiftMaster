@@ -24,7 +24,7 @@ export default function Dashboard() {
     <Navbar>
       <div className="p-4 md:p-6">
         <h1 className="text-2xl md:text-3xl font-bold mb-6">
-          {user?.isAdmin ? 'Task Statistics' : 'My Tasks'}
+          {user?.isAdmin ? "Dashboard" : "My Tasks"}
         </h1>
 
         {isLoading ? (
@@ -37,7 +37,9 @@ export default function Dashboard() {
               <CardTitle>No Tasks Found</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">There are no tasks available to display.</p>
+              <p className="text-muted-foreground">
+                There are no tasks available to display.
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -45,12 +47,16 @@ export default function Dashboard() {
             {taskStats.map((stat) => (
               <Card key={stat.shiftTypeId}>
                 <CardHeader>
-                  <CardTitle className="text-lg">{stat.shiftTypeName}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {stat.shiftTypeName}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Total Tasks:</span>
+                      <span className="text-muted-foreground">
+                        Total Tasks:
+                      </span>
                       <span className="font-medium">{stat.total}</span>
                     </div>
                     <div className="flex justify-between items-center">
