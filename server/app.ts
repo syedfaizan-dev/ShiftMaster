@@ -5,16 +5,27 @@ import path from "path";
 
 const app = express();
 
-// Middleware
+// Essential middleware
 app.use(express.json());
+
+// API Routes - Must be first
+app.use("/api", (req, res, next) => {
+  res.setHeader("Content-Type", "application/json");
+  next();
+});
 
 // Auth setup
 setupAuth(app);
 
-// API Routes - Register before static files
+// Register API routes
 registerRoutes(app);
 
-// Error handling middleware
+// Handle API 404s before static files
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ message: "API endpoint not found" });
+});
+
+// Error handling middleware for API routes
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("Error:", err.stack);
   if (req.path.startsWith('/api/')) {
@@ -24,15 +35,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   }
 });
 
-// Handle API 404s
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ message: "API endpoint not found" });
-});
-
-// Static file serving should be last
+// Static file serving must be after API routes
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
-// Handle client-side routing
+// SPA fallback - must be last
 app.get("*", (req, res, next) => {
   if (!req.path.startsWith("/api/")) {
     res.sendFile(path.join(__dirname, "../client/dist/index.html"));
