@@ -1,7 +1,19 @@
 import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, LogOut, Users, FileText, Clock, CheckSquare, List, Group, Menu, Building, UserCheck } from "lucide-react";
+import {
+  LayoutDashboard,
+  Calendar,
+  LogOut,
+  Users,
+  FileText,
+  Clock,
+  CheckSquare,
+  List,
+  Group,
+  Menu,
+  UserCheck,
+} from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
 
@@ -16,7 +28,10 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
         {/* Primary color (for sidebar width) */}
         <div className="absolute inset-0 w-fit bg-primary lg:block hidden" />
         {/* Secondary color (remaining width) */}
-        <div className="absolute inset-0 lg:left-fit left-0 right-0" style={{ backgroundColor: '#04a3e0' }} />
+        <div
+          className="absolute inset-0 lg:left-fit left-0 right-0"
+          style={{ backgroundColor: "#04a3e0" }}
+        />
         {/* Content */}
         <div className="relative flex items-center justify-between px-6 w-full">
           <div className="flex items-center gap-4">
@@ -43,7 +58,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Menu Backdrop */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -52,16 +67,18 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
       {/* Main Content Area with Fixed Left Navigation */}
       <div className="flex pt-16 flex-1">
         {/* Fixed Left Navigation - Transform based on mobile menu state */}
-        <div className={`
+        <div
+          className={`
           w-fit min-w-[16rem] bg-gray-100 fixed left-0 top-16 bottom-0 border-r border-gray-200 
           overflow-y-auto overflow-x-hidden transition-transform duration-200 ease-in-out z-40
-          lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}>
+          lg:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+        >
           <nav className="p-4 space-y-2">
             {user?.isAdmin && (
               <>
                 <Link href="/">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -70,7 +87,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   </button>
                 </Link>
                 <Link href="/users">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -79,7 +96,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   </button>
                 </Link>
                 <Link href="/managers">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -88,7 +105,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   </button>
                 </Link>
                 <Link href="/inspectors">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -96,17 +113,8 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                     <span>Inspectors</span>
                   </button>
                 </Link>
-                <Link href="/buildings">
-                  <button 
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Building className="w-5 h-5" />
-                    <span>Buildings</span>
-                  </button>
-                </Link>
                 <Link href="/tasks">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -115,7 +123,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   </button>
                 </Link>
                 <Link href="/task-types">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -126,7 +134,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
               </>
             )}
             <Link href="/shifts">
-              <button 
+              <button
                 className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -135,7 +143,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
               </button>
             </Link>
             <Link href="/requests">
-              <button 
+              <button
                 className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -146,7 +154,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             {user?.isAdmin && (
               <>
                 <Link href="/roles">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -155,7 +163,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   </button>
                 </Link>
                 <Link href="/shift-types">
-                  <button 
+                  <button
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -167,8 +175,8 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             )}
           </nav>
           <div className="absolute bottom-0 w-64 p-4 bg-gray-100">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full justify-start text-gray-700"
               onClick={() => {
                 setIsMobileMenuOpen(false);
@@ -183,9 +191,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
 
         {/* Scrollable Content Area - Adjust margin based on screen size */}
         <main className="flex-1 lg:ml-64 bg-background overflow-y-auto min-h-screen">
-          <div className="p-6">
-            {children}
-          </div>
+          {children}
         </main>
       </div>
     </div>
