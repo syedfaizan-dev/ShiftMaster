@@ -14,8 +14,6 @@ import {
   Menu,
   UserCheck,
   Building2,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
@@ -24,30 +22,24 @@ import { cn } from "@/lib/utils";
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
   const [location] = useLocation();
 
   const isLinkActive = (path: string) => {
     return location === path;
   };
 
-  const renderNavLink = (
-    path: string,
-    icon: React.ReactNode,
-    label: string,
-  ) => (
+  const renderNavLink = (path: string, icon: React.ReactNode, label: string) => (
     <Link href={path}>
       <button
         className={cn(
-          "flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700 mb-2",
+          "flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700",
           {
             "bg-gray-200": isLinkActive(path),
-            "justify-center": isMinimized,
-          },
+          }
         )}
       >
         {icon}
-        {!isMinimized && <span>{label}</span>}
+        <span>{label}</span>
       </button>
     </Link>
   );
@@ -94,34 +86,18 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area with Fixed Left Navigation */}
       <div className="flex pt-16 flex-1">
-        {/* Fixed Left Navigation - Transform based on mobile menu state */}
+        {/* Fixed Left Navigation */}
         <div
           className={cn(
-            "fixed left-0 top-16 bottom-0 border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-all duration-200 ease-in-out z-40 bg-gray-100",
+            "fixed left-0 top-16 bottom-0 w-64 border-r border-gray-200 overflow-y-auto overflow-x-hidden transition-transform duration-200 ease-in-out z-40 bg-gray-100",
             {
-              "w-64": !isMinimized,
-              "w-16": isMinimized,
               "translate-x-0": isMobileMenuOpen,
-              "-translate-x-full": !isMobileMenuOpen && !isMinimized,
+              "-translate-x-full": !isMobileMenuOpen,
               "lg:translate-x-0": true,
-            },
+            }
           )}
         >
-          {/* Minimize Toggle Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-2 hidden lg:flex"
-            onClick={() => setIsMinimized(!isMinimized)}
-          >
-            {isMinimized ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </Button>
-
-          <nav className="p-4 space-y-4 mt-10">
+          <nav className="p-4 space-y-4 mt-6">
             {user?.isAdmin && (
               <div className="space-y-2">
                 {renderNavLink("/", <LayoutDashboard className="w-5 h-5" />, "Dashboard")}
@@ -145,36 +121,20 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             )}
           </nav>
 
-          <div
-            className={cn("absolute bottom-0 p-4 bg-gray-100", {
-              "w-64": !isMinimized,
-              "w-16": isMinimized,
-            })}
-          >
+          <div className="absolute bottom-0 w-64 p-4 bg-gray-100">
             <Button
               variant="outline"
-              className={cn("text-gray-700", {
-                "w-full justify-start": !isMinimized,
-                "w-full justify-center": isMinimized,
-              })}
-              onClick={() => logout()}
+              className="w-full justify-start text-gray-700"
+              onClick={logout}
             >
               <LogOut className="w-4 h-4" />
-              {!isMinimized && <span className="ml-2">Logout</span>}
+              <span className="ml-2">Logout</span>
             </Button>
           </div>
         </div>
 
-        {/* Scrollable Content Area - Adjust margin based on screen size and sidebar state */}
-        <main
-          className={cn(
-            "flex-1 bg-background overflow-y-auto min-h-screen transition-all duration-200",
-            {
-              "lg:ml-64": !isMinimized,
-              "lg:ml-16": isMinimized,
-            },
-          )}
-        >
+        {/* Scrollable Content Area */}
+        <main className="flex-1 lg:ml-64 bg-background overflow-y-auto min-h-screen">
           {children}
         </main>
       </div>
