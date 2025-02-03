@@ -61,44 +61,6 @@ export default function InspectorsPage() {
     },
   });
 
-  const columns = [
-    {
-      header: "Full Name",
-      accessorKey: "fullName",
-    },
-    {
-      header: "Username",
-      accessorKey: "username",
-    },
-    {
-      header: "Actions",
-      id: "actions",
-      cell: ({ row }: { row: { original: Inspector } }) => {
-        if (!row?.original) return null;
-        const inspector = row.original;
-
-        return (
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleEdit(inspector)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(inspector.id)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-        );
-      },
-    },
-  ];
-
   const handleEdit = (inspector: Inspector) => {
     setEditingInspector(inspector);
     form.reset({
@@ -196,6 +158,44 @@ export default function InspectorsPage() {
     setPageSize(newSize);
     setCurrentPage(1);
   };
+
+  const columns = [
+    {
+      header: "Full Name",
+      accessorKey: "fullName",
+    },
+    {
+      header: "Username",
+      accessorKey: "username",
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: (info: any) => {
+        const inspector = info.row.original;
+        if (!inspector) return null;
+
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(inspector)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(inspector.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
 
   if (isLoading) {
     return (
