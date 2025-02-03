@@ -13,7 +13,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { ColumnDef } from "@tanstack/react-table";
 
 interface Inspector {
   id: number;
@@ -62,7 +61,7 @@ export default function InspectorsPage() {
     },
   });
 
-  const columns: ColumnDef<Inspector>[] = [
+  const columns = [
     {
       header: "Full Name",
       accessorKey: "fullName",
@@ -74,9 +73,9 @@ export default function InspectorsPage() {
     {
       header: "Actions",
       id: "actions",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: { original: Inspector } }) => {
+        if (!row?.original) return null;
         const inspector = row.original;
-        if (!inspector) return null;
 
         return (
           <div className="flex gap-2">
