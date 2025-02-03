@@ -5,14 +5,22 @@ import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-const managerSchema = z.object({
+const createManagerSchema = z.object({
   username: z.string().min(1, "Username is required"),
   fullName: z.string().min(1, "Full name is required"),
-  password: z.string().min(6, "Password must be at least 6 characters").optional(),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const editManagerSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  fullName: z.string().min(1, "Full name is required"),
+  password: z.string().refine((val) => val === '' || val.length >= 6, {
+    message: "Password must be at least 6 characters if provided",
+  }),
 });
 
 interface CreateManagerModalProps {
@@ -35,8 +43,8 @@ export function CreateManagerModal({ onSuccess, manager, open, onOpenChange }: C
   const modalOpen = open ?? isOpen;
   const setModalOpen = onOpenChange ?? setIsOpen;
 
-  const form = useForm<z.infer<typeof managerSchema>>({
-    resolver: zodResolver(managerSchema),
+  const form = useForm<z.infer<typeof editManagerSchema>>({
+    resolver: zodResolver(isEditing ? editManagerSchema : createManagerSchema),
     defaultValues: {
       username: manager?.username || "",
       fullName: manager?.fullName || "",
@@ -55,7 +63,7 @@ export function CreateManagerModal({ onSuccess, manager, open, onOpenChange }: C
     }
   }, [manager, form]);
 
-  const onSubmit = async (values: z.infer<typeof managerSchema>) => {
+  const onSubmit = async (values: z.infer<typeof editManagerSchema>) => {
     try {
       const url = isEditing 
         ? `/api/admin/users/${manager.id}`
@@ -150,6 +158,11 @@ export function CreateManagerModal({ onSuccess, manager, open, onOpenChange }: C
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
+                  {isEditing && (
+                    <FormDescription>
+                      Leave the password field empty to keep the current password
+                    </FormDescription>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
