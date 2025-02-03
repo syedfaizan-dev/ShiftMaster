@@ -17,6 +17,7 @@ interface Manager {
 export default function ManagersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [editingManager, setEditingManager] = useState<Manager | null>(null);
   const { toast } = useToast();
 
   const columns = [
@@ -30,24 +31,27 @@ export default function ManagersPage() {
     },
     {
       header: "Actions",
-      cell: (row: any) => (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleEdit(row.original)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => handleDelete(row.original.id)}
-          >
-            Delete
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const manager = row.original as Manager;
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditingManager(manager)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleDelete(manager.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -67,7 +71,7 @@ export default function ManagersPage() {
       const response = await fetch(`/api/admin/users/${id}`, {
         method: "DELETE",
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to delete manager");
       }
@@ -76,7 +80,7 @@ export default function ManagersPage() {
         title: "Success",
         description: "Manager deleted successfully",
       });
-      
+
       refetch();
     } catch (error) {
       toast({
@@ -85,10 +89,6 @@ export default function ManagersPage() {
         variant: "destructive",
       });
     }
-  };
-
-  const handleEdit = (manager: Manager) => {
-    // Handle edit in modal
   };
 
   // Calculate pagination values
@@ -130,6 +130,16 @@ export default function ManagersPage() {
             onPageSizeChange={handlePageSizeChange}
           />
         </div>
+
+        {editingManager && (
+          <CreateManagerModal
+            onSuccess={() => {
+              refetch();
+              setEditingManager(null);
+            }}
+            manager={editingManager}
+          />
+        )}
       </div>
     </Navbar>
   );
