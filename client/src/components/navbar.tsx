@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, LogOut, Users, FileText, Clock, CheckSquare, List, Group, Menu, Building, Shield, Briefcase, Eye, UserCircle } from "lucide-react";
+import { LayoutDashboard, Calendar, LogOut, Users, FileText, Clock, CheckSquare, List, Group, Menu, Building } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
 
@@ -69,40 +69,13 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                     <span>Dashboard</span>
                   </button>
                 </Link>
-                <Link href="/users/admins">
+                <Link href="/users">
                   <button 
                     className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    <Shield className="w-5 h-5" />
-                    <span>Admins</span>
-                  </button>
-                </Link>
-                <Link href="/users/managers">
-                  <button 
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Briefcase className="w-5 h-5" />
-                    <span>Managers</span>
-                  </button>
-                </Link>
-                <Link href="/users/inspectors">
-                  <button 
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Eye className="w-5 h-5" />
-                    <span>Inspectors</span>
-                  </button>
-                </Link>
-                <Link href="/users/employees">
-                  <button 
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <UserCircle className="w-5 h-5" />
-                    <span>Employees</span>
+                    <Group className="w-5 h-5" />
+                    <span>Users</span>
                   </button>
                 </Link>
                 <Link href="/buildings">
