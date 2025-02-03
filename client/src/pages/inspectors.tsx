@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/navbar";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -38,6 +39,7 @@ export default function InspectorsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInspector, setEditingInspector] = useState<Inspector | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof editInspectorSchema>>({
     resolver: zodResolver(editingInspector ? editInspectorSchema : inspectorSchema),
@@ -48,7 +50,7 @@ export default function InspectorsPage() {
     },
   });
 
-  const { data: inspectors = [], isLoading, refetch } = useQuery<Inspector[]>({
+  const { data: inspectors = [], isLoading } = useQuery<Inspector[]>({
     queryKey: ["/api/admin/inspectors"],
     queryFn: async () => {
       const response = await fetch("/api/admin/inspectors", {
@@ -58,6 +60,95 @@ export default function InspectorsPage() {
         throw new Error("Failed to fetch inspectors");
       }
       return response.json();
+    },
+  });
+
+  const createInspector = useMutation({
+    mutationFn: async (data: z.infer<typeof inspectorSchema>) => {
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...data, isInspector: true }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create inspector");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Inspector created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/inspectors"] });
+      setIsDialogOpen(false);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
+  const updateInspector = useMutation({
+    mutationFn: async (data: z.infer<typeof editInspectorSchema> & { id: number }) => {
+      const { id, ...updateData } = data;
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ...updateData,
+          isInspector: true,
+          ...(updateData.password && { password: updateData.password }),
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update inspector");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Inspector updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/inspectors"] });
+      setIsDialogOpen(false);
+      setEditingInspector(null);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
+  const deleteInspector = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete inspector");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Inspector deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/inspectors"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
     },
   });
 
@@ -71,76 +162,11 @@ export default function InspectorsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      const response = await fetch(`/api/admin/users/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to delete inspector");
-      }
-
-      toast({
-        title: "Success",
-        description: "Inspector deleted successfully",
-      });
-
-      refetch();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete inspector",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const onSubmit = async (values: z.infer<typeof editInspectorSchema>) => {
-    try {
-      const url = editingInspector 
-        ? `/api/admin/users/${editingInspector.id}`
-        : "/api/admin/users";
-
-      const method = editingInspector ? "PUT" : "POST";
-
-      const payload = {
-        ...values,
-        isInspector: true,
-        ...((!editingInspector || values.password) && { password: values.password }),
-      };
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to save inspector");
-      }
-
-      toast({
-        title: "Success",
-        description: `Inspector ${editingInspector ? "updated" : "created"} successfully`,
-      });
-
-      setIsDialogOpen(false);
-      form.reset();
-      setEditingInspector(null);
-      refetch();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save inspector",
-        variant: "destructive",
-      });
+  const onSubmit = async (data: z.infer<typeof editInspectorSchema>) => {
+    if (editingInspector) {
+      await updateInspector.mutateAsync({ ...data, id: editingInspector.id });
+    } else {
+      await createInspector.mutateAsync(data as z.infer<typeof inspectorSchema>);
     }
   };
 
@@ -149,7 +175,6 @@ export default function InspectorsPage() {
   const endIndex = startIndex + pageSize;
   const paginatedData = inspectors.slice(startIndex, endIndex);
 
-  // Handle pagination changes
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -172,7 +197,7 @@ export default function InspectorsPage() {
       header: "Actions",
       accessorKey: "id",
       cell: (row: any) => {
-        const inspector = paginatedData.find(i => i.id === row.value);
+        const inspector = inspectors.find(i => i.id === row.value);
         if (!inspector) return null;
 
         return (
@@ -184,13 +209,27 @@ export default function InspectorsPage() {
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(inspector.id)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the inspector.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteInspector.mutate(inspector.id)}>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         );
       },
@@ -306,9 +345,28 @@ export default function InspectorsPage() {
                   )}
                 />
 
-                <Button type="submit">
-                  {editingInspector ? "Update" : "Create"} Inspector
-                </Button>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      setEditingInspector(null);
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={createInspector.isPending || updateInspector.isPending}
+                  >
+                    {(createInspector.isPending || updateInspector.isPending) && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {editingInspector ? "Update" : "Create"} Inspector
+                  </Button>
+                </div>
               </form>
             </Form>
           </DialogContent>
