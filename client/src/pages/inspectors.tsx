@@ -6,11 +6,33 @@ import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { TablePagination } from "@/components/table-pagination";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Plus, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,13 +44,19 @@ interface Inspector {
 }
 
 const inspectorSchema = z.object({
-  username: z.string().email("Invalid email format").min(1, "Username is required"),
+  username: z
+    .string()
+    .email("Invalid email format")
+    .min(1, "Username is required"),
   fullName: z.string().min(1, "Full name is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 const editInspectorSchema = z.object({
-  username: z.string().email("Invalid email format").min(1, "Username is required"),
+  username: z
+    .string()
+    .email("Invalid email format")
+    .min(1, "Username is required"),
   fullName: z.string().min(1, "Full name is required"),
   password: z.string().optional(),
 });
@@ -37,12 +65,16 @@ export default function InspectorsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingInspector, setEditingInspector] = useState<Inspector | null>(null);
+  const [editingInspector, setEditingInspector] = useState<Inspector | null>(
+    null,
+  );
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof editInspectorSchema>>({
-    resolver: zodResolver(editingInspector ? editInspectorSchema : inspectorSchema),
+    resolver: zodResolver(
+      editingInspector ? editInspectorSchema : inspectorSchema,
+    ),
     defaultValues: {
       username: "",
       fullName: "",
@@ -69,7 +101,10 @@ export default function InspectorsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Inspector created successfully" });
+      toast({
+        title: "Success",
+        description: "Inspector created successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/inspectors"] });
       setIsDialogOpen(false);
       form.reset();
@@ -84,7 +119,9 @@ export default function InspectorsPage() {
   });
 
   const updateInspector = useMutation({
-    mutationFn: async (data: z.infer<typeof editInspectorSchema> & { id: number }) => {
+    mutationFn: async (
+      data: z.infer<typeof editInspectorSchema> & { id: number },
+    ) => {
       const { id, ...updateData } = data;
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PUT",
@@ -103,7 +140,10 @@ export default function InspectorsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Inspector updated successfully" });
+      toast({
+        title: "Success",
+        description: "Inspector updated successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/inspectors"] });
       setIsDialogOpen(false);
       setEditingInspector(null);
@@ -131,7 +171,10 @@ export default function InspectorsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Inspector deleted successfully" });
+      toast({
+        title: "Success",
+        description: "Inspector deleted successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/inspectors"] });
     },
     onError: (error: Error) => {
@@ -157,7 +200,9 @@ export default function InspectorsPage() {
     if (editingInspector) {
       await updateInspector.mutateAsync({ ...data, id: editingInspector.id });
     } else {
-      await createInspector.mutateAsync(data as z.infer<typeof inspectorSchema>);
+      await createInspector.mutateAsync(
+        data as z.infer<typeof inspectorSchema>,
+      );
     }
   };
 
@@ -186,18 +231,11 @@ export default function InspectorsPage() {
     },
     {
       header: "Actions",
-      id: "actions",
-      cell: (info: any) => {
-        const inspector = info.row?.original;
-        if (!inspector) return null;
-
+      accessorKey: "id",
+      cell: (value: any, row: any) => {
         return (
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleEdit(inspector)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => handleEdit(row)}>
               <Pencil className="h-4 w-4" />
             </Button>
             <AlertDialog>
@@ -210,12 +248,15 @@ export default function InspectorsPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the inspector.
+                    This action cannot be undone. This will permanently delete
+                    the inspector.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => deleteInspector.mutate(inspector.id)}>
+                  <AlertDialogAction
+                    onClick={() => deleteInspector.mutate(row.id)}
+                  >
                     Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -242,15 +283,17 @@ export default function InspectorsPage() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Inspectors</h1>
-          <Button onClick={() => {
-            setEditingInspector(null);
-            form.reset({
-              username: "",
-              fullName: "",
-              password: "",
-            });
-            setIsDialogOpen(true);
-          }}>
+          <Button
+            onClick={() => {
+              setEditingInspector(null);
+              form.reset({
+                username: "",
+                fullName: "",
+                password: "",
+              });
+              setIsDialogOpen(true);
+            }}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Inspector
           </Button>
@@ -265,10 +308,7 @@ export default function InspectorsPage() {
           </Alert>
         ) : (
           <div className="rounded-md border">
-            <ResponsiveTable 
-              columns={columns}
-              data={paginatedData}
-            />
+            <ResponsiveTable columns={columns} data={paginatedData} />
             <TablePagination
               currentPage={currentPage}
               totalItems={inspectors.length}
@@ -287,7 +327,10 @@ export default function InspectorsPage() {
               </DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="username"
@@ -322,12 +365,14 @@ export default function InspectorsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {editingInspector ? "Password (Leave empty to keep current)" : "Password"}
+                        {editingInspector
+                          ? "Password (Leave empty to keep current)"
+                          : "Password"}
                       </FormLabel>
                       <FormControl>
-                        <Input 
-                          type="password" 
-                          {...field} 
+                        <Input
+                          type="password"
+                          {...field}
                           required={!editingInspector}
                         />
                       </FormControl>
@@ -348,11 +393,14 @@ export default function InspectorsPage() {
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     type="submit"
-                    disabled={createInspector.isPending || updateInspector.isPending}
+                    disabled={
+                      createInspector.isPending || updateInspector.isPending
+                    }
                   >
-                    {(createInspector.isPending || updateInspector.isPending) && (
+                    {(createInspector.isPending ||
+                      updateInspector.isPending) && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
                     {editingInspector ? "Update" : "Create"} Inspector
