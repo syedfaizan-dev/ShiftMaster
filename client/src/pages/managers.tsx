@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import Navbar from "@/components/navbar";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { TablePagination } from "@/components/table-pagination";
 import { useState } from "react";
 import { CreateManagerModal } from "@/components/create-manager-modal";
 import { useToast } from "@/hooks/use-toast";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface Manager {
   id: number;
@@ -20,7 +20,7 @@ export default function ManagersPage() {
   const [editingManager, setEditingManager] = useState<Manager | null>(null);
   const { toast } = useToast();
 
-  const columns = [
+  const columns: ColumnDef<Manager>[] = [
     {
       header: "Full Name",
       accessorKey: "fullName",
@@ -30,9 +30,10 @@ export default function ManagersPage() {
       accessorKey: "username",
     },
     {
+      id: "actions",
       header: "Actions",
       cell: ({ row }) => {
-        const manager = row.original as Manager;
+        const manager = row.original;
         return (
           <div className="flex gap-2">
             <Button
