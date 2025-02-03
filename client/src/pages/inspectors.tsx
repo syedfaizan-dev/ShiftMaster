@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/navbar";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { TablePagination } from "@/components/table-pagination";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Plus } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Pencil, Trash2, Plus, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,9 +29,7 @@ const inspectorSchema = z.object({
 const editInspectorSchema = z.object({
   username: z.string().email("Invalid email format").min(1, "Username is required"),
   fullName: z.string().min(1, "Full name is required"),
-  password: z.string().refine((val) => val === '' || val.length >= 6, {
-    message: "Password must be at least 6 characters if provided",
-  }),
+  password: z.string().optional(),
 });
 
 export default function InspectorsPage() {
@@ -52,7 +51,9 @@ export default function InspectorsPage() {
   const { data: inspectors = [], isLoading, refetch } = useQuery<Inspector[]>({
     queryKey: ["/api/admin/inspectors"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/inspectors");
+      const response = await fetch("/api/admin/inspectors", {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch inspectors");
       }
@@ -72,19 +73,19 @@ export default function InspectorsPage() {
     {
       header: "Actions",
       accessorKey: "id",
-      cell: (value: any, row: any) => (
+      cell: (value: any) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handleEdit(row)}
+            onClick={() => handleEdit(value)}
           >
             <Pencil className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handleDelete(row.id)}
+            onClick={() => handleDelete(value)}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -107,6 +108,7 @@ export default function InspectorsPage() {
     try {
       const response = await fetch(`/api/admin/users/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -132,7 +134,7 @@ export default function InspectorsPage() {
     try {
       const url = editingInspector 
         ? `/api/admin/users/${editingInspector.id}`
-        : "/api/register";
+        : "/api/admin/users";
 
       const method = editingInspector ? "PUT" : "POST";
 
@@ -147,6 +149,7 @@ export default function InspectorsPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -186,6 +189,16 @@ export default function InspectorsPage() {
     setCurrentPage(1);
   };
 
+  if (isLoading) {
+    return (
+      <Navbar>
+        <div className="p-6 flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </Navbar>
+    );
+  }
+
   return (
     <Navbar>
       <div className="p-6">
@@ -201,19 +214,28 @@ export default function InspectorsPage() {
           </Button>
         </div>
 
-        <div className="rounded-md border">
-          <ResponsiveTable 
-            columns={columns}
-            data={inspectors.slice(startIndex, endIndex)}
-          />
-          <TablePagination
-            currentPage={currentPage}
-            totalItems={inspectors.length}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
-        </div>
+        {inspectors.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Inspectors Found</AlertTitle>
+            <AlertDescription>
+              Add your first inspector to get started.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="rounded-md border">
+            <ResponsiveTable 
+              columns={columns}
+              data={inspectors.slice(startIndex, endIndex)}
+            />
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={inspectors.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
+        )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
@@ -257,15 +279,16 @@ export default function InspectorsPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>
+                        {editingInspector ? "Password (Leave empty to keep current)" : "Password"}
+                      </FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input 
+                          type="password" 
+                          {...field} 
+                          required={!editingInspector}
+                        />
                       </FormControl>
-                      {editingInspector && (
-                        <p className="text-sm text-gray-500">
-                          Leave empty to keep current password
-                        </p>
-                      )}
                       <FormMessage />
                     </FormItem>
                   )}
