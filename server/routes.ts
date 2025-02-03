@@ -18,12 +18,6 @@ import {
 } from "./routes/notifications";
 import { getShifts } from "./routes/shifts";
 import { sql } from "drizzle-orm";
-import {
-  getBuildings,
-  createBuilding,
-  updateBuilding,
-  updateBuildingCoordinator,
-} from "./routes/buildings";
 
 export const createShift = async (req: Request, res: Response) => {
   try {
@@ -48,7 +42,7 @@ export const createShift = async (req: Request, res: Response) => {
         shiftTypeId,
         week,
         backupId,
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
       })
       .returning();
 
@@ -93,7 +87,7 @@ const updateShift = async (req: Request, res: Response) => {
         shiftTypeId,
         week,
         backupId,
-        updatedBy: req.user.id, // Assuming you have updatedBy field
+        updatedBy: req.user!.id,
       })
       .where(eq(shifts.id, parseInt(id)))
       .returning();
@@ -447,7 +441,7 @@ export function registerRoutes(app: Express): Server {
         .values({
           name,
           description,
-          createdBy: req.user.id,
+          createdBy: req.user!.id,
         })
         .returning();
 
@@ -813,7 +807,7 @@ export function registerRoutes(app: Express): Server {
             startTime,
             endTime,
             description,
-            createdBy: req.user.id,
+            createdBy: req.user!.id,
           })
           .returning();
 
@@ -969,7 +963,7 @@ export function registerRoutes(app: Express): Server {
             date: new Date(date),
             isFollowupNeeded,
             assignedTo,
-            createdBy: req.user.id,
+            createdBy: req.user!.id,
           })
           .returning();
 
@@ -1287,17 +1281,6 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
-
-  // Building management routes
-  app.get("/api/admin/buildings", requireAdmin, getBuildings);
-  app.post("/api/admin/buildings", requireAdmin, createBuilding);
-  app.put("/api/admin/buildings/:id", requireAdmin, updateBuilding);
-  app.put(
-    "/api/admin/buildings/:id/coordinator",
-    requireAdmin,
-    updateBuildingCoordinator,
-  );
-
-  const httpServer = createServer(app);
-  return httpServer;
+  const server = createServer(app);
+  return server;
 }
