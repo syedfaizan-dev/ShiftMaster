@@ -31,17 +31,20 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
     return location === path;
   };
 
-  const renderNavLink = (path: string, icon: React.ReactNode, label: string) => (
+  const renderNavLink = (
+    path: string,
+    icon: React.ReactNode,
+    label: string,
+  ) => (
     <Link href={path}>
       <button
         className={cn(
-          "flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700",
+          "flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700 mb-2",
           {
             "bg-gray-200": isLinkActive(path),
             "justify-center": isMinimized,
-          }
+          },
         )}
-        onClick={() => setIsMobileMenuOpen(false)}
       >
         {icon}
         {!isMinimized && <span>{label}</span>}
@@ -98,10 +101,10 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             {
               "w-64": !isMinimized,
               "w-16": isMinimized,
-              "translate-x-0": isMobileMenuOpen || !isMinimized,
-              "-translate-x-full": !isMobileMenuOpen && isMinimized,
+              "translate-x-0": isMobileMenuOpen,
+              "-translate-x-full": !isMobileMenuOpen && !isMinimized,
               "lg:translate-x-0": true,
-            }
+            },
           )}
         >
           {/* Minimize Toggle Button */}
@@ -118,9 +121,9 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             )}
           </Button>
 
-          <nav className="p-4 space-y-2 mt-10">
+          <nav className="p-4 space-y-4 mt-10">
             {user?.isAdmin && (
-              <>
+              <div className="space-y-2">
                 {renderNavLink("/", <LayoutDashboard className="w-5 h-5" />, "Dashboard")}
                 {renderNavLink("/buildings", <Building2 className="w-5 h-5" />, "Buildings")}
                 {renderNavLink("/users", <Group className="w-5 h-5" />, "Users")}
@@ -128,38 +131,33 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 {renderNavLink("/inspectors", <UserCheck className="w-5 h-5" />, "Inspectors")}
                 {renderNavLink("/tasks", <CheckSquare className="w-5 h-5" />, "Tasks")}
                 {renderNavLink("/task-types", <List className="w-5 h-5" />, "Task Types")}
-              </>
+              </div>
             )}
-            {renderNavLink("/shifts", <Calendar className="w-5 h-5" />, "Shifts")}
-            {renderNavLink("/requests", <FileText className="w-5 h-5" />, "Requests")}
+            <div className="space-y-2">
+              {renderNavLink("/shifts", <Calendar className="w-5 h-5" />, "Shifts")}
+              {renderNavLink("/requests", <FileText className="w-5 h-5" />, "Requests")}
+            </div>
             {user?.isAdmin && (
-              <>
+              <div className="space-y-2">
                 {renderNavLink("/roles", <Users className="w-5 h-5" />, "Roles")}
                 {renderNavLink("/shift-types", <Clock className="w-5 h-5" />, "Shift Types")}
-              </>
+              </div>
             )}
           </nav>
 
-          <div className={cn(
-            "absolute bottom-0 p-4 bg-gray-100",
-            {
+          <div
+            className={cn("absolute bottom-0 p-4 bg-gray-100", {
               "w-64": !isMinimized,
               "w-16": isMinimized,
-            }
-          )}>
+            })}
+          >
             <Button
               variant="outline"
-              className={cn(
-                "text-gray-700",
-                {
-                  "w-full justify-start": !isMinimized,
-                  "w-full justify-center": isMinimized,
-                }
-              )}
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                logout();
-              }}
+              className={cn("text-gray-700", {
+                "w-full justify-start": !isMinimized,
+                "w-full justify-center": isMinimized,
+              })}
+              onClick={() => logout()}
             >
               <LogOut className="w-4 h-4" />
               {!isMinimized && <span className="ml-2">Logout</span>}
@@ -168,13 +166,15 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Scrollable Content Area - Adjust margin based on screen size and sidebar state */}
-        <main className={cn(
-          "flex-1 bg-background overflow-y-auto min-h-screen transition-all duration-200",
-          {
-            "lg:ml-64": !isMinimized,
-            "lg:ml-16": isMinimized,
-          }
-        )}>
+        <main
+          className={cn(
+            "flex-1 bg-background overflow-y-auto min-h-screen transition-all duration-200",
+            {
+              "lg:ml-64": !isMinimized,
+              "lg:ml-16": isMinimized,
+            },
+          )}
+        >
           {children}
         </main>
       </div>
