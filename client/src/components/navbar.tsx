@@ -13,6 +13,7 @@ import {
   Group,
   Menu,
   UserCheck,
+  Building2,
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
@@ -84,6 +85,15 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   >
                     <LayoutDashboard className="w-5 h-5" />
                     <span>Dashboard</span>
+                  </button>
+                </Link>
+                <Link href="/buildings">
+                  <button
+                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Building2 className="w-5 h-5" />
+                    <span>Buildings</span>
                   </button>
                 </Link>
                 <Link href="/users">
