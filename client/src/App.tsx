@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Shifts from "@/pages/shifts";
+import ShiftTable from "@/pages/shift-table";
 import Roles from "@/pages/roles";
 import Employees from "@/pages/employees";
 import Requests from "@/pages/requests";
@@ -17,7 +18,6 @@ import Users from "@/pages/users";
 import TaskTypes from "@/pages/task-types";
 import Managers from "@/pages/managers";
 import InspectorsPage from "./pages/inspectors";
-// Add Buildings import
 import Buildings from "@/pages/buildings";
 
 function Router() {
@@ -41,6 +41,7 @@ function Router() {
         {user.isAdmin ? <Dashboard /> : <Redirect to="/shifts" />}
       </Route>
       <Route path="/shifts" component={Shifts} />
+      <Route path="/shift-table" component={ShiftTable} />
       {user.isAdmin && (
         <>
           <Route path="/buildings" component={Buildings} />

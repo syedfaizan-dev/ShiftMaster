@@ -16,6 +16,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  TableProperties
 } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState } from "react";
@@ -118,9 +119,9 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             )}
           </Button>
 
-          <nav className="p-4 space-y-2 mt-10">
+          <nav className="p-4 space-y-4 mt-6">
             {user?.isAdmin && (
-              <>
+              <div className="space-y-2">
                 {renderNavLink("/", <LayoutDashboard className="w-5 h-5" />, "Dashboard")}
                 {renderNavLink("/buildings", <Building2 className="w-5 h-5" />, "Buildings")}
                 {renderNavLink("/users", <Group className="w-5 h-5" />, "Users")}
@@ -128,15 +129,18 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 {renderNavLink("/inspectors", <UserCheck className="w-5 h-5" />, "Inspectors")}
                 {renderNavLink("/tasks", <CheckSquare className="w-5 h-5" />, "Tasks")}
                 {renderNavLink("/task-types", <List className="w-5 h-5" />, "Task Types")}
-              </>
+              </div>
             )}
-            {renderNavLink("/shifts", <Calendar className="w-5 h-5" />, "Shifts")}
-            {renderNavLink("/requests", <FileText className="w-5 h-5" />, "Requests")}
+            <div className="space-y-2">
+              {renderNavLink("/shifts", <Calendar className="w-5 h-5" />, "Shifts")}
+              {renderNavLink("/shift-table", <TableProperties className="w-5 h-5" />, "Shift Table")}
+              {renderNavLink("/requests", <FileText className="w-5 h-5" />, "Requests")}
+            </div>
             {user?.isAdmin && (
-              <>
+              <div className="space-y-2">
                 {renderNavLink("/roles", <Users className="w-5 h-5" />, "Roles")}
                 {renderNavLink("/shift-types", <Clock className="w-5 h-5" />, "Shift Types")}
-              </>
+              </div>
             )}
           </nav>
 

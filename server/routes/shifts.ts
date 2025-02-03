@@ -1,12 +1,35 @@
 import { Request, Response } from "express";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "@db";
 import { shifts, users, roles, shiftTypes, buildings } from "@db/schema";
-import { NotificationService } from "server/services/notification";
+import express from "express";
+
+// Create a router instead of using app directly
+const router = express.Router();
+
+// Type for the shift table row
+type ShiftTableRow = {
+  building: {
+    name: string;
+    area: string;
+  };
+  supervisor: {
+    name: string;
+  };
+  supervisorShiftTime: string;
+  coordinator1: {
+    name: string;
+    shiftTime: string;
+  };
+  coordinator2: {
+    name: string;
+    shiftTime: string;
+  };
+};
 
 export async function getShifts(req: Request, res: Response) {
   try {
-    const query = db
+    const allShifts = await db
       .select({
         id: shifts.id,
         inspectorId: shifts.inspectorId,
@@ -45,185 +68,86 @@ export async function getShifts(req: Request, res: Response) {
 
     // If not admin, only show user's shifts
     if (!req.user?.isAdmin) {
-      query.where(eq(shifts.inspectorId, req.user!.id));
+      allShifts.where(eq(shifts.inspectorId, req.user!.id));
     }
 
-    const shiftsData = await query;
-
-    // Get backup inspector details in a separate query
-    const shiftsWithBackup = await Promise.all(
-      shiftsData.map(async (shift) => {
-        if (shift.backupId) {
-          const [backup] = await db
-            .select({
-              id: users.id,
-              fullName: users.fullName,
-              username: users.username,
-            })
-            .from(users)
-            .where(eq(users.id, shift.backupId))
-            .limit(1);
-          return { ...shift, backup };
-        }
-        return { ...shift, backup: null };
-      }),
-    );
-
-    res.json(shiftsWithBackup);
+    res.json(allShifts);
   } catch (error) {
     console.error("Error fetching shifts:", error);
-    res.status(500).send((error as Error).message);
+    res.status(500).json({ message: "Error fetching shifts" });
   }
 }
 
-export async function createShift(req: Request, res: Response) {
+async function getShiftTable(req: Request, res: Response) {
   try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).send("Not authorized - Admin access required");
-    }
-
-    const { startTime, endTime, buildingId, ...rest } = req.body;
-
-    // Ensure dates are properly parsed
-    const parsedStartTime = new Date(startTime);
-    const parsedEndTime = new Date(endTime);
-
-    // Validate dates
-    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
-      return res.status(400).send("Invalid date format");
-    }
-
-    // Validate building exists
-    const [building] = await db
-      .select()
-      .from(buildings)
-      .where(eq(buildings.id, buildingId))
-      .limit(1);
-
-    if (!building) {
-      return res.status(400).send("Invalid building ID");
-    }
-
-    const [shift] = await db
-      .insert(shifts)
-      .values({
-        ...rest,
-        buildingId,
-        startTime: parsedStartTime,
-        endTime: parsedEndTime,
-        createdBy: req.user.id,
+    const shiftsData = await db
+      .select({
+        building: {
+          name: buildings.name,
+          area: buildings.area,
+        },
+        supervisor: {
+          name: users.fullName,
+        },
+        shiftType: {
+          startTime: shiftTypes.startTime,
+          endTime: shiftTypes.endTime,
+        },
       })
-      .returning();
-
-    // Get inspector details for notification
-    const [inspector] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, shift.inspectorId))
-      .limit(1);
-
-    // Get role details
-    const [role] = await db
-      .select()
-      .from(roles)
-      .where(eq(roles.id, shift.roleId))
-      .limit(1);
-
-    // Notify assigned inspector
-    await NotificationService.notifyShiftAssignment({
-      userId: inspector.id,
-      userEmail: inspector.username,
-      shiftId: shift.id,
-      startTime: parsedStartTime,
-      endTime: parsedEndTime,
-      role: role.name,
-    });
-
-    // If there's a backup inspector, notify them too
-    if (shift.backupId) {
-      const [backup] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, shift.backupId))
-        .limit(1);
-
-      await NotificationService.notifyShiftAssignment({
-        userId: backup.id,
-        userEmail: backup.username,
-        shiftId: shift.id,
-        startTime: parsedStartTime,
-        endTime: parsedEndTime,
-        role: `Backup ${role.name}`,
-      });
-    }
-
-    res.json(shift);
-  } catch (error) {
-    console.error("Error creating shift:", error);
-    res.status(500).send((error as Error).message);
-  }
-}
-
-export async function updateShift(req: Request, res: Response) {
-  try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).send("Not authorized - Admin access required");
-    }
-
-    const { id } = req.params;
-    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } =
-      req.body;
-
-    // Validate that the shift exists
-    const [existingShift] = await db
-      .select()
       .from(shifts)
-      .where(eq(shifts.id, parseInt(id)))
-      .limit(1);
+      .leftJoin(buildings, eq(shifts.buildingId, buildings.id))
+      .leftJoin(users, eq(shifts.inspectorId, users.id))
+      .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id))
+      .where(
+        and(
+          eq(users.isInspector, true),
+          sql`DATE(${shifts.week}) = CURRENT_DATE`
+        )
+      );
 
-    if (!existingShift) {
-      return res.status(404).send("Shift not found");
-    }
+    // Transform the data to match the table structure
+    const transformedData: ShiftTableRow[] = shiftsData.reduce((acc: ShiftTableRow[], shift) => {
+      if (!shift.building?.name) return acc;
 
-    // Validate that the shift type exists
-    const [shiftType] = await db
-      .select()
-      .from(shiftTypes)
-      .where(eq(shiftTypes.id, shiftTypeId))
-      .limit(1);
+      const existingBuilding = acc.find(
+        (row) => row.building.name === shift.building.name
+      );
 
-    if (!shiftType) {
-      return res.status(400).json({ message: "Invalid shift type" });
-    }
+      if (!existingBuilding) {
+        acc.push({
+          building: {
+            name: shift.building.name,
+            area: shift.building.area || "",
+          },
+          supervisor: {
+            name: shift.supervisor?.name || "Unassigned",
+          },
+          supervisorShiftTime: shift.shiftType ? 
+            `${shift.shiftType.startTime || "N/A"} - ${shift.shiftType.endTime || "N/A"}` : 
+            "N/A",
+          coordinator1: {
+            name: "Coordinator A",
+            shiftTime: "6 AM - 2 PM",
+          },
+          coordinator2: {
+            name: "Coordinator F",
+            shiftTime: "2 PM - 10 PM",
+          },
+        });
+      }
 
-    // Validate building exists
-    const [building] = await db
-      .select()
-      .from(buildings)
-      .where(eq(buildings.id, buildingId))
-      .limit(1);
+      return acc;
+    }, []);
 
-    if (!building) {
-      return res.status(400).json({ message: "Invalid building ID" });
-    }
-
-    // Update the shift
-    const [updatedShift] = await db
-      .update(shifts)
-      .set({
-        inspectorId,
-        roleId,
-        shiftTypeId,
-        buildingId,
-        week,
-        backupId,
-      })
-      .where(eq(shifts.id, parseInt(id)))
-      .returning();
-
-    res.json(updatedShift);
+    res.json(transformedData);
   } catch (error) {
-    console.error("Error updating shift:", error);
-    res.status(500).send((error as Error).message);
+    console.error("Error fetching shift table:", error);
+    res.status(500).json({ message: "Error fetching shift table" });
   }
 }
+
+// Register routes
+router.get("/", getShifts);
+router.get("/table", getShiftTable);
+
+export default router;

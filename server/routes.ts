@@ -17,7 +17,7 @@ import {
   getNotifications,
   markNotificationAsRead,
 } from "./routes/notifications";
-import { getShifts } from "./routes/shifts";
+import shiftsRouter from "./routes/shifts";
 import { sql } from "drizzle-orm";
 
 export const createShift = async (req: Request, res: Response) => {
@@ -112,6 +112,9 @@ export function registerRoutes(app: Express): Server {
     }
     next();
   };
+
+  // Mount the shifts router
+  app.use("/api/shifts", requireAuth, shiftsRouter);
 
   // Get basic user info for authenticated users
   app.get("/api/users", requireAuth, async (req: Request, res: Response) => {
@@ -389,11 +392,6 @@ export function registerRoutes(app: Express): Server {
     },
   );
 
-  // Get all shifts for a user (now using the getShifts handler)
-  app.get("/api/shifts", requireAuth, getShifts);
-
-  // Admin: Get all shifts (also using the same getShifts handler)
-  app.get("/api/admin/shifts", requireAdmin, getShifts);
 
   // Admin: Create shift
   app.post("/api/admin/shifts", requireAdmin, createShift);
