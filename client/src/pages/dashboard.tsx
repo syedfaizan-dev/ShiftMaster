@@ -4,11 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
   Legend,
   ResponsiveContainer,
@@ -30,22 +28,28 @@ export default function Dashboard() {
     queryKey: ["/api/admin/tasks/stats"],
   });
 
+  const COLORS = {
+    pending: "#fbbf24",    // Yellow for pending
+    inProgress: "#3b82f6", // Blue for in progress
+    completed: "#22c55e",  // Green for completed
+  };
+
   const transformDataForChart = (stats: TaskStats) => {
     return [
       {
         name: "Pending",
         value: stats.pending,
-        fill: "#fbbf24", // Yellow for pending
+        color: COLORS.pending,
       },
       {
         name: "In Progress",
         value: stats.inProgress,
-        fill: "#3b82f6", // Blue for in progress
+        color: COLORS.inProgress,
       },
       {
         name: "Completed",
         value: stats.completed,
-        fill: "#22c55e", // Green for completed
+        color: COLORS.completed,
       },
     ];
   };
@@ -84,27 +88,24 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={transformDataForChart(stat)}
-                        margin={{
-                          top: 5,
-                          right: 30,
-                          left: 20,
-                          bottom: 5,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
+                      <PieChart>
+                        <Pie
+                          data={transformDataForChart(stat)}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="60%"
+                          outerRadius="80%"
+                          label={(entry) => `${entry.name}: ${entry.value}`}
+                        >
+                          {transformDataForChart(stat).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
                         <Tooltip />
                         <Legend />
-                        <Bar
-                          dataKey="value"
-                          fill="#8884d8"
-                          name="Tasks"
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
+                      </PieChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
