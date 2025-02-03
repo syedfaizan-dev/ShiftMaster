@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,16 @@ import { useState } from "react";
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [location] = useLocation();
+
+  const getNavLinkClass = (path: string) => {
+    const isActive = location === path;
+    return `flex w-full items-center space-x-2 p-2 rounded-lg transition-colors ${
+      isActive
+        ? "bg-primary text-primary-foreground"
+        : "hover:bg-gray-200 text-gray-700"
+    }`;
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -70,17 +80,17 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
         {/* Fixed Left Navigation - Transform based on mobile menu state */}
         <div
           className={`
-          w-fit min-w-[16rem] bg-gray-100 fixed left-0 top-16 bottom-0 border-r border-gray-200 
-          overflow-y-auto overflow-x-hidden transition-transform duration-200 ease-in-out z-40
-          lg:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
+            w-fit min-w-[16rem] bg-gray-100 fixed left-0 top-16 bottom-0 border-r border-gray-200 
+            overflow-y-auto overflow-x-hidden transition-transform duration-200 ease-in-out z-40
+            lg:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+          `}
         >
           <nav className="p-4 space-y-2">
             {user?.isAdmin && (
               <>
                 <Link href="/">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <LayoutDashboard className="w-5 h-5" />
@@ -89,7 +99,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/buildings">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/buildings")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Building2 className="w-5 h-5" />
@@ -98,7 +108,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/users">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/users")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Group className="w-5 h-5" />
@@ -107,7 +117,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/managers">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/managers")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Users className="w-5 h-5" />
@@ -116,7 +126,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/inspectors">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/inspectors")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <UserCheck className="w-5 h-5" />
@@ -125,7 +135,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/tasks">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/tasks")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <CheckSquare className="w-5 h-5" />
@@ -134,7 +144,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/task-types">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/task-types")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <List className="w-5 h-5" />
@@ -145,7 +155,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             )}
             <Link href="/shifts">
               <button
-                className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                className={getNavLinkClass("/shifts")}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <Calendar className="w-5 h-5" />
@@ -154,7 +164,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             </Link>
             <Link href="/requests">
               <button
-                className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                className={getNavLinkClass("/requests")}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <FileText className="w-5 h-5" />
@@ -165,7 +175,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
               <>
                 <Link href="/roles">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/roles")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Users className="w-5 h-5" />
@@ -174,7 +184,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link href="/shift-types">
                   <button
-                    className="flex w-full items-center space-x-2 p-2 rounded-lg hover:bg-gray-200 text-gray-700"
+                    className={getNavLinkClass("/shift-types")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Clock className="w-5 h-5" />
@@ -184,7 +194,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
               </>
             )}
           </nav>
-          <div className="absolute bottom-0 w-64 p-4 bg-gray-100">
+          <div className="absolute bottom-0 w-full p-4 bg-gray-100">
             <Button
               variant="outline"
               className="w-full justify-start text-gray-700"
