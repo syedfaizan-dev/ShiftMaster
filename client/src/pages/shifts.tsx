@@ -25,12 +25,14 @@ type ShiftWithRelations = {
   inspectorId: number;
   roleId: number;
   shiftTypeId: number;
+  buildingId: number;
   week: string;
   backupId: number | null;
   inspector: { id: number; fullName: string; username: string };
   role: { id: number; name: string };
   shiftType: { id: number; name: string; startTime: string; endTime: string };
   backup?: { id: number; fullName: string; username: string } | null;
+  building: { id: number; name: string; code: string; area: string };
 };
 
 export default function Shifts() {
@@ -105,6 +107,12 @@ export default function Shifts() {
       header: "Shift Type",
       accessorKey: "shiftType",
       cell: (value: { name: string }) => value?.name || 'Unknown',
+    },
+    {
+      header: "Building",
+      accessorKey: "building",
+      cell: (value: { name: string; code: string }) => 
+        value ? `${value.name} (${value.code})` : 'Unknown',
     },
     {
       header: "Time",
