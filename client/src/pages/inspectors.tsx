@@ -73,24 +73,27 @@ export default function InspectorsPage() {
     {
       header: "Actions",
       accessorKey: "id",
-      cell: (value: any) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(value)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(value)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const inspector = row.original as Inspector;
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(inspector)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(inspector.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -208,7 +211,11 @@ export default function InspectorsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Inspectors</h1>
           <Button onClick={() => {
             setEditingInspector(null);
-            form.reset();
+            form.reset({
+              username: "",
+              fullName: "",
+              password: "",
+            });
             setIsDialogOpen(true);
           }}>
             <Plus className="mr-2 h-4 w-4" />
