@@ -272,7 +272,7 @@ export function registerRoutes(app: Express): Server {
     },
   );
 
-  // Admin: Delete user
+  // Admin: Delete user with related shifts check
   app.delete(
     "/api/admin/users/:id",
     requireAdmin,
@@ -298,13 +298,30 @@ export function registerRoutes(app: Express): Server {
             .json({ message: "Cannot delete your own account" });
         }
 
+        // Check if user has any associated shifts
+        const [userShift] = await db
+          .select()
+          .from(shifts)
+          .where(eq(shifts.inspectorId, parseInt(id)))
+          .limit(1);
+
+        if (userShift) {
+          return res.status(400).json({
+            message:
+              "Cannot delete inspector with assigned shifts. Please remove their shifts first.",
+          });
+        }
+
         // Delete the user
         await db.delete(users).where(eq(users.id, parseInt(id)));
 
         res.json({ message: "User deleted successfully" });
       } catch (error) {
         console.error("Error deleting user:", error);
-        res.status(500).json({ message: "Error deleting user" });
+        res.status(500).json({
+          message: "Error deleting user",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     },
   );
@@ -1038,7 +1055,7 @@ export function registerRoutes(app: Express): Server {
     },
   );
 
-  // Get inspectors by shift type
+  // Get inspectorsby shift type
   app.get(
     "/api/admin/shifts/inspectors/:shiftTypeId",
     requireAdmin,

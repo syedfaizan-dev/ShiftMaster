@@ -112,7 +112,8 @@ export default function InspectorsPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete inspector");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete inspector");
       }
 
       toast({
@@ -124,7 +125,7 @@ export default function InspectorsPage() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to delete inspector",
+        description: error instanceof Error ? error.message : "Failed to delete inspector",
         variant: "destructive",
       });
     }
@@ -154,7 +155,8 @@ export default function InspectorsPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save inspector");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save inspector");
       }
 
       toast({
@@ -169,7 +171,7 @@ export default function InspectorsPage() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to save inspector",
+        description: error instanceof Error ? error.message : "Failed to save inspector",
         variant: "destructive",
       });
     }
