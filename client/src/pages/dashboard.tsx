@@ -21,7 +21,7 @@ type TaskStats = {
   completed: number;
 };
 
-// Colors for the pie chart sections
+// Enhanced colors with a more professional palette
 const COLORS = ["#fbbf24", "#3b82f6", "#22c55e"];
 const RADIAN = Math.PI / 180;
 
@@ -46,6 +46,7 @@ const CustomLabel = ({
       fill="white"
       textAnchor={x > cx ? "start" : "end"}
       dominantBaseline="central"
+      className="text-sm font-medium"
     >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
@@ -92,7 +93,10 @@ export default function Dashboard() {
               ].filter((item) => item.value > 0); // Remove categories with zero value
 
               return (
-                <Card key={stat.shiftTypeId} className="w-full">
+                <Card
+                  key={stat.shiftTypeId}
+                  className="w-full transition-all duration-300 hover:shadow-lg border-t-4 border-primary bg-gradient-to-b from-card to-background"
+                >
                   <CardHeader>
                     <CardTitle className="text-lg">
                       {stat.shiftTypeName}
@@ -118,13 +122,24 @@ export default function Dashboard() {
                               />
                             ))}
                           </Pie>
-                          <Tooltip />
+                          <Tooltip 
+                            contentStyle={{
+                              background: "rgba(255, 255, 255, 0.9)",
+                              border: "1px solid #ccc",
+                              borderRadius: "4px",
+                              padding: "8px"
+                            }}
+                          />
                           <Legend
                             verticalAlign="bottom"
                             height={36}
                             formatter={(value, entry, index) => {
                               const item = data[index];
-                              return `${value} (${item.value})`;
+                              return (
+                                <span className="text-sm">
+                                  {value} ({item.value})
+                                </span>
+                              );
                             }}
                           />
                         </PieChart>
