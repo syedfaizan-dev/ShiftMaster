@@ -51,7 +51,7 @@ export default function Dashboard() {
         value: stats.completed,
         color: COLORS.completed,
       },
-    ];
+    ].filter(item => item.value > 0); // Only include non-zero values
   };
 
   return (
