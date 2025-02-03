@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogHeader,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog";
 import { TablePagination } from "@/components/table-pagination";
 import {
   Form,
@@ -79,10 +73,10 @@ export default function Buildings() {
     enabled: user?.isAdmin,
   });
 
-  // Calculate pagination values
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentBuildings = buildings?.slice(startIndex, endIndex) || [];
+    // Calculate pagination values
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const currentBuildings = buildings?.slice(startIndex, endIndex) || [];
 
   const createBuilding = useMutation({
     mutationFn: async (data: BuildingFormData) => {
@@ -160,14 +154,14 @@ export default function Buildings() {
     },
   });
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setCurrentPage(1);
-  };
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
+    
+      const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        setCurrentPage(1);
+      };
 
   const handleOpenDialog = (building?: Building) => {
     if (building) {
@@ -227,8 +221,7 @@ export default function Buildings() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the
-                  building.
+                  This action cannot be undone. This will permanently delete the building.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -288,8 +281,11 @@ export default function Buildings() {
           </Alert>
         ) : (
           <>
-            <div>
-              <ResponsiveTable columns={columns} data={currentBuildings} />
+            <div className="rounded-md border">
+              <ResponsiveTable
+                columns={columns}
+                data={currentBuildings}
+              />
             </div>
 
             <TablePagination
@@ -306,11 +302,10 @@ export default function Buildings() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingBuilding ? "Edit Building" : "Add New Building"}
+                {editingBuilding ? 'Edit Building' : 'Add New Building'}
               </DialogTitle>
               <DialogDescription>
-                Fill in the details below to{" "}
-                {editingBuilding ? "update the" : "create a new"} building.
+                Fill in the details below to {editingBuilding ? 'update the' : 'create a new'} building.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -371,14 +366,12 @@ export default function Buildings() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={
-                      createBuilding.isPending || updateBuilding.isPending
-                    }
+                    disabled={createBuilding.isPending || updateBuilding.isPending}
                   >
                     {createBuilding.isPending || updateBuilding.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    {editingBuilding ? "Update Building" : "Add Building"}
+                    {editingBuilding ? 'Update Building' : 'Add Building'}
                   </Button>
                 </div>
               </form>

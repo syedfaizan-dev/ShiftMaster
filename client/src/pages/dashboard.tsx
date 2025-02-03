@@ -3,14 +3,6 @@ import { useUser } from "@/hooks/use-user";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 
 type TaskStats = {
   shiftTypeId: number;
@@ -26,45 +18,13 @@ export default function Dashboard() {
 
   const { data: taskStats = [], isLoading } = useQuery<TaskStats[]>({
     queryKey: ["/api/admin/tasks/stats"],
-    onSuccess: (data) => {
-      console.log("Task stats received:", data);
-    },
   });
-
-  const COLORS = {
-    pending: "#fbbf24",    // Yellow for pending
-    inProgress: "#3b82f6", // Blue for in progress
-    completed: "#22c55e",  // Green for completed
-  };
-
-  const transformDataForChart = (stats: TaskStats) => {
-    const data = [
-      {
-        name: "Pending",
-        value: stats.pending,
-        color: COLORS.pending,
-      },
-      {
-        name: "In Progress",
-        value: stats.inProgress,
-        color: COLORS.inProgress,
-      },
-      {
-        name: "Completed",
-        value: stats.completed,
-        color: COLORS.completed,
-      },
-    ].filter(item => item.value > 0);
-
-    console.log("Transformed data for", stats.shiftTypeName, ":", data);
-    return data;
-  };
 
   return (
     <Navbar>
       <div className="p-4 md:p-6">
         <h1 className="text-2xl md:text-3xl font-bold mb-6">
-          {user?.isAdmin ? "Dashboard" : "My Tasks"}
+          {user?.isAdmin ? 'Task Statistics' : 'My Tasks'}
         </h1>
 
         {isLoading ? (
@@ -77,54 +37,38 @@ export default function Dashboard() {
               <CardTitle>No Tasks Found</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                There are no tasks available to display.
-              </p>
+              <p className="text-muted-foreground">There are no tasks available to display.</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            {taskStats.map((stat) => {
-              const chartData = transformDataForChart(stat);
-              console.log("Rendering chart for", stat.shiftTypeName, "with data:", chartData);
-              return (
-                <Card key={stat.shiftTypeId} className="w-full">
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      {stat.shiftTypeName}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={chartData}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius="60%"
-                            outerRadius="80%"
-                            fill="#8884d8"
-                            paddingAngle={2}
-                          >
-                            {chartData.map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={entry.color}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => [`${value} tasks`, '']} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {taskStats.map((stat) => (
+              <Card key={stat.shiftTypeId}>
+                <CardHeader>
+                  <CardTitle className="text-lg">{stat.shiftTypeName}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Total Tasks:</span>
+                      <span className="font-medium">{stat.total}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    <div className="flex justify-between items-center">
+                      <span className="text-yellow-600">Pending:</span>
+                      <span className="font-medium">{stat.pending}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-blue-600">In Progress:</span>
+                      <span className="font-medium">{stat.inProgress}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-green-600">Completed:</span>
+                      <span className="font-medium">{stat.completed}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>

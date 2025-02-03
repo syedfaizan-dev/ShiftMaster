@@ -16,14 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -88,7 +81,11 @@ function ShiftTypesPage() {
       accessorKey: "id",
       cell: (value: any) => (
         <div className="space-x-2">
-          <Button variant="ghost" size="icon" onClick={() => handleEdit(value)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEdit(value)}
+          >
             <Pencil className="h-4 w-4" />
           </Button>
           <Button
@@ -116,6 +113,7 @@ function ShiftTypesPage() {
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
 
+
   // Handle pagination changes
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -138,10 +136,7 @@ function ShiftTypesPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Shift type created successfully",
-      });
+      toast({ title: "Success", description: "Shift type created successfully" });
       setIsDialogOpen(false);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/shift-types"] });
@@ -167,10 +162,7 @@ function ShiftTypesPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Shift type updated successfully",
-      });
+      toast({ title: "Success", description: "Shift type updated successfully" });
       setIsDialogOpen(false);
       form.reset();
       setSelectedShiftType(null);
@@ -195,10 +187,7 @@ function ShiftTypesPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Shift type deleted successfully",
-      });
+      toast({ title: "Success", description: "Shift type deleted successfully" });
       setShiftTypeToDelete(null);
       queryClient.invalidateQueries({ queryKey: ["/api/shift-types"] });
     },
@@ -214,15 +203,12 @@ function ShiftTypesPage() {
   const onSubmit = async (data: ShiftTypeFormData) => {
     try {
       if (selectedShiftType) {
-        await updateShiftType.mutateAsync({
-          ...data,
-          id: selectedShiftType.id,
-        });
+        await updateShiftType.mutateAsync({ ...data, id: selectedShiftType.id });
       } else {
         await createShiftType.mutateAsync(data);
       }
     } catch (error) {
-      console.error("Shift type operation failed:", error);
+      console.error('Shift type operation failed:', error);
     }
   };
 
@@ -257,13 +243,11 @@ function ShiftTypesPage() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shift Types</h1>
-          <Button
-            onClick={() => {
-              setSelectedShiftType(null);
-              form.reset();
-              setIsDialogOpen(true);
-            }}
-          >
+          <Button onClick={() => {
+            setSelectedShiftType(null);
+            form.reset();
+            setIsDialogOpen(true);
+          }}>
             Create Shift Type
           </Button>
         </div>
@@ -280,7 +264,7 @@ function ShiftTypesPage() {
             </AlertDescription>
           </Alert>
         ) : (
-          <div>
+          <div className="rounded-md border">
             <ResponsiveTable
               columns={columns}
               data={transformedData.slice(startIndex, endIndex)}
@@ -301,10 +285,7 @@ function ShiftTypesPage() {
               {selectedShiftType ? "Edit Shift Type" : "Create Shift Type"}
             </DialogTitle>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -363,9 +344,7 @@ function ShiftTypesPage() {
 
                 <Button
                   type="submit"
-                  disabled={
-                    createShiftType.isPending || updateShiftType.isPending
-                  }
+                  disabled={createShiftType.isPending || updateShiftType.isPending}
                 >
                   {selectedShiftType ? "Update" : "Create"}
                 </Button>
@@ -374,26 +353,19 @@ function ShiftTypesPage() {
           </DialogContent>
         </Dialog>
 
-        <AlertDialog
-          open={!!shiftTypeToDelete}
-          onOpenChange={(open) => !open && setShiftTypeToDelete(null)}
-        >
+        <AlertDialog open={!!shiftTypeToDelete} onOpenChange={(open) => !open && setShiftTypeToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Shift Type</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete the shift type "
-                {shiftTypeToDelete?.name}"? This action cannot be undone.
+                Are you sure you want to delete the shift type "{shiftTypeToDelete?.name}"? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() =>
-                  shiftTypeToDelete &&
-                  deleteShiftType.mutate(shiftTypeToDelete.id)
-                }
+                onClick={() => shiftTypeToDelete && deleteShiftType.mutate(shiftTypeToDelete.id)}
                 disabled={deleteShiftType.isPending}
               >
                 {deleteShiftType.isPending ? (
@@ -402,7 +374,7 @@ function ShiftTypesPage() {
                     Deleting...
                   </>
                 ) : (
-                  "Delete"
+                  'Delete'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
