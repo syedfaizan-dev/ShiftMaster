@@ -3,6 +3,16 @@ import { useUser } from "@/hooks/use-user";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 type TaskStats = {
   shiftTypeId: number;
@@ -19,6 +29,26 @@ export default function Dashboard() {
   const { data: taskStats = [], isLoading } = useQuery<TaskStats[]>({
     queryKey: ["/api/admin/tasks/stats"],
   });
+
+  const transformDataForChart = (stats: TaskStats) => {
+    return [
+      {
+        name: "Pending",
+        value: stats.pending,
+        fill: "#fbbf24", // Yellow for pending
+      },
+      {
+        name: "In Progress",
+        value: stats.inProgress,
+        fill: "#3b82f6", // Blue for in progress
+      },
+      {
+        name: "Completed",
+        value: stats.completed,
+        fill: "#22c55e", // Green for completed
+      },
+    ];
+  };
 
   return (
     <Navbar>
@@ -43,34 +73,39 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2">
             {taskStats.map((stat) => (
-              <Card key={stat.shiftTypeId}>
+              <Card key={stat.shiftTypeId} className="w-full">
                 <CardHeader>
                   <CardTitle className="text-lg">
                     {stat.shiftTypeName}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">
-                        Total Tasks:
-                      </span>
-                      <span className="font-medium">{stat.total}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-yellow-600">Pending:</span>
-                      <span className="font-medium">{stat.pending}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-blue-600">In Progress:</span>
-                      <span className="font-medium">{stat.inProgress}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-green-600">Completed:</span>
-                      <span className="font-medium">{stat.completed}</span>
-                    </div>
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={transformDataForChart(stat)}
+                        margin={{
+                          top: 5,
+                          right: 30,
+                          left: 20,
+                          bottom: 5,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar
+                          dataKey="value"
+                          fill="#8884d8"
+                          name="Tasks"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
