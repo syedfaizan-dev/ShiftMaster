@@ -33,7 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
-
+import { BuildingsOverview } from "@/components/buildings-overview";
 
 const buildingSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -296,37 +296,46 @@ export default function Buildings() {
 
   return (
     <Navbar>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Buildings</h1>
-          <Button onClick={() => handleOpenDialog()}>Add Building</Button>
+      <div className="p-6 space-y-8">
+        {/* Buildings Overview Section */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">Buildings Overview</h2>
+          <BuildingsOverview />
         </div>
 
-        {buildings?.length === 0 ? (
-          <Alert>
-            <AlertTitle>No Buildings Found</AlertTitle>
-            <AlertDescription>
-              Create your first building to start managing buildings.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <>
-            <div className="rounded-md border">
-              <ResponsiveTable
-                columns={columns}
-                data={currentBuildings}
-              />
-            </div>
+        {/* Building Management Section */}
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Building Management</h2>
+            <Button onClick={() => handleOpenDialog()}>Add Building</Button>
+          </div>
 
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={buildings?.length || 0}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
-          </>
-        )}
+          {buildings?.length === 0 ? (
+            <Alert>
+              <AlertTitle>No Buildings Found</AlertTitle>
+              <AlertDescription>
+                Create your first building to start managing buildings.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="rounded-md border">
+                <ResponsiveTable
+                  columns={columns}
+                  data={currentBuildings}
+                />
+              </div>
+
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={buildings?.length || 0}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </>
+          )}
+        </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>

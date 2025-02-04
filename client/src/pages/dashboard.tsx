@@ -3,7 +3,6 @@ import { useUser } from "@/hooks/use-user";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/navbar";
-import { BuildingsOverview } from "@/components/buildings-overview";
 import {
   PieChart,
   Pie,
@@ -62,7 +61,7 @@ export default function Dashboard() {
 
   return (
     <Navbar>
-      <div className="p-4 md:p-6 space-y-6">
+      <div className="p-4 md:p-6">
         <div className="space-y-6">
           <h1 className="text-2xl md:text-3xl font-bold">
             {user?.isAdmin ? "Task Statistics" : "My Tasks"}
@@ -138,12 +137,6 @@ export default function Dashboard() {
               })}
             </div>
           )}
-        </div>
-
-        {/* Buildings Overview Section */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold">Buildings Overview</h2>
-          <BuildingsOverview />
         </div>
       </div>
     </Navbar>
