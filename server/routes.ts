@@ -1086,8 +1086,9 @@ export function registerRoutes(app: Express): Server {
         console.error("Error fetching admin users:", error);
         res.status(500).json({ message: "Error fetching admin users" });
       }
-    },
+    }
   );
+
   app.get("/api/admin-users", requireAuth, async (req: Request, res: Response) => {
     try {
       const adminUsers = await db
@@ -1102,220 +1103,12 @@ export function registerRoutes(app: Express): Server {
       res.json(adminUsers);
     } catch (error) {
       console.error("Error fetching admin users:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error fetching admin users",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const buildingList = await db
-        .select({
-          id: buildings.id,
-          name: buildings.name,
-          code: buildings.code,
-          area: buildings.area,
-          supervisorId: buildings.supervisorId,
-          createdAt: buildings.createdAt,
-          updatedAt: buildings.updatedAt,
-          supervisor: {
-            id: users.id,
-            username: users.username,
-            fullName: users.fullName,
-          },
-        })
-        .from(buildings)
-        .leftJoin(users, eq(buildings.supervisorId, users.id));
-
-      console.log("Retrieved buildings data:", buildingList); // Debug log
-      res.json(buildingList);
-    } catch (error) {
-      console.error("Error fetching buildings:", error);
-      res.status(500).json({ 
-        message: "Error fetching buildings", 
         error: error instanceof Error ? error.message : "Unknown error",
-        details: error instanceof Error ? error.stack : "No stack trace available"
       });
     }
   });
-
-  // Get inspectorsby shift type
-  app.get(
-    "/api/admin/shifts/inspectors/:shiftTypeId",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { shiftTypeId } = req.params;
-
-        // Get all inspectors assigned to this shift type
-        const inspectorsInShift = await db
-          .select({
-            id: users.id,
-            fullName: users.fullName,
-            username: users.username,
-          })
-          .from(users)
-          .innerJoin(shifts, eq(shifts.inspectorId, users.id))
-          .where(
-            and(
-              eq(shifts.shiftTypeId, parseInt(shiftTypeId)),
-              eq(users.isInspector, true),
-            ),
-          )
-          .groupBy(users.id, users.fullName, users.username);
-
-        res.json(inspectorsInShift);
-      } catch (error) {
-        console.error("Error fetching inspectors by shift type:", error);
-        res.status(500).json({ message: "Error fetching inspectors" });
-      }
-    },
-  );
-
-  // Get all task types
-  app.get(
-    "/api/task-types",
-    requireAuth,
-    async (req: Request, res: Response) => {
-      try {
-        const allTaskTypes = await db.select().from(taskTypes);
-        res.json(allTaskTypes);
-      } catch (error) {
-        console.error("Error fetching task types:", error);
-        res.status(500).json({ message: "Error fetching task types" });
-      }
-    },
-  );
-
-  // Admin: Create task type
-  app.post(
-    "/api/admin/task-types",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { name, description } = req.body;
-
-        // Check if task type already exists
-        const [existingType] = await db
-          .select()
-          .from(taskTypes)
-          .where(eq(taskTypes.name, name))
-          .limit(1);
-
-        if (existingType) {
-          return res
-            .status(400)
-            .json({ message: "Task type with this name already exists" });
-        }
-
-        const [newTaskType] = await db
-          .insert(taskTypes)
-          .values({
-            name,
-            description,
-            createdBy: req.user?.id,
-          })
-          .returning();
-
-        res.json(newTaskType);
-      } catch (error) {
-        console.error("Error creating task type:", error);
-        res.status(500).json({ message: "Error creating task type" });
-      }
-    },
-  );
-
-  // Admin: Update task type
-  app.put(
-    "/api/admin/task-types/:id",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { id } = req.params;
-        const { name, description } = req.body;
-
-        const [updatedTaskType] = await db
-          .update(taskTypes)
-          .set({
-            name,
-            description,
-          })
-          .where(eq(taskTypes.id, parseInt(id)))
-          .returning();
-
-        res.json(updatedTaskType);
-      } catch (error) {
-        console.error("Error updating task type:", error);
-        res.status(500).json({ message: "Error updating task type" });
-      }
-    },
-  );
-
-  // Admin: Delete task type
-  app.delete(
-    "/api/admin/task-types/:id",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { id } = req.params;
-
-        await db.delete(taskTypes).where(eq(taskTypes.id, parseInt(id)));
-
-        res.json({ message: "Task type deleted successfully" });
-      } catch (error) {
-        console.error("Error deleting task type:", error);
-        res.status(500).json({ message: "Error deleting task type" });
-      }
-    },
-  );
-
-  // Get task statistics grouped by shift type
-  app.get(
-    "/api/admin/tasks/stats",
-    requireAuth,
-    async (req: Request, res: Response) => {
-      try {
-        const stats = await db.execute(sql`
-        WITH task_counts AS (
-          SELECT 
-            t.shift_type_id AS "shiftTypeId",
-            st.name AS "shiftTypeName",
-            COUNT(*) AS total,
-            COUNT(CASE WHEN t.status = 'PENDING' THEN 1 END) AS pending,
-            COUNT(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 END) AS "inProgress",
-            COUNT(CASE WHEN t.status = 'COMPLETED' THEN 1 END) AS completed
-          FROM tasks t
-          JOIN shift_types st ON t.shift_type_id = st.id
-          GROUP BY t.shift_type_id, st.name
-        )
-        SELECT 
-          "shiftTypeId",
-          "shiftTypeName",
-          total,
-          pending,
-          "inProgress",
-          completed
-        FROM task_counts
-        ORDER BY "shiftTypeName"
-      `);
-
-        res.json(stats.rows);
-      } catch (error) {
-        console.error("Error fetching task statistics:", error);
-        if (error instanceof Error) {
-          console.error("Error details:", {
-            message: error.message,
-            stack: error.stack,
-            name: error.name,
-          });
-        }
-        res.status(500).json({ message: "Error fetching task statistics" });
-      }
-    },
-  );
-
 
   app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -1698,6 +1491,75 @@ export function registerRoutes(app: Express): Server {
     requireAuth,
     handleShiftResponse
   );
+
+  // Add this new endpoint after the existing buildings endpoints
+  app.get("/api/buildings/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      // First get all buildings with their supervisors
+      const buildingsWithShifts = await db
+        .select({
+          buildingId: buildings.id,
+          buildingName: buildings.name,
+          buildingArea: buildings.area,
+          buildingCode: buildings.code,
+          supervisor: {
+            id: users.id,
+            fullName: users.fullName,
+            username: users.username,
+          },
+        })
+        .from(buildings)
+        .leftJoin(users, eq(buildings.supervisorId, users.id));
+
+      // For each building, get its approved shifts with inspector and shift type info
+      const buildingsWithFullData = await Promise.all(
+        buildingsWithShifts.map(async (building) => {
+          const buildingShifts = await db
+            .select({
+              inspector: {
+                id: users.id,
+                fullName: users.fullName,
+                username: users.username,
+              },
+              shiftType: {
+                id: shiftTypes.id,
+                name: shiftTypes.name,
+                startTime: shiftTypes.startTime,
+                endTime: shiftTypes.endTime,
+              },
+              week: shifts.week,
+              status: shifts.status,
+            })
+            .from(shifts)
+            .where(
+              and(
+                eq(shifts.buildingId, building.buildingId),
+                eq(shifts.status, 'ACCEPTED')
+              )
+            )
+            .leftJoin(users, eq(shifts.inspectorId, users.id))
+            .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id));
+
+          return {
+            id: building.buildingId,
+            name: building.buildingName,
+            code: building.buildingCode,
+            area: building.buildingArea,
+            supervisor: building.supervisor,
+            shifts: buildingShifts,
+          };
+        })
+      );
+
+      res.json(buildingsWithFullData);
+    } catch (error) {
+      console.error("Error fetching buildings stats:", error);
+      res.status(500).json({
+        message: "Error fetching buildings stats",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
 
   const server = createServer(app);
   return server;
