@@ -8,6 +8,7 @@ export const buildings = pgTable("buildings", {
   name: text("name").notNull(),
   code: text("code").notNull(),
   area: text("area").default(''),
+  supervisorId: integer("supervisor_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -98,8 +99,12 @@ export const requestsRelations = relations(requests, ({ one }) => ({
   }),
 }));
 
-export const buildingsRelations = relations(buildings, ({ many }) => ({
+export const buildingsRelations = relations(buildings, ({ one, many }) => ({
   shifts: many(shifts),
+  supervisor: one(users, {
+    fields: [buildings.supervisorId],
+    references: [users.id],
+  }),
 }));
 
 export const shiftsRelations = relations(shifts, ({ one }) => ({

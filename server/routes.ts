@@ -1267,8 +1267,24 @@ export function registerRoutes(app: Express): Server {
 
   app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
     try {
-      const allBuildings = await db.select().from(buildings);
-      res.json(allBuildings);
+      const buildings = await db
+        .select({
+          id: buildings.id,
+          name: buildings.name,
+          code: buildings.code,
+          area: buildings.area,
+          supervisor: {
+            id: users.id,
+            username: users.username,
+            fullName: users.fullName,
+          },
+          createdAt: buildings.createdAt,
+          updatedAt: buildings.updatedAt,
+        })
+        .from(buildings)
+        .leftJoin(users, eq(buildings.supervisorId, users.id));
+
+      res.json(buildings);
     } catch (error) {
       console.error("Error fetching buildings:", error);
       res.status(500).json({ message: "Error fetching buildings" });
@@ -1278,7 +1294,14 @@ export function registerRoutes(app: Express): Server {
   // Create building
   app.post("/api/admin/buildings", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const { name, code, area } = req.body;
+      const { name, code, area, supervisorId } = req.body;
+
+      if (!supervisorId) {
+        return res.status(400).json({
+          message: "Supervisor is required",
+          error: "Please select a supervisor for this building"
+        });
+      }
 
       // Check if building code already exists
       const [existingBuilding] = await db
@@ -1294,21 +1317,46 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      // Verify that the supervisor exists and is an admin
+      const [supervisor] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, supervisorId), eq(users.isAdmin, true)))
+        .limit(1);
+
+      if (!supervisor) {
+        return res.status(400).json({
+          message: "Invalid supervisor",
+          error: "The selected supervisor must be an admin user"
+        });
+      }
+
       const [newBuilding] = await db
         .insert(buildings)
         .values({
           name,
           code,
           area: area || '',
+          supervisorId,
         })
         .returning();
 
-      res.status(201).json(newBuilding);
+      // Return the building with supervisor details
+      const buildingWithSupervisor = {
+        ...newBuilding,
+        supervisor: {
+          id: supervisor.id,
+          username: supervisor.username,
+          fullName: supervisor.fullName,
+        },
+      };
+
+      res.status(201).json(buildingWithSupervisor);
     } catch (error) {
       console.error("Error creating building:", error);
       res.status(500).json({
         message: "Error creating building",
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
@@ -1316,7 +1364,14 @@ export function registerRoutes(app: Express): Server {
   app.put("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, code, area } = req.body;
+      const { name, code, area, supervisorId } = req.body;
+
+      if (!supervisorId) {
+        return res.status(400).json({
+          message: "Supervisor is required",
+          error: "Please select a supervisor for this building"
+        });
+      }
 
       // Check if building exists
       const [existingBuilding] = await db
@@ -1329,6 +1384,20 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ 
           message: "Building not found",
           error: "The requested building does not exist"
+        });
+      }
+
+      // Verify that the new supervisor exists and is an admin
+      const [supervisor] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, supervisorId), eq(users.isAdmin, true)))
+        .limit(1);
+
+      if (!supervisor) {
+        return res.status(400).json({
+          message: "Invalid supervisor",
+          error: "The selected supervisor must be an admin user"
         });
       }
 
@@ -1355,17 +1424,28 @@ export function registerRoutes(app: Express): Server {
           name,
           code,
           area: area || '',
+          supervisorId,
           updatedAt: new Date(),
         })
         .where(eq(buildings.id, parseInt(id)))
         .returning();
 
-      res.json(updatedBuilding);
+      // Return the building with supervisor details
+      const buildingWithSupervisor = {
+        ...updatedBuilding,
+        supervisor: {
+          id: supervisor.id,
+          username: supervisor.username,
+          fullName: supervisor.fullName,
+        },
+      };
+
+      res.json(buildingWithSupervisor);
     } catch (error) {
       console.error("Error updating building:", error);
       res.status(500).json({
         message: "Error updating building",
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
