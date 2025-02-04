@@ -6,8 +6,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Building } from "lucide-react";
+import { Building, PersonStanding, Clock } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { format } from "date-fns";
 
 interface BuildingData {
   id: number;
@@ -77,66 +78,76 @@ export function BuildingsOverview() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building className="h-5 w-5" />
-          Buildings Overview
-        </CardTitle>
-        <CardDescription>
-          Current building assignments and inspectors
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {data?.buildings.map((building) => (
-            <div key={building.id} className="border rounded-lg p-4">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold">{building.name}</h3>
-                  <p className="text-sm text-muted-foreground">{building.area}</p>
-                </div>
-                {building.supervisor && (
-                  <div className="text-right">
-                    <p className="text-sm font-medium">Supervisor</p>
-                    <p className="text-sm text-muted-foreground">
-                      {building.supervisor.fullName}
-                    </p>
-                  </div>
-                )}
+    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {data?.buildings.map((building) => (
+        <Card 
+          key={building.id} 
+          className="group hover:shadow-lg transition-shadow duration-200 overflow-hidden"
+        >
+          <CardHeader className="bg-secondary/10 pb-4">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-2">
+                <Building className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg font-semibold">
+                  {building.name}
+                </CardTitle>
               </div>
-              {building.shiftInspectors.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Assigned Inspectors</p>
-                  <div className="grid gap-2">
-                    {building.shiftInspectors.map((si, index) => (
-                      <div
-                        key={`${si.inspector.id}-${si.shift.id}`}
-                        className="text-sm bg-secondary/50 rounded-md p-2"
-                      >
-                        <div className="flex justify-between">
-                          <span>{si.inspector.fullName}</span>
-                          <span className="text-muted-foreground">
-                            {si.shift.shiftType.name} ({si.shift.shiftType.startTime}-
-                            {si.shift.shiftType.endTime})
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Week: {si.shift.week}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+              {building.supervisor && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background/80 rounded-lg px-3 py-1">
+                  <PersonStanding className="h-4 w-4" />
+                  <span>{building.supervisor.fullName}</span>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No inspectors currently assigned
-                </p>
               )}
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            <CardDescription className="text-sm">
+              Area: {building.area}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {building.shiftInspectors.length > 0 ? (
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium flex items-center gap-2 text-primary">
+                  <Clock className="h-4 w-4" />
+                  Current Shift Assignments
+                </h4>
+                <div className="space-y-3">
+                  {building.shiftInspectors.map((si, index) => (
+                    <div
+                      key={`${si.inspector.id}-${si.shift.id}`}
+                      className={`
+                        p-3 rounded-lg transition-colors duration-200
+                        ${index % 2 === 0 ? 'bg-secondary/20' : 'bg-secondary/10'}
+                        hover:bg-secondary/30
+                      `}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{si.inspector.fullName}</span>
+                          <span className="text-sm text-muted-foreground">
+                            Week {si.shift.week}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="font-medium">{si.shift.shiftType.name}</span>
+                          <span>•</span>
+                          <span>
+                            {format(new Date(`2000-01-01T${si.shift.shiftType.startTime}`), "h:mm a")} - 
+                            {format(new Date(`2000-01-01T${si.shift.shiftType.endTime}`), "h:mm a")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground flex items-center justify-center h-24 bg-secondary/10 rounded-lg">
+                No inspectors currently assigned
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
