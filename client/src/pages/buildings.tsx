@@ -32,11 +32,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
+
 
 const buildingSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().min(1, "Code is required"),
   area: z.string().optional(),
+  supervisorId: z.string().min(1, "Supervisor is required"),
 });
 
 type BuildingFormData = z.infer<typeof buildingSchema>;
@@ -46,8 +49,14 @@ type Building = {
   name: string;
   code: string;
   area: string;
+  supervisorId: number | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type AdminUser = {
+  id: number;
+  fullName: string;
 };
 
 export default function Buildings() {
@@ -65,6 +74,7 @@ export default function Buildings() {
       name: "",
       code: "",
       area: "",
+      supervisorId: "",
     },
   });
 
@@ -73,10 +83,16 @@ export default function Buildings() {
     enabled: user?.isAdmin,
   });
 
-    // Calculate pagination values
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const currentBuildings = buildings?.slice(startIndex, endIndex) || [];
+  // Add query for admin users
+  const { data: adminUsers = [] } = useQuery<AdminUser[]>({
+    queryKey: ["/api/admin-users"],
+    enabled: user?.isAdmin,
+  });
+
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentBuildings = buildings?.slice(startIndex, endIndex) || [];
 
   const createBuilding = useMutation({
     mutationFn: async (data: BuildingFormData) => {
@@ -154,14 +170,14 @@ export default function Buildings() {
     },
   });
 
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
-    
-      const handlePageSizeChange = (newSize: number) => {
-        setPageSize(newSize);
-        setCurrentPage(1);
-      };
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
 
   const handleOpenDialog = (building?: Building) => {
     if (building) {
@@ -170,6 +186,7 @@ export default function Buildings() {
         name: building.name,
         code: building.code,
         area: building.area,
+        supervisorId: building.supervisorId?.toString() || "",
       });
     } else {
       setEditingBuilding(null);
@@ -198,6 +215,14 @@ export default function Buildings() {
     {
       header: "Area",
       accessorKey: "area",
+    },
+    {
+      header: "Supervisor",
+      accessorKey: "supervisorId",
+      cell: (value: number | null) => {
+        const supervisor = adminUsers.find((user) => user.id === value);
+        return <span>{supervisor?.fullName || "Not assigned"}</span>;
+      },
     },
     {
       header: "Actions",
@@ -348,6 +373,33 @@ export default function Buildings() {
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="supervisorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Supervisor</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a supervisor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {adminUsers.map((admin) => (
+                            <SelectItem
+                              key={admin.id}
+                              value={admin.id.toString()}
+                            >
+                              {admin.fullName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
