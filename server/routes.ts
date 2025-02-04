@@ -18,43 +18,13 @@ import {
   getNotifications,
   markNotificationAsRead,
 } from "./routes/notifications";
-import { getShifts } from "./routes/shifts";
+import {
+  getShifts,
+  createShift,
+  handleShiftResponse,
+} from "./routes/shifts";
 import { sql } from "drizzle-orm";
 
-export const createShift = async (req: Request, res: Response) => {
-  try {
-    const { inspectorId, roleId, shiftTypeId, week, backupId } = req.body;
-
-    // Validate that the shift type exists
-    const [shiftType] = await db
-      .select()
-      .from(shiftTypes)
-      .where(eq(shiftTypes.id, shiftTypeId))
-      .limit(1);
-
-    if (!shiftType) {
-      return res.status(400).json({ message: "Invalid shift type" });
-    }
-
-    const [newShift] = await db
-      .insert(shifts)
-      .values({
-        inspectorId,
-        roleId,
-        shiftTypeId,
-        week,
-        backupId,
-        status: 'PENDING', // Set initial status as pending
-        createdBy: req.user!.id,
-      })
-      .returning();
-
-    res.json(newShift);
-  } catch (error) {
-    console.error("Error creating shift:", error);
-    res.status(500).json({ message: "Error creating shift" });
-  }
-};
 
 const updateShift = async (req: Request, res: Response) => {
   try {
@@ -99,54 +69,6 @@ const updateShift = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error updating shift:", error);
     res.status(500).json({ message: "Error updating shift" });
-  }
-};
-
-// New endpoint for accepting/rejecting shifts
-const handleShiftResponse = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { action, rejectionReason } = req.body;
-
-    if (!['ACCEPT', 'REJECT'].includes(action)) {
-      return res.status(400).json({ message: "Invalid action. Must be ACCEPT or REJECT" });
-    }
-
-    // Get the shift and verify it exists and belongs to the current inspector
-    const [shift] = await db
-      .select()
-      .from(shifts)
-      .where(
-        and(
-          eq(shifts.id, parseInt(id)),
-          eq(shifts.inspectorId, req.user!.id)
-        )
-      )
-      .limit(1);
-
-    if (!shift) {
-      return res.status(404).json({ message: "Shift not found or you're not authorized" });
-    }
-
-    if (shift.status !== 'PENDING') {
-      return res.status(400).json({ message: "Shift has already been processed" });
-    }
-
-    // Update the shift status based on the action
-    const [updatedShift] = await db
-      .update(shifts)
-      .set({
-        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
-        responseAt: new Date(),
-        rejectionReason: action === 'REJECT' ? rejectionReason : null,
-      })
-      .where(eq(shifts.id, parseInt(id)))
-      .returning();
-
-    res.json(updatedShift);
-  } catch (error) {
-    console.error("Error processing shift response:", error);
-    res.status(500).json({ message: "Error processing shift response" });
   }
 };
 
@@ -469,6 +391,10 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
+
+  // Handle shift response (accept/reject)
+  app.post("/api/shifts/:id/respond", requireAuth, handleShiftResponse);
+
 
   // Admin: Get all roles
   app.get(
@@ -1070,7 +996,7 @@ export function registerRoutes(app: Express): Server {
             date: new Date(date),
             isFollowupNeeded,
             assignedTo,
-          })          })
+          })
           .where(eq(tasks.id, parseInt(id)))
           .returning();
 
@@ -1337,7 +1263,7 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
-  
+
 
   app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -1348,13 +1274,11 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Error fetching buildings" });
     }
   });
-  
 
   // Create building
   app.post("/api/admin/buildings", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { name, code, area } = req.body;
-  
 
       // Check if building code already exists
       const [existingBuilding] = await db
@@ -1362,7 +1286,6 @@ export function registerRoutes(app: Express): Server {
         .from(buildings)
         .where(eq(buildings.code, code))
         .limit(1);
-  
 
       if (existingBuilding) {
         return res.status(400).json({
@@ -1370,7 +1293,6 @@ export function registerRoutes(app: Express): Server {
           error: `A building with code "${code}" already exists. Please use a different code.`
         });
       }
-  
 
       const [newBuilding] = await db
         .insert(buildings)
@@ -1380,7 +1302,6 @@ export function registerRoutes(app: Express): Server {
           area: area || '',
         })
         .returning();
-  
 
       res.status(201).json(newBuilding);
     } catch (error) {
@@ -1396,7 +1317,6 @@ export function registerRoutes(app: Express): Server {
     try {
       const { id } = req.params;
       const { name, code, area } = req.body;
-  
 
       // Check if building exists
       const [existingBuilding] = await db
@@ -1404,7 +1324,6 @@ export function registerRoutes(app: Express): Server {
         .from(buildings)
         .where(eq(buildings.id, parseInt(id)))
         .limit(1);
-  
 
       if (!existingBuilding) {
         return res.status(404).json({ 
@@ -1412,7 +1331,6 @@ export function registerRoutes(app: Express): Server {
           error: "The requested building does not exist"
         });
       }
-  
 
       // Check if code is being changed and if new code already exists
       if (code !== existingBuilding.code) {
@@ -1421,7 +1339,6 @@ export function registerRoutes(app: Express): Server {
           .from(buildings)
           .where(eq(buildings.code, code))
           .limit(1);
-  
 
         if (buildingWithCode) {
           return res.status(400).json({
@@ -1430,7 +1347,6 @@ export function registerRoutes(app: Express): Server {
           });
         }
       }
-  
 
       // Update the building
       const [updatedBuilding] = await db
@@ -1443,7 +1359,6 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(buildings.id, parseInt(id)))
         .returning();
-  
 
       res.json(updatedBuilding);
     } catch (error) {
@@ -1454,13 +1369,11 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-  
 
   // Admin: Delete building
   app.delete("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-  
 
       // Check if building exists
       const [existingBuilding] = await db
@@ -1468,7 +1381,6 @@ export function registerRoutes(app: Express): Server {
         .from(buildings)
         .where(eq(buildings.id, parseInt(id)))
         .limit(1);
-  
 
       if (!existingBuilding) {
         return res.status(404).json({
@@ -1476,7 +1388,6 @@ export function registerRoutes(app: Express): Server {
           error: "The requested building does not exist"
         });
       }
-  
 
       // Check if building has any associated shifts
       const [shiftWithBuilding] = await db
@@ -1484,7 +1395,6 @@ export function registerRoutes(app: Express): Server {
         .from(shifts)
         .where(eq(shifts.buildingId, parseInt(id)))
         .limit(1);
-  
 
       if (shiftWithBuilding) {
         return res.status(400).json({
@@ -1492,11 +1402,9 @@ export function registerRoutes(app: Express): Server {
           error: "This building has associated shifts. Please reassign or delete the shifts first."
         });
       }
-  
 
       // Delete the building
       await db.delete(buildings).where(eq(buildings.id, parseInt(id)));
-  
 
       res.json({ message: "Building deleted successfully" });
     } catch (error) {

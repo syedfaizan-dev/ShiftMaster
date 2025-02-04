@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@db";
 import { shifts, users, roles, shiftTypes, buildings } from "@db/schema";
 import { NotificationService } from "server/services/notification";
@@ -15,6 +15,9 @@ export async function getShifts(req: Request, res: Response) {
         buildingId: shifts.buildingId,
         week: shifts.week,
         backupId: shifts.backupId,
+        status: shifts.status,
+        rejectionReason: shifts.rejectionReason,
+        responseAt: shifts.responseAt,
         inspector: {
           id: users.id,
           fullName: users.fullName,
@@ -82,47 +85,40 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
-    const { startTime, endTime, buildingId, ...rest } = req.body;
+    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
 
-    // Ensure dates are properly parsed
-    const parsedStartTime = new Date(startTime);
-    const parsedEndTime = new Date(endTime);
-
-    // Validate dates
-    if (isNaN(parsedStartTime.getTime()) || isNaN(parsedEndTime.getTime())) {
-      return res.status(400).send("Invalid date format");
+    // Validate required fields
+    if (!inspectorId || !roleId || !shiftTypeId || !buildingId || !week) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Validate building exists
-    const [building] = await db
+    // Check if inspector exists
+    const [inspector] = await db
       .select()
-      .from(buildings)
-      .where(eq(buildings.id, buildingId))
+      .from(users)
+      .where(eq(users.id, inspectorId))
       .limit(1);
 
-    if (!building) {
-      return res.status(400).send("Invalid building ID");
+    if (!inspector) {
+      return res.status(400).json({ message: "Invalid inspector ID" });
     }
 
+    // Create shift with PENDING status
     const [shift] = await db
       .insert(shifts)
       .values({
-        ...rest,
+        inspectorId,
+        roleId,
+        shiftTypeId,
         buildingId,
-        startTime: parsedStartTime,
-        endTime: parsedEndTime,
+        week,
+        backupId,
+        status: 'PENDING',
         createdBy: req.user.id,
       })
       .returning();
 
-    // Get inspector details for notification
-    const [inspector] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, shift.inspectorId))
-      .limit(1);
-
-    // Get role details
+    // Get role details for notification
     const [role] = await db
       .select()
       .from(roles)
@@ -134,8 +130,6 @@ export async function createShift(req: Request, res: Response) {
       userId: inspector.id,
       userEmail: inspector.username,
       shiftId: shift.id,
-      startTime: parsedStartTime,
-      endTime: parsedEndTime,
       role: role.name,
     });
 
@@ -147,20 +141,71 @@ export async function createShift(req: Request, res: Response) {
         .where(eq(users.id, shift.backupId))
         .limit(1);
 
-      await NotificationService.notifyShiftAssignment({
-        userId: backup.id,
-        userEmail: backup.username,
-        shiftId: shift.id,
-        startTime: parsedStartTime,
-        endTime: parsedEndTime,
-        role: `Backup ${role.name}`,
-      });
+      if (backup) {
+        await NotificationService.notifyShiftAssignment({
+          userId: backup.id,
+          userEmail: backup.username,
+          shiftId: shift.id,
+          role: `Backup ${role.name}`,
+        });
+      }
     }
 
     res.json(shift);
   } catch (error) {
     console.error('Error creating shift:', error);
-    res.status(500).send((error as Error).message);
+    res.status(500).json({ message: "Error creating shift" });
+  }
+}
+
+export async function handleShiftResponse(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { action, rejectionReason } = req.body;
+
+    if (!['ACCEPT', 'REJECT'].includes(action)) {
+      return res.status(400).json({ message: "Invalid action. Must be ACCEPT or REJECT" });
+    }
+
+    // Get the shift and verify it exists and belongs to the current inspector
+    const [shift] = await db
+      .select()
+      .from(shifts)
+      .where(
+        and(
+          eq(shifts.id, parseInt(id)),
+          eq(shifts.inspectorId, req.user!.id)
+        )
+      )
+      .limit(1);
+
+    if (!shift) {
+      return res.status(404).json({ message: "Shift not found or you're not authorized" });
+    }
+
+    if (shift.status !== 'PENDING') {
+      return res.status(400).json({ message: "Shift has already been processed" });
+    }
+
+    if (action === 'REJECT' && !rejectionReason) {
+      return res.status(400).json({ message: "Rejection reason is required" });
+    }
+
+    // Update the shift status based on the action
+    const [updatedShift] = await db
+      .update(shifts)
+      .set({
+        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
+        responseAt: new Date(),
+        rejectionReason: action === 'REJECT' ? rejectionReason : null,
+      })
+      .where(eq(shifts.id, parseInt(id)))
+      .returning();
+
+    res.json(updatedShift);
+  } catch (error) {
+    console.error("Error processing shift response:", error);
+    res.status(500).json({ message: "Error processing shift response" });
   }
 }
 
