@@ -185,12 +185,17 @@ export default function Buildings() {
       form.reset({
         name: building.name,
         code: building.code,
-        area: building.area,
+        area: building.area || "",
         supervisorId: building.supervisorId?.toString() || "",
       });
     } else {
       setEditingBuilding(null);
-      form.reset();
+      form.reset({
+        name: "",
+        code: "",
+        area: "",
+        supervisorId: "",
+      });
     }
     setIsDialogOpen(true);
   };
@@ -227,12 +232,12 @@ export default function Buildings() {
     {
       header: "Actions",
       accessorKey: "id",
-      cell: (value: any) => (
+      cell: (value: any, row: Building) => (
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handleOpenDialog(value)}
+            onClick={() => handleOpenDialog(row)}
           >
             <Pencil className="h-4 w-4" />
           </Button>
