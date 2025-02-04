@@ -1084,7 +1084,7 @@ export function registerRoutes(app: Express): Server {
         res.json(admins);
       } catch (error) {
         console.error("Error fetching admin users:", error);
-        res.status(500).json({ message: "Error fetching admin users" });
+        res.status(500).json({ message:"Error fetching admin users" });
       }
     },
   );
@@ -1102,7 +1102,7 @@ export function registerRoutes(app: Express): Server {
       res.json(adminUsers);
     } catch (error) {
       console.error("Error fetching admin users:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error fetching admin users",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -1133,8 +1133,8 @@ export function registerRoutes(app: Express): Server {
       res.json(buildingList);
     } catch (error) {
       console.error("Error fetching buildings:", error);
-      res.status(500).json({ 
-        message: "Error fetching buildings", 
+      res.status(500).json({
+        message: "Error fetching buildings",
         error: error instanceof Error ? error.message : "Unknown error",
         details: error instanceof Error ? error.stack : "No stack trace available"
       });
@@ -1341,8 +1341,8 @@ export function registerRoutes(app: Express): Server {
       res.json(buildingsData);
     } catch (error) {
       console.error("Error fetching buildings:", error);
-      res.status(500).json({ 
-        message: "Error fetching buildings", 
+      res.status(500).json({
+        message: "Error fetching buildings",
         error: error instanceof Error ? error.message : "Unknown error",
         details: JSON.stringify(error)
       });
@@ -1439,7 +1439,7 @@ export function registerRoutes(app: Express): Server {
         .limit(1);
 
       if (!existingBuilding) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Building not found",
           error: "The requested building does not exist"
         });
@@ -1697,6 +1697,108 @@ export function registerRoutes(app: Express): Server {
     "/api/shifts/:id/respond",
     requireAuth,
     handleShiftResponse
+  );
+
+  // Add this route after other building routes
+  app.get(
+    "/api/admin/buildings/shifts",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const buildingsWithShifts = await db.query.buildings.findMany({
+          with: {
+            supervisor: {
+              columns: {
+                id: true,
+                username: true,
+                fullName: true,
+              },
+            },
+          },
+        });
+
+        // Get approved shifts for each building's inspectors
+        const enrichedBuildings = await Promise.all(
+          buildingsWithShifts.map(async (building) => {
+            // Get all shifts where inspector has accepted
+            const shifts = await db
+              .select({
+                id: shifts.id,
+                week: shifts.week,
+                shiftType: {
+                  id: shiftTypes.id,
+                  name: shiftTypes.name,
+                  startTime: shiftTypes.startTime,
+                  endTime: shiftTypes.endTime,
+                },
+                inspector: {
+                  id: users.id,
+                  fullName: users.fullName,
+                  username: users.username,
+                },
+              })
+              .from(shifts)
+              .where(and(
+                eq(shifts.status, "ACCEPTED"),
+                eq(shifts.buildingId, building.id)
+              ))
+              .innerJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id))
+              .innerJoin(users, eq(shifts.inspectorId, users.id));
+
+            return {
+              ...building,
+              shiftInspectors: shifts.reduce((acc, shift) => {
+                const existingInspector = acc.find(
+                  (si) => si.inspector.id === shift.inspector.id
+                );
+
+                if (existingInspector) {
+                  existingInspector.shifts.push({
+                    id: shift.id,
+                    week: shift.week,
+                    shiftType: shift.shiftType,
+                  });
+                } else {
+                  acc.push({
+                    inspector: shift.inspector,
+                    shifts: [
+                      {
+                        id: shift.id,
+                        week: shift.week,
+                        shiftType: shift.shiftType,
+                      },
+                    ],
+                  });
+                }
+
+                return acc;
+              }, [] as Array<{
+                inspector: {
+                  id: number;
+                  fullName: string;
+                  username: string;
+                };
+                shifts: Array<{
+                  id: number;
+                  week: string;
+                  shiftType: {
+                    id: number;
+                    name: string;
+                    startTime: string;
+                    endTime: string;
+                  };
+                }>;
+              }>),
+            };
+          }),
+        );
+
+        res.json(enrichedBuildings);
+      } catch (error) {
+        console.error("Error fetching buildings with shifts:", error);
+        res.status(500).json({ message: "Error fetching buildings data" });
+      }
+    },
   );
 
   const server = createServer(app);

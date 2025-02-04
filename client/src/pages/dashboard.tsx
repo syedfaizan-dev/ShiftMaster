@@ -21,6 +21,34 @@ type TaskStats = {
   completed: number;
 };
 
+type Building = {
+  id: number;
+  name: string;
+  area: string;
+  supervisor: {
+    id: number;
+    fullName: string;
+    username: string;
+  };
+  shiftInspectors: Array<{
+    inspector: {
+      id: number;
+      fullName: string;
+      username: string;
+    };
+    shifts: Array<{
+      id: number;
+      week: string;
+      shiftType: {
+        id: number;
+        name: string;
+        startTime: string;
+        endTime: string;
+      };
+    }>;
+  }>;
+};
+
 // Colors for the pie chart sections
 const COLORS = ["#fbbf24", "#3b82f6", "#22c55e"];
 const RADIAN = Math.PI / 180;
@@ -55,86 +83,173 @@ const CustomLabel = ({
 export default function Dashboard() {
   const { user } = useUser();
 
-  const { data: taskStats = [], isLoading } = useQuery<TaskStats[]>({
+  const { data: taskStats = [], isLoading: isLoadingStats } = useQuery<TaskStats[]>({
     queryKey: ["/api/admin/tasks/stats"],
   });
+
+  const { data: buildings = [], isLoading: isLoadingBuildings } = useQuery<Building[]>({
+    queryKey: ["/api/admin/buildings/shifts"],
+    enabled: user?.isAdmin,
+  });
+
+  const isLoading = isLoadingStats || isLoadingBuildings;
 
   return (
     <Navbar>
       <div className="p-4 md:p-6">
         <h1 className="text-2xl md:text-3xl font-bold mb-6">
-          {user?.isAdmin ? "Task Statistics" : "My Tasks"}
+          {user?.isAdmin ? "Dashboard Overview" : "My Tasks"}
         </h1>
 
-        {isLoading ? (
-          <div className="flex justify-center p-4">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : taskStats.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>No Tasks Found</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                There are no tasks available to display.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {taskStats.map((stat) => {
-              const data = [
-                { name: "Pending", value: Number(stat.pending) },
-                { name: "In Progress", value: Number(stat.inProgress) },
-                { name: "Completed", value: Number(stat.completed) },
-              ].filter((item) => item.value > 0);
+        {/* Task Statistics Section */}
+        <section className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Task Statistics</h2>
+          {isLoadingStats ? (
+            <div className="flex justify-center p-4">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : taskStats.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>No Tasks Found</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  There are no tasks available to display.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {taskStats.map((stat) => {
+                const data = [
+                  { name: "Pending", value: Number(stat.pending) },
+                  { name: "In Progress", value: Number(stat.inProgress) },
+                  { name: "Completed", value: Number(stat.completed) },
+                ].filter((item) => item.value > 0);
 
-              return (
-                <Card key={stat.shiftTypeId} className="w-full">
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      {stat.shiftTypeName}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={data}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={CustomLabel}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {data.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                          <Legend
-                            verticalAlign="bottom"
-                            height={36}
-                            formatter={(value, entry, index) => {
-                              const item = data[index];
-                              return `${value} (${item.value})`;
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                return (
+                  <Card key={stat.shiftTypeId} className="w-full">
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        {stat.shiftTypeName}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={data}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={CustomLabel}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {data.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={COLORS[index % COLORS.length]}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend
+                              verticalAlign="bottom"
+                              height={36}
+                              formatter={(value, entry, index) => {
+                                const item = data[index];
+                                return `${value} (${item.value})`;
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Buildings Section */}
+        {user?.isAdmin && (
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Building Inspectors</h2>
+            {isLoadingBuildings ? (
+              <div className="flex justify-center p-4">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : buildings.length === 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Buildings Found</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    There are no buildings with assigned inspectors.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2">
+                {buildings.map((building) => (
+                  <Card key={building.id}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        {building.name} - {building.area}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Supervisor: {building.supervisor.fullName}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {building.shiftInspectors.length === 0 ? (
+                          <p className="text-muted-foreground">
+                            No inspectors assigned to this building.
+                          </p>
+                        ) : (
+                          building.shiftInspectors.map((si) => (
+                            <div
+                              key={si.inspector.id}
+                              className="border-b pb-3 last:border-0"
+                            >
+                              <h4 className="font-medium mb-2">
+                                {si.inspector.fullName}
+                              </h4>
+                              <div className="grid gap-2">
+                                {si.shifts.map((shift) => (
+                                  <div
+                                    key={shift.id}
+                                    className="text-sm text-muted-foreground"
+                                  >
+                                    <span className="font-medium">
+                                      {shift.shiftType.name}
+                                    </span>{" "}
+                                    - Week {shift.week}
+                                    <br />
+                                    <span className="text-xs">
+                                      {shift.shiftType.startTime} -{" "}
+                                      {shift.shiftType.endTime}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
         )}
       </div>
     </Navbar>
