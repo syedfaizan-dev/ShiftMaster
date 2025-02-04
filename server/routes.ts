@@ -11,7 +11,7 @@ import {
   tasks,
   taskTypes,
   buildings,
-  agencies, // Added import for agencies table
+  agencies,
 } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import {
@@ -23,10 +23,10 @@ import {
   createShift,
   handleShiftResponse,
   updateShift,
-  getInspectorsByShiftType, // Add this import
+  getInspectorsByShiftType,
 } from "./routes/shifts";
+import { getBuildingsWithShifts } from "./routes/buildingRoutes";
 import { sql } from "drizzle-orm";
-
 
 const updateShift = async (req: Request, res: Response) => {
   try {
@@ -1077,7 +1077,8 @@ export function registerRoutes(app: Express): Server {
         const admins = await db
           .select({
             id: users.id,
-            username: users.username,            fullName: users.fullName,
+            username: users.username,
+            fullName: users.fullName,
           })
           .from(users)
           .where(eq(users.isAdmin, true));
@@ -1103,7 +1104,7 @@ export function registerRoutes(app: Express): Server {
       res.json(adminUsers);
     } catch (error) {
       console.error("Error fetching admin users:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Error fetching admin users",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -1134,8 +1135,8 @@ export function registerRoutes(app: Express): Server {
       res.json(buildingList);
     } catch (error) {
       console.error("Error fetching buildings:", error);
-      res.status(500).json({ 
-        message: "Error fetching buildings", 
+      res.status(500).json({
+        message: "Error fetching buildings",
         error: error instanceof Error ? error.message : "Unknown error",
         details: error instanceof Error ? error.stack : "No stack trace available"
       });
@@ -1342,8 +1343,8 @@ export function registerRoutes(app: Express): Server {
       res.json(buildingsData);
     } catch (error) {
       console.error("Error fetching buildings:", error);
-      res.status(500).json({ 
-        message: "Error fetching buildings", 
+      res.status(500).json({
+        message: "Error fetching buildings",
         error: error instanceof Error ? error.message : "Unknown error",
         details: JSON.stringify(error)
       });
@@ -1440,7 +1441,7 @@ export function registerRoutes(app: Express): Server {
         .limit(1);
 
       if (!existingBuilding) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Building not found",
           error: "The requested building does not exist"
         });
@@ -1705,6 +1706,13 @@ export function registerRoutes(app: Express): Server {
     "/api/admin/shifts/inspectors",
     requireAdmin,
     getInspectorsByShiftType
+  );
+
+  // Add new buildings route
+  app.get(
+    "/api/buildings/with-shifts",
+    requireAuth,
+    getBuildingsWithShifts
   );
 
   const server = createServer(app);
