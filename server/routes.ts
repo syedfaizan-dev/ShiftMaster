@@ -22,6 +22,8 @@ import {
   getShifts,
   createShift,
   handleShiftResponse,
+  updateShift,
+  getInspectorsByShiftType, // Add this import
 } from "./routes/shifts";
 import { sql } from "drizzle-orm";
 
@@ -1075,8 +1077,7 @@ export function registerRoutes(app: Express): Server {
         const admins = await db
           .select({
             id: users.id,
-            username: users.username,
-            fullName: users.fullName,
+            username: users.username,            fullName: users.fullName,
           })
           .from(users)
           .where(eq(users.isAdmin, true));
@@ -1697,6 +1698,13 @@ export function registerRoutes(app: Express): Server {
     "/api/shifts/:id/respond",
     requireAuth,
     handleShiftResponse
+  );
+
+  // Get inspectors by shift type
+  app.get(
+    "/api/admin/shifts/inspectors",
+    requireAdmin,
+    getInspectorsByShiftType
   );
 
   const server = createServer(app);
