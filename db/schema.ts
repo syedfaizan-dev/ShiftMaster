@@ -51,9 +51,9 @@ export const shifts = pgTable("shifts", {
   buildingId: integer("building_id").references(() => buildings.id).notNull(),
   week: text("week").notNull(),
   backupId: integer("backup_id").references(() => users.id),
-  status: text("status").default('PENDING').notNull(), 
-  responseAt: timestamp("response_at"), 
-  rejectionReason: text("rejection_reason"), 
+  status: text("status").default('PENDING').notNull(),
+  responseAt: timestamp("response_at"),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
 });
