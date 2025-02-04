@@ -1088,6 +1088,37 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
+  app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const buildingList = await db
+        .select({
+          id: buildings.id,
+          name: buildings.name,
+          code: buildings.code,
+          area: buildings.area,
+          supervisorId: buildings.supervisorId,
+          createdAt: buildings.createdAt,
+          updatedAt: buildings.updatedAt,
+          supervisor: {
+            id: users.id,
+            username: users.username,
+            fullName: users.fullName,
+          },
+        })
+        .from(buildings)
+        .leftJoin(users, eq(buildings.supervisorId, users.id));
+
+      console.log("Retrieved buildings data:", buildingList); // Debug log
+      res.json(buildingList);
+    } catch (error) {
+      console.error("Error fetching buildings:", error);
+      res.status(500).json({ 
+        message: "Error fetching buildings", 
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.stack : "No stack trace available"
+      });
+    }
+  });
 
   // Get inspectorsby shift type
   app.get(
@@ -1267,27 +1298,33 @@ export function registerRoutes(app: Express): Server {
 
   app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
     try {
-      const buildings = await db
+      const buildingsData = await db
         .select({
           id: buildings.id,
           name: buildings.name,
           code: buildings.code,
           area: buildings.area,
+          supervisorId: buildings.supervisorId,
+          createdAt: buildings.createdAt,
+          updatedAt: buildings.updatedAt,
           supervisor: {
             id: users.id,
             username: users.username,
             fullName: users.fullName,
           },
-          createdAt: buildings.createdAt,
-          updatedAt: buildings.updatedAt,
         })
         .from(buildings)
         .leftJoin(users, eq(buildings.supervisorId, users.id));
 
-      res.json(buildings);
+      console.log("Retrieved buildings:", buildingsData); // Add logging
+      res.json(buildingsData);
     } catch (error) {
       console.error("Error fetching buildings:", error);
-      res.status(500).json({ message: "Error fetching buildings" });
+      res.status(500).json({ 
+        message: "Error fetching buildings", 
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: JSON.stringify(error)
+      });
     }
   });
 
