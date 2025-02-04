@@ -887,7 +887,7 @@ export function registerRoutes(app: Express): Server {
         const result = await db.query.tasks.findMany({
           with: {
             inspector: true,
-            assignedEmployee: true,
+            assignedAgency: true,
             shiftType: true,
             taskType: true,
           },
@@ -924,24 +924,17 @@ export function registerRoutes(app: Express): Server {
           assignedTo,
         } = req.body;
 
-        // Verify that the assigned user is an employee (not admin, manager, or inspector)
-        const [assignedUser] = await db
+        // Verify that the assigned agency exists
+        const [agency] = await db
           .select()
-          .from(users)
-          .where(
-            and(
-              eq(users.id, assignedTo),
-              eq(users.isAdmin, false),
-              eq(users.isManager, false),
-              eq(users.isInspector, false),
-            ),
-          )
+          .from(agencies)
+          .where(eq(agencies.id, assignedTo))
           .limit(1);
 
-        if (!assignedUser) {
+        if (!agency) {
           return res
             .status(400)
-            .json({ message: "Invalid assigned user. Must be an employee." });
+            .json({ message: "Invalid agency assignment." });
         }
 
         // Verify that the task type exists
@@ -1005,17 +998,29 @@ export function registerRoutes(app: Express): Server {
           return res.status(404).json({ message: "Task not found" });
         }
 
-        // Update the task
+        // Verify that the assigned agency exists
+        const [agency] = await db
+          .select()
+          .from(agencies)
+          .where(eq(agencies.id, assignedTo))
+          .limit(1);
+
+        if (!agency) {
+          return res
+            .status(400)
+            .json({ message: "Invalid agency assignment." });
+        }
+
         const [updatedTask] = await db
           .update(tasks)
           .set({
-            inspectorId: parseInt(inspectorId),
-            shiftTypeId: parseInt(shiftTypeId),
-            taskTypeId: parseInt(taskTypeId),
+            inspectorId,
+            shiftTypeId,
+            taskTypeId,
             status,
             date: new Date(date),
             isFollowupNeeded,
-            assignedTo: parseInt(assignedTo),
+            assignedTo,
           })
           .where(eq(tasks.id, parseInt(id)))
           .returning();
@@ -1087,7 +1092,7 @@ export function registerRoutes(app: Express): Server {
   );
 
   // Get all admin users
-  app.get(
+app.get(
     "/api/admin/admins",
     requireAdmin,
     async (req: Request, res: Response) => {

@@ -198,7 +198,7 @@ export const tasks = pgTable("tasks", {
   status: text("status").default("PENDING").notNull(),
   date: timestamp("date").notNull(),
   isFollowupNeeded: boolean("is_followup_needed").default(false).notNull(),
-  assignedTo: integer("assigned_to").references(() => users.id).notNull(),
+  assignedTo: integer("assigned_to").references(() => agencies.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
 });
@@ -208,9 +208,9 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.inspectorId],
     references: [users.id],
   }),
-  assignedEmployee: one(users, {
+  assignedAgency: one(agencies, {
     fields: [tasks.assignedTo],
-    references: [users.id],
+    references: [agencies.id],
   }),
   shiftType: one(shiftTypes, {
     fields: [tasks.shiftTypeId],
@@ -240,7 +240,7 @@ export type InsertTask = typeof tasks.$inferInsert;
 
 export type TaskWithRelations = Task & {
   inspector?: User;
-  assignedEmployee?: User;
+  assignedAgency?: Agency;
   shiftType?: typeof shiftTypes.$inferSelect;
   taskType?: TaskType;
 };

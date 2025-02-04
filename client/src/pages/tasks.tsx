@@ -49,7 +49,7 @@ const taskSchema = z.object({
   status: z.string().min(1, "Status is required"),
   date: z.string().min(1, "Date is required"),
   isFollowupNeeded: z.boolean(),
-  assignedTo: z.string().min(1, "Assigned employee is required"),
+  assignedTo: z.string().min(1, "Assigned agency is required"), // Changed label
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -64,7 +64,7 @@ type TaskWithRelations = {
   isFollowupNeeded: boolean;
   assignedTo: number;
   inspector: { id: number; fullName: string; username: string };
-  assignedEmployee: { id: number; fullName: string; username: string };
+  assignedAgency: { id: number; name: string; description: string | null }; // Updated type
   shiftType: { id: number; name: string; startTime: string; endTime: string };
   taskType: { id: number; name: string; description: string | null };
 };
@@ -111,26 +111,11 @@ export default function Tasks() {
   const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<any[]>({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
     enabled: !!selectedShiftType,
-    queryFn: async () => {
-      if (!selectedShiftType) return [];
-      const response = await fetch(
-        `/api/admin/shifts/inspectors/${selectedShiftType}`,
-        {
-          credentials: "include",
-          headers: {
-            "Accept": "application/json"
-          }
-        }
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch inspectors");
-      }
-      return response.json();
-    }
   });
 
-  const { data: employees = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/employees"],
+  // Replace employees query with agencies query
+  const { data: agencies = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/agencies"],
   });
 
   const { data: taskTypes = [] } = useQuery<any[]>({
@@ -238,14 +223,14 @@ export default function Tasks() {
   const currentTasks = tasks.slice(startIndex, endIndex);
 
   // Handle pagination changes
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
-    const handlePageSizeChange = (newSize: number) => {
-        setPageSize(newSize);
-        setCurrentPage(1);
-    };
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
 
   const handleOpenDialog = (task?: TaskWithRelations) => {
     if (task) {
@@ -319,9 +304,9 @@ export default function Tasks() {
       cell: (value: boolean) => (value ? "Yes" : "No"),
     },
     {
-      header: "Assigned To",
-      accessorKey: "assignedEmployee",
-      cell: (value: any) => value?.fullName || "Unknown",
+      header: "Assigned Agency", // Updated header
+      accessorKey: "assignedAgency", // Updated accessor
+      cell: (value: any) => value?.name || "Unknown", // Updated to show agency name
     },
     {
       header: "Actions",
@@ -370,7 +355,7 @@ export default function Tasks() {
     taskType: task.taskType,
     status: task.status,
     isFollowupNeeded: task.isFollowupNeeded,
-    assignedEmployee: task.assignedEmployee,
+    assignedAgency: task.assignedAgency,
   }));
 
   if (!user?.isAdmin) {
@@ -440,7 +425,7 @@ export default function Tasks() {
               columns={columns}
               data={transformedData.slice(startIndex, endIndex)}
             />
-           <TablePagination
+            <TablePagination
               currentPage={currentPage}
               totalItems={transformedData.length}
               pageSize={pageSize}
@@ -628,23 +613,23 @@ export default function Tasks() {
                     name="assignedTo"
                     render={({ field }) => (
                       <FormItem className="mb-6">
-                        <FormLabel>Assign To</FormLabel>
+                        <FormLabel>Assign To Agency</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select employee" />
+                              <SelectValue placeholder="Select agency" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {employees?.map((employee) => (
+                            {agencies?.map((agency) => (
                               <SelectItem
-                                key={employee.id}
-                                value={employee.id.toString()}
+                                key={agency.id}
+                                value={agency.id.toString()}
                               >
-                                {employee.fullName}
+                                {agency.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
