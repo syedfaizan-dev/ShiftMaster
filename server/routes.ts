@@ -44,6 +44,7 @@ export const createShift = async (req: Request, res: Response) => {
         shiftTypeId,
         week,
         backupId,
+        status: 'PENDING', // Set initial status as pending
         createdBy: req.user!.id,
       })
       .returning();
@@ -98,6 +99,54 @@ const updateShift = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error updating shift:", error);
     res.status(500).json({ message: "Error updating shift" });
+  }
+};
+
+// New endpoint for accepting/rejecting shifts
+const handleShiftResponse = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { action, rejectionReason } = req.body;
+
+    if (!['ACCEPT', 'REJECT'].includes(action)) {
+      return res.status(400).json({ message: "Invalid action. Must be ACCEPT or REJECT" });
+    }
+
+    // Get the shift and verify it exists and belongs to the current inspector
+    const [shift] = await db
+      .select()
+      .from(shifts)
+      .where(
+        and(
+          eq(shifts.id, parseInt(id)),
+          eq(shifts.inspectorId, req.user!.id)
+        )
+      )
+      .limit(1);
+
+    if (!shift) {
+      return res.status(404).json({ message: "Shift not found or you're not authorized" });
+    }
+
+    if (shift.status !== 'PENDING') {
+      return res.status(400).json({ message: "Shift has already been processed" });
+    }
+
+    // Update the shift status based on the action
+    const [updatedShift] = await db
+      .update(shifts)
+      .set({
+        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
+        responseAt: new Date(),
+        rejectionReason: action === 'REJECT' ? rejectionReason : null,
+      })
+      .where(eq(shifts.id, parseInt(id)))
+      .returning();
+
+    res.json(updatedShift);
+  } catch (error) {
+    console.error("Error processing shift response:", error);
+    res.status(500).json({ message: "Error processing shift response" });
   }
 };
 
@@ -1021,7 +1070,7 @@ export function registerRoutes(app: Express): Server {
             date: new Date(date),
             isFollowupNeeded,
             assignedTo,
-          })
+          })          })
           .where(eq(tasks.id, parseInt(id)))
           .returning();
 
@@ -1092,7 +1141,7 @@ export function registerRoutes(app: Express): Server {
   );
 
   // Get all admin users
-app.get(
+  app.get(
     "/api/admin/admins",
     requireAdmin,
     async (req: Request, res: Response) => {
@@ -1289,6 +1338,7 @@ app.get(
     },
   );
   
+
   app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
     try {
       const allBuildings = await db.select().from(buildings);
@@ -1299,11 +1349,13 @@ app.get(
     }
   });
   
+
   // Create building
   app.post("/api/admin/buildings", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { name, code, area } = req.body;
   
+
       // Check if building code already exists
       const [existingBuilding] = await db
         .select()
@@ -1311,6 +1363,7 @@ app.get(
         .where(eq(buildings.code, code))
         .limit(1);
   
+
       if (existingBuilding) {
         return res.status(400).json({
           message: "Building code already exists",
@@ -1318,6 +1371,7 @@ app.get(
         });
       }
   
+
       const [newBuilding] = await db
         .insert(buildings)
         .values({
@@ -1327,6 +1381,7 @@ app.get(
         })
         .returning();
   
+
       res.status(201).json(newBuilding);
     } catch (error) {
       console.error("Error creating building:", error);
@@ -1342,6 +1397,7 @@ app.get(
       const { id } = req.params;
       const { name, code, area } = req.body;
   
+
       // Check if building exists
       const [existingBuilding] = await db
         .select()
@@ -1349,6 +1405,7 @@ app.get(
         .where(eq(buildings.id, parseInt(id)))
         .limit(1);
   
+
       if (!existingBuilding) {
         return res.status(404).json({ 
           message: "Building not found",
@@ -1356,6 +1413,7 @@ app.get(
         });
       }
   
+
       // Check if code is being changed and if new code already exists
       if (code !== existingBuilding.code) {
         const [buildingWithCode] = await db
@@ -1364,6 +1422,7 @@ app.get(
           .where(eq(buildings.code, code))
           .limit(1);
   
+
         if (buildingWithCode) {
           return res.status(400).json({
             message: "Building code already exists",
@@ -1372,6 +1431,7 @@ app.get(
         }
       }
   
+
       // Update the building
       const [updatedBuilding] = await db
         .update(buildings)
@@ -1384,6 +1444,7 @@ app.get(
         .where(eq(buildings.id, parseInt(id)))
         .returning();
   
+
       res.json(updatedBuilding);
     } catch (error) {
       console.error("Error updating building:", error);
@@ -1394,11 +1455,13 @@ app.get(
     }
   });
   
+
   // Admin: Delete building
   app.delete("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
   
+
       // Check if building exists
       const [existingBuilding] = await db
         .select()
@@ -1406,6 +1469,7 @@ app.get(
         .where(eq(buildings.id, parseInt(id)))
         .limit(1);
   
+
       if (!existingBuilding) {
         return res.status(404).json({
           message: "Building not found",
@@ -1413,6 +1477,7 @@ app.get(
         });
       }
   
+
       // Check if building has any associated shifts
       const [shiftWithBuilding] = await db
         .select()
@@ -1420,6 +1485,7 @@ app.get(
         .where(eq(shifts.buildingId, parseInt(id)))
         .limit(1);
   
+
       if (shiftWithBuilding) {
         return res.status(400).json({
           message: "Cannot delete building",
@@ -1427,9 +1493,11 @@ app.get(
         });
       }
   
+
       // Delete the building
       await db.delete(buildings).where(eq(buildings.id, parseInt(id)));
   
+
       res.json({ message: "Building deleted successfully" });
     } catch (error) {
       console.error("Error deleting building:", error);
@@ -1552,6 +1620,37 @@ app.get(
         res.status(500).json({ message: "Error deleting agency" });
       }
     },
+  );
+
+  // Get all shifts with status filter
+  app.get("/api/shifts", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { status } = req.query;
+      let query = db.select().from(shifts);
+
+      // Filter by status if provided
+      if (status) {
+        query = query.where(eq(shifts.status, status as string));
+      }
+
+      // For non-admin users, only show their own shifts
+      if (!req.user?.isAdmin) {
+        query = query.where(eq(shifts.inspectorId, req.user!.id));
+      }
+
+      const result = await query.orderBy(shifts.createdAt);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching shifts:", error);
+      res.status(500).json({ message: "Error fetching shifts" });
+    }
+  });
+
+  // Accept or reject a shift
+  app.post(
+    "/api/shifts/:id/respond",
+    requireAuth,
+    handleShiftResponse
   );
 
   const server = createServer(app);

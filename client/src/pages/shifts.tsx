@@ -13,12 +13,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import ShiftForm from "@/components/shift-form";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/navbar";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 type ShiftWithRelations = {
   id: number;
@@ -28,12 +38,19 @@ type ShiftWithRelations = {
   buildingId: number;
   week: string;
   backupId: number | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  responseAt: string | null;
+  rejectionReason: string | null;
   inspector: { id: number; fullName: string; username: string };
   role: { id: number; name: string };
   shiftType: { id: number; name: string; startTime: string; endTime: string };
   backup?: { id: number; fullName: string; username: string } | null;
   building: { id: number; name: string; code: string; area: string };
 };
+
+const rejectShiftSchema = z.object({
+  rejectionReason: z.string().min(1, "Please provide a reason for rejection"),
+});
 
 export default function Shifts() {
   const { user } = useUser();
@@ -42,8 +59,16 @@ export default function Shifts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(null);
   const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
+  const [shiftToReject, setShiftToReject] = useState<ShiftWithRelations | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+
+  const form = useForm<{ rejectionReason: string }>({
+    resolver: zodResolver(rejectShiftSchema),
+    defaultValues: {
+      rejectionReason: "",
+    },
+  });
 
   const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
     queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
@@ -87,9 +112,51 @@ export default function Shifts() {
     },
   });
 
+  const respondToShift = useMutation({
+    mutationFn: async ({ id, action, rejectionReason }: { id: number; action: 'ACCEPT' | 'REJECT'; rejectionReason?: string }) => {
+      const res = await fetch(`/api/shifts/${id}/respond`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, rejectionReason }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Response submitted successfully" });
+      setShiftToReject(null);
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
   const handleEdit = (shift: ShiftWithRelations) => {
     setSelectedShift(shift);
     setIsDialogOpen(true);
+  };
+
+  const handleAccept = (shift: ShiftWithRelations) => {
+    respondToShift.mutate({ id: shift.id, action: 'ACCEPT' });
+  };
+
+  const handleReject = async (data: { rejectionReason: string }) => {
+    if (!shiftToReject) return;
+    await respondToShift.mutateAsync({
+      id: shiftToReject.id,
+      action: 'REJECT',
+      rejectionReason: data.rejectionReason,
+    });
   };
 
   const columns = [
@@ -130,28 +197,56 @@ export default function Shifts() {
       accessorKey: "backup",
       cell: (value: { fullName: string } | null) => value?.fullName || "-",
     },
-    ...(user?.isAdmin ? [{
+    {
+      header: "Status",
+      accessorKey: "status",
+      cell: (value: string) => value || "PENDING",
+    },
+    {
       header: "Actions",
       accessorKey: "id",
       cell: (_: any, row: ShiftWithRelations) => (
         <div className="space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(row)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShiftToDelete(row)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          {(!user?.isAdmin && row.status === 'PENDING') ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleAccept(row)}
+                disabled={respondToShift.isPending}
+              >
+                <Check className="h-4 w-4 text-green-600" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShiftToReject(row)}
+                disabled={respondToShift.isPending}
+              >
+                <X className="h-4 w-4 text-red-600" />
+              </Button>
+            </>
+          ) : user?.isAdmin && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleEdit(row)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShiftToDelete(row)}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </>
+          )}
         </div>
       ),
-    }] : []),
+    },
   ];
 
   return (
@@ -234,6 +329,51 @@ export default function Shifts() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={!!shiftToReject} onOpenChange={(open) => !open && setShiftToReject(null)}>
+          <DialogContent>
+            <DialogTitle>Reject Shift</DialogTitle>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleReject)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="rejectionReason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason for Rejection</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Please provide a reason for rejecting this shift" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShiftToReject(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={respondToShift.isPending}
+                  >
+                    {respondToShift.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Navbar>
   );

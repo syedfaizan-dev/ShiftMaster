@@ -51,6 +51,9 @@ export const shifts = pgTable("shifts", {
   buildingId: integer("building_id").references(() => buildings.id).notNull(),
   week: text("week").notNull(),
   backupId: integer("backup_id").references(() => users.id),
+  status: text("status").default('PENDING').notNull(), 
+  responseAt: timestamp("response_at"), 
+  rejectionReason: text("rejection_reason"), 
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
 });
@@ -245,7 +248,6 @@ export type TaskWithRelations = Task & {
   taskType?: TaskType;
 };
 
-// Add agencies table
 export const agencies = pgTable("agencies", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -254,7 +256,6 @@ export const agencies = pgTable("agencies", {
   createdBy: integer("created_by").references(() => users.id),
 });
 
-// Add agency relations
 export const agencyRelations = relations(agencies, ({ one }) => ({
   creator: one(users, {
     fields: [agencies.createdBy],
@@ -262,14 +263,20 @@ export const agencyRelations = relations(agencies, ({ one }) => ({
   }),
 }));
 
-// Add agency schemas
 export const insertAgencySchema = createInsertSchema(agencies);
 export const selectAgencySchema = createSelectSchema(agencies);
 
-// Add agency types
 export type Agency = typeof agencies.$inferSelect;
 export type InsertAgency = typeof agencies.$inferInsert;
 
 export type AgencyWithRelations = Agency & {
   creator?: User;
+};
+
+export type ShiftWithRelations = Shift & {
+  inspector?: User;
+  backup?: User | null;
+  role?: Role;
+  shiftType?: typeof shiftTypes.$inferSelect;
+  building?: Building;
 };
