@@ -11,6 +11,7 @@ import {
   tasks,
   taskTypes,
   buildings,
+  agencies, // Added import for agencies table
 } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import {
@@ -214,7 +215,7 @@ export function registerRoutes(app: Express): Server {
 
         // Check for required fields
         if (!username || !fullName || !password) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             message: "Missing required fields",
             error: "Username, full name, and password are required"
           });
@@ -228,7 +229,7 @@ export function registerRoutes(app: Express): Server {
           .limit(1);
 
         if (existingUser) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             message: "Username already exists",
             error: "This email is already registered. Please use a different email."
           });
@@ -254,7 +255,7 @@ export function registerRoutes(app: Express): Server {
         res.status(201).json(userWithoutPassword);
       } catch (error) {
         console.error("Error creating user:", error);
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Error creating user",
           error: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -1049,7 +1050,7 @@ export function registerRoutes(app: Express): Server {
         await db.delete(tasks).where(eq(tasks.id, parseInt(id)));
 
         res.json({ message: "Task deleted successfully" });
-      } catch(error) {
+      } catch (error) {
         console.error("Error deleting task:", error);
         res.status(500).json({ message: "Error deleting task" });
       }
@@ -1122,7 +1123,7 @@ export function registerRoutes(app: Express): Server {
             id: users.id,
             fullName: users.fullName,
             username: users.username,
-                    })
+          })
           .from(users)
           .innerJoin(shifts, eq(shifts.inspectorId, users.id))
           .where(
@@ -1335,21 +1336,21 @@ export function registerRoutes(app: Express): Server {
     try {
       const { id } = req.params;
       const { name, code, area } = req.body;
-
+  
       // Check if building exists
       const [existingBuilding] = await db
         .select()
         .from(buildings)
         .where(eq(buildings.id, parseInt(id)))
         .limit(1);
-
+  
       if (!existingBuilding) {
         return res.status(404).json({ 
           message: "Building not found",
           error: "The requested building does not exist"
         });
       }
-
+  
       // Check if code is being changed and if new code already exists
       if (code !== existingBuilding.code) {
         const [buildingWithCode] = await db
@@ -1357,7 +1358,7 @@ export function registerRoutes(app: Express): Server {
           .from(buildings)
           .where(eq(buildings.code, code))
           .limit(1);
-
+  
         if (buildingWithCode) {
           return res.status(400).json({
             message: "Building code already exists",
@@ -1365,7 +1366,7 @@ export function registerRoutes(app: Express): Server {
           });
         }
       }
-
+  
       // Update the building
       const [updatedBuilding] = await db
         .update(buildings)
@@ -1377,7 +1378,7 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(buildings.id, parseInt(id)))
         .returning();
-
+  
       res.json(updatedBuilding);
     } catch (error) {
       console.error("Error updating building:", error);
@@ -1387,43 +1388,43 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-
+  
   // Admin: Delete building
   app.delete("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-
+  
       // Check if building exists
       const [existingBuilding] = await db
         .select()
         .from(buildings)
         .where(eq(buildings.id, parseInt(id)))
         .limit(1);
-
+  
       if (!existingBuilding) {
         return res.status(404).json({
           message: "Building not found",
           error: "The requested building does not exist"
         });
       }
-
+  
       // Check if building has any associated shifts
       const [shiftWithBuilding] = await db
         .select()
         .from(shifts)
         .where(eq(shifts.buildingId, parseInt(id)))
         .limit(1);
-
+  
       if (shiftWithBuilding) {
         return res.status(400).json({
           message: "Cannot delete building",
           error: "This building has associated shifts. Please reassign or delete the shifts first."
         });
       }
-
+  
       // Delete the building
       await db.delete(buildings).where(eq(buildings.id, parseInt(id)));
-
+  
       res.json({ message: "Building deleted successfully" });
     } catch (error) {
       console.error("Error deleting building:", error);
@@ -1433,6 +1434,121 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  // Add agency routes within the registerRoutes function
+  // Admin: Get all agencies
+  app.get(
+    "/api/admin/agencies",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const allAgencies = await db.select().from(agencies);
+        res.json(allAgencies);
+      } catch (error) {
+        console.error("Error fetching agencies:", error);
+        res.status(500).json({ message: "Error fetching agencies" });
+      }
+    },
+  );
+
+  // Admin: Create agency
+  app.post(
+    "/api/admin/agencies",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { name, description } = req.body;
+
+        const [existingAgency] = await db
+          .select()
+          .from(agencies)
+          .where(eq(agencies.name, name))
+          .limit(1);
+
+        if (existingAgency) {
+          return res.status(400).json({ message: "Agency with this name already exists" });
+        }
+
+        const [newAgency] = await db
+          .insert(agencies)
+          .values({
+            name,
+            description,
+            createdBy: req.user!.id,
+          })
+          .returning();
+
+        res.json(newAgency);
+      } catch (error) {
+        console.error("Error creating agency:", error);
+        res.status(500).json({ message: "Error creating agency" });
+      }
+    },
+  );
+
+  // Admin: Update agency
+  app.put(
+    "/api/admin/agencies/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { name, description } = req.body;
+
+        const [existingAgency] = await db
+          .select()
+          .from(agencies)
+          .where(eq(agencies.id, parseInt(id)))
+          .limit(1);
+
+        if (!existingAgency) {
+          return res.status(404).json({ message: "Agency not found" });
+        }
+
+        const [updatedAgency] = await db
+          .update(agencies)
+          .set({
+            name,
+            description,
+          })
+          .where(eq(agencies.id, parseInt(id)))
+          .returning();
+
+        res.json(updatedAgency);
+      } catch (error) {
+        console.error("Error updating agency:", error);
+        res.status(500).json({ message: "Error updating agency" });
+      }
+    },
+  );
+
+  // Admin: Delete agency
+  app.delete(
+    "/api/admin/agencies/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+
+        const [existingAgency] = await db
+          .select()
+          .from(agencies)
+          .where(eq(agencies.id, parseInt(id)))
+          .limit(1);
+
+        if (!existingAgency) {
+          return res.status(404).json({ message: "Agency not found" });
+        }
+
+        await db.delete(agencies).where(eq(agencies.id, parseInt(id)));
+
+        res.json({ message: "Agency deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting agency:", error);
+        res.status(500).json({ message: "Error deleting agency" });
+      }
+    },
+  );
+
   const server = createServer(app);
   return server;
 }

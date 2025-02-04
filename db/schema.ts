@@ -116,7 +116,7 @@ export const shiftsRelations = relations(shifts, ({ one }) => ({
     fields: [shifts.shiftTypeId],
     references: [shiftTypes.id],
   }),
-    building: one(buildings, {
+  building: one(buildings, {
     fields: [shifts.buildingId],
     references: [buildings.id],
   }),
@@ -243,4 +243,33 @@ export type TaskWithRelations = Task & {
   assignedEmployee?: User;
   shiftType?: typeof shiftTypes.$inferSelect;
   taskType?: TaskType;
+};
+
+// Add agencies table
+export const agencies = pgTable("agencies", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+// Add agency relations
+export const agencyRelations = relations(agencies, ({ one }) => ({
+  creator: one(users, {
+    fields: [agencies.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// Add agency schemas
+export const insertAgencySchema = createInsertSchema(agencies);
+export const selectAgencySchema = createSelectSchema(agencies);
+
+// Add agency types
+export type Agency = typeof agencies.$inferSelect;
+export type InsertAgency = typeof agencies.$inferInsert;
+
+export type AgencyWithRelations = Agency & {
+  creator?: User;
 };
