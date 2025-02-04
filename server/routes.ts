@@ -1088,6 +1088,27 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
+  app.get("/api/admin-users", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const adminUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+        })
+        .from(users)
+        .where(eq(users.isAdmin, true));
+
+      res.json(adminUsers);
+    } catch (error) {
+      console.error("Error fetching admin users:", error);
+      res.status(500).json({ 
+        message: "Error fetching admin users",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
     try {
       const buildingList = await db
