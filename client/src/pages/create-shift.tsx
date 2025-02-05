@@ -2,8 +2,21 @@ import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +32,7 @@ const shiftSchema = z.object({
   inspectorId: z.string().min(1, "Inspector is required"),
   roleId: z.string().min(1, "Role is required"),
   shiftTypeId: z.string().min(1, "Shift type is required"),
+  buildingId: z.string().min(1, "Building is required"),
   week: z.string().min(1, "Week is required"),
   backupId: z.string(),
 });
@@ -35,12 +49,20 @@ type Inspector = {
   };
 };
 
+type Building = {
+  id: number;
+  name: string;
+  code: string;
+}
+
 export default function CreateShift() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(null);
+  const [selectedShiftType, setSelectedShiftType] = useState<string | null>(
+    null,
+  );
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
 
   const form = useForm<ShiftFormData>({
@@ -49,6 +71,7 @@ export default function CreateShift() {
       inspectorId: "",
       roleId: "",
       shiftTypeId: "",
+      buildingId: "",
       week: "",
       backupId: "none",
     },
@@ -63,11 +86,16 @@ export default function CreateShift() {
   });
 
   // Query to get inspectors and their availability based on both shift type and week
-  const { data: inspectorsWithAvailability = [], isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
+  const {
+    data: inspectorsWithAvailability = [],
+    isLoading: isLoadingInspectors,
+  } = useQuery<Inspector[]>({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType, selectedWeek],
     queryFn: async () => {
       if (!selectedShiftType || !selectedWeek) return [];
-      const response = await fetch(`/api/admin/shifts/inspectors?shiftTypeId=${selectedShiftType}&week=${selectedWeek}`);
+      const response = await fetch(
+        `/api/admin/shifts/inspectors?shiftTypeId=${selectedShiftType}&week=${selectedWeek}`,
+      );
       if (!response.ok) {
         const errorText = await response.text();
         try {
@@ -82,6 +110,10 @@ export default function CreateShift() {
     enabled: !!(selectedShiftType && selectedWeek),
   });
 
+  const { data: buildings } = useQuery<Building[]>({
+    queryKey: ["/api/admin/buildings"],
+  });
+
   const createShift = useMutation({
     mutationFn: async (data: ShiftFormData) => {
       const res = await fetch("/api/admin/shifts", {
@@ -92,6 +124,7 @@ export default function CreateShift() {
           inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           shiftTypeId: parseInt(data.shiftTypeId),
+          buildingId: parseInt(data.buildingId),
           backupId: data.backupId === "none" ? null : parseInt(data.backupId),
         }),
         credentials: "include",
@@ -130,17 +163,14 @@ export default function CreateShift() {
 
   // Get available inspectors (those who can be selected)
   const availableInspectors = inspectorsWithAvailability.filter(
-    inspector => inspector.availability?.isAvailable
+    (inspector) => inspector.availability?.isAvailable,
   );
 
   return (
     <Navbar>
       <div className="p-6">
         <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/shifts")}
-          >
+          <Button variant="outline" onClick={() => setLocation("/shifts")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Shifts
           </Button>
@@ -152,7 +182,9 @@ export default function CreateShift() {
             <CardContent className="pt-6">
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit((data) => createShift.mutate(data))}
+                  onSubmit={form.handleSubmit((data) =>
+                    createShift.mutate(data),
+                  )}
                   className="space-y-4"
                 >
                   <FormField
@@ -178,7 +210,10 @@ export default function CreateShift() {
                           </FormControl>
                           <SelectContent>
                             {shiftTypes?.map((type) => (
-                              <SelectItem key={type.id} value={type.id.toString()}>
+                              <SelectItem
+                                key={type.id}
+                                value={type.id.toString()}
+                              >
                                 {type.name}
                               </SelectItem>
                             ))}
@@ -213,10 +248,7 @@ export default function CreateShift() {
                           <SelectContent>
                             {Array.from({ length: 52 }, (_, i) => i + 1).map(
                               (week) => (
-                                <SelectItem
-                                  key={week}
-                                  value={week.toString()}
-                                >
+                                <SelectItem key={week} value={week.toString()}>
                                   Week {week}
                                 </SelectItem>
                               ),
@@ -245,7 +277,10 @@ export default function CreateShift() {
                           </FormControl>
                           <SelectContent>
                             {roles?.map((role) => (
-                              <SelectItem key={role.id} value={role.id.toString()}>
+                              <SelectItem
+                                key={role.id}
+                                value={role.id.toString()}
+                              >
                                 {role.name}
                               </SelectItem>
                             ))}
@@ -255,7 +290,33 @@ export default function CreateShift() {
                       </FormItem>
                     )}
                   />
-
+                  <FormField
+                    control={form.control}
+                    name="buildingId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Building</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select building" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {buildings?.map((building) => (
+                              <SelectItem
+                                key={building.id}
+                                value={building.id.toString()}
+                              >
+                                {building.name} ({building.code})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="inspectorId"
@@ -265,7 +326,11 @@ export default function CreateShift() {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={!selectedShiftType || !selectedWeek || isLoadingInspectors}
+                          disabled={
+                            !selectedShiftType ||
+                            !selectedWeek ||
+                            isLoadingInspectors
+                          }
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -288,7 +353,6 @@ export default function CreateShift() {
                               >
                                 <div className="flex items-center justify-between w-full">
                                   <span>{inspector.fullName}</span>
-                                  <Badge variant="success">Available</Badge>
                                 </div>
                               </SelectItem>
                             ))}
@@ -308,7 +372,11 @@ export default function CreateShift() {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={!selectedShiftType || !selectedWeek || isLoadingInspectors}
+                          disabled={
+                            !selectedShiftType ||
+                            !selectedWeek ||
+                            isLoadingInspectors
+                          }
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -321,7 +389,10 @@ export default function CreateShift() {
                               <SelectItem
                                 key={inspector.id}
                                 value={inspector.id.toString()}
-                                disabled={inspector.id.toString() === form.getValues("inspectorId")}
+                                disabled={
+                                  inspector.id.toString() ===
+                                  form.getValues("inspectorId")
+                                }
                               >
                                 {inspector.fullName}
                               </SelectItem>
@@ -334,10 +405,7 @@ export default function CreateShift() {
                   />
 
                   <div className="flex justify-end pt-4">
-                    <Button
-                      type="submit"
-                      disabled={createShift.isPending}
-                    >
+                    <Button type="submit" disabled={createShift.isPending}>
                       {createShift.isPending && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
@@ -356,7 +424,8 @@ export default function CreateShift() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Incomplete Selection</AlertTitle>
                 <AlertDescription>
-                  Select both a shift type and week to see inspector availability.
+                  Select both a shift type and week to see inspector
+                  availability.
                 </AlertDescription>
               </Alert>
             ) : isLoadingInspectors ? (
@@ -364,14 +433,16 @@ export default function CreateShift() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3">
                 {inspectorsWithAvailability?.map((inspector) => (
-                  <Card key={inspector.id} className="h-[120px]">
-                    <CardContent className="p-4">
+                  <Card key={inspector.id}>
+                    <CardContent className="py-2 px-3">
                       <div className="flex flex-col h-full justify-between">
                         <div>
-                          <h3 className="font-semibold truncate">{inspector.fullName}</h3>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <h3 className="text-sm font-semibold truncate">
+                            {inspector.fullName}
+                          </h3>
+                          <p className="text-xs text-muted-foreground truncate">
                             {inspector.username}
                           </p>
                         </div>
@@ -379,13 +450,16 @@ export default function CreateShift() {
                           {inspector.availability?.isAvailable ? (
                             <>
                               <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                              <span className="text-sm text-green-500 font-medium">Available</span>
+                              <span className="text-sm text-green-500 font-medium">
+                                Available
+                              </span>
                             </>
                           ) : (
                             <>
                               <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
                               <span className="text-sm text-red-500 font-medium truncate">
-                                {inspector.availability?.reason || "Unavailable"}
+                                {inspector.availability?.reason ||
+                                  "Unavailable"}
                               </span>
                             </>
                           )}
