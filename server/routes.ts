@@ -1,6 +1,6 @@
-import { type Express, Request, Response, NextFunction } from "express";
+import { type Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./auth";
+import { setupAuth, requireAuth, requireAdmin } from "./auth";
 import { db } from "@db";
 import {
   shifts,
@@ -22,7 +22,6 @@ import {
   getShifts,
   createShift,
   handleShiftResponse,
-  updateShift,
   getInspectorsByShiftType,
 } from "./routes/shifts";
 import { getBuildingsWithShifts } from "./routes/buildingRoutes";
@@ -77,14 +76,6 @@ const updateShift = async (req: Request, res: Response) => {
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Middleware to check if user is authenticated
-  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    next();
-  };
-
   // Get basic user info for authenticated users
   app.get("/api/users", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -117,17 +108,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Error fetching roles" });
     }
   });
-
-  // Middleware to check if user is authenticated and is admin
-  const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    if (!req.user?.isAdmin) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-    next();
-  };
 
   // Notification routes
   app.get("/api/notifications", requireAuth, getNotifications);
@@ -864,7 +844,7 @@ export function registerRoutes(app: Express): Server {
         const result = await db.query.tasks.findMany({
           with: {
             inspector: true,
-            assignedUtility: true, 
+            assignedUtility: true,
             shiftType: true,
             taskType: true,
           },

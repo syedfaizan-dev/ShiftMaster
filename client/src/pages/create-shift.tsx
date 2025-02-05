@@ -41,6 +41,7 @@ export default function CreateShift() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [selectedShiftType, setSelectedShiftType] = useState<string | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
 
   const form = useForm<ShiftFormData>({
     resolver: zodResolver(shiftSchema),
@@ -61,10 +62,10 @@ export default function CreateShift() {
     queryKey: ["/api/shift-types"],
   });
 
-  // Query to get inspectors and their availability for the selected shift type
+  // Query to get inspectors and their availability based on both shift type and week
   const { data: inspectorsWithAvailability = [], isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
-    queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
-    enabled: !!selectedShiftType,
+    queryKey: ["/api/admin/shifts/inspectors", selectedShiftType, selectedWeek],
+    enabled: !!(selectedShiftType && selectedWeek),
   });
 
   const createShift = useMutation({
@@ -113,6 +114,11 @@ export default function CreateShift() {
     );
   }
 
+  // Get available inspectors (those who can be selected)
+  const availableInspectors = inspectorsWithAvailability.filter(
+    inspector => inspector.availability?.isAvailable
+  );
+
   return (
     <Navbar>
       <div className="p-6">
@@ -145,6 +151,9 @@ export default function CreateShift() {
                           onValueChange={(value) => {
                             field.onChange(value);
                             setSelectedShiftType(value);
+                            // Reset inspector selection when shift type changes
+                            form.setValue("inspectorId", "");
+                            form.setValue("backupId", "none");
                           }}
                           value={field.value}
                         >
@@ -159,6 +168,45 @@ export default function CreateShift() {
                                 {type.name}
                               </SelectItem>
                             ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="week"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Week</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            setSelectedWeek(value);
+                            // Reset inspector selection when week changes
+                            form.setValue("inspectorId", "");
+                            form.setValue("backupId", "none");
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select week" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Array.from({ length: 52 }, (_, i) => i + 1).map(
+                              (week) => (
+                                <SelectItem
+                                  key={week}
+                                  value={week.toString()}
+                                >
+                                  Week {week}
+                                </SelectItem>
+                              ),
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -203,7 +251,7 @@ export default function CreateShift() {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={!selectedShiftType || isLoadingInspectors}
+                          disabled={!selectedShiftType || !selectedWeek || isLoadingInspectors}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -211,62 +259,25 @@ export default function CreateShift() {
                                 placeholder={
                                   isLoadingInspectors
                                     ? "Loading inspectors..."
-                                    : !selectedShiftType
-                                      ? "Select a shift type first"
+                                    : !selectedShiftType || !selectedWeek
+                                      ? "Select shift type and week first"
                                       : "Select inspector"
                                 }
                               />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {inspectorsWithAvailability?.map((inspector) => (
+                            {availableInspectors.map((inspector) => (
                               <SelectItem
                                 key={inspector.id}
                                 value={inspector.id.toString()}
                               >
                                 <div className="flex items-center justify-between w-full">
                                   <span>{inspector.fullName}</span>
-                                  {inspector.availability && (
-                                    <Badge variant={inspector.availability.isAvailable ? "success" : "destructive"}>
-                                      {inspector.availability.isAvailable ? "Available" : "Unavailable"}
-                                    </Badge>
-                                  )}
+                                  <Badge variant="success">Available</Badge>
                                 </div>
                               </SelectItem>
                             ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="week"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Week</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select week" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Array.from({ length: 52 }, (_, i) => i + 1).map(
-                              (week) => (
-                                <SelectItem
-                                  key={week}
-                                  value={week.toString()}
-                                >
-                                  Week {week}
-                                </SelectItem>
-                              ),
-                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -283,6 +294,7 @@ export default function CreateShift() {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
+                          disabled={!selectedShiftType || !selectedWeek || isLoadingInspectors}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -291,7 +303,7 @@ export default function CreateShift() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="none">None</SelectItem>
-                            {inspectorsWithAvailability?.map((inspector) => (
+                            {availableInspectors.map((inspector) => (
                               <SelectItem
                                 key={inspector.id}
                                 value={inspector.id.toString()}
@@ -325,12 +337,12 @@ export default function CreateShift() {
 
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Inspector Availability</h2>
-            {!selectedShiftType ? (
+            {!selectedShiftType || !selectedWeek ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>No Shift Type Selected</AlertTitle>
+                <AlertTitle>Incomplete Selection</AlertTitle>
                 <AlertDescription>
-                  Select a shift type to see inspector availability.
+                  Select both a shift type and week to see inspector availability.
                 </AlertDescription>
               </Alert>
             ) : isLoadingInspectors ? (
