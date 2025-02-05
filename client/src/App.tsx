@@ -17,9 +17,9 @@ import Users from "@/pages/users";
 import TaskTypes from "@/pages/task-types";
 import Managers from "@/pages/managers";
 import InspectorsPage from "./pages/inspectors";
-// Add Buildings import
+// Update import name
 import Buildings from "@/pages/buildings";
-import Agencies from "./pages/agencies";
+import Utilities from "@/pages/utilities";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -53,7 +53,7 @@ function Router() {
           <Route path="/shift-types" component={ShiftTypes} />
           <Route path="/tasks" component={Tasks} />
           <Route path="/task-types" component={TaskTypes} />
-          <Route path="/agencies" component={Agencies} />
+          <Route path="/utilities" component={Utilities} />
         </>
       )}
       <Route path="/requests" component={Requests} />

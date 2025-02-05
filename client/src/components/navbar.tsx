@@ -105,13 +105,13 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                     <span>Buildings</span>
                   </button>
                 </Link>
-                <Link href="/agencies">
+                <Link href="/utilities">
                   <button
-                    className={getNavLinkClass("/agencies")}
+                    className={getNavLinkClass("/utilities")}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Building className="w-5 h-5" />
-                    <span>Agencies</span>
+                    <span>Utilities</span>
                   </button>
                 </Link>
                 <Link href="/users">
