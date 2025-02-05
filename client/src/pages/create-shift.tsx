@@ -65,6 +65,20 @@ export default function CreateShift() {
   // Query to get inspectors and their availability based on both shift type and week
   const { data: inspectorsWithAvailability = [], isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
     queryKey: ["/api/admin/shifts/inspectors", selectedShiftType, selectedWeek],
+    queryFn: async () => {
+      if (!selectedShiftType || !selectedWeek) return [];
+      const response = await fetch(`/api/admin/shifts/inspectors?shiftTypeId=${selectedShiftType}&week=${selectedWeek}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || "Failed to fetch inspectors");
+        } catch (e) {
+          throw new Error(errorText || "Failed to fetch inspectors");
+        }
+      }
+      return response.json();
+    },
     enabled: !!(selectedShiftType && selectedWeek),
   });
 
