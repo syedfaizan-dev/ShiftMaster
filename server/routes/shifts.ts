@@ -33,12 +33,14 @@ export async function getShifts(req: Request, res: Response) {
           startTime: shiftTypes.startTime,
           endTime: shiftTypes.endTime,
         },
-        building: buildings ? {
-          id: buildings.id,
-          name: buildings.name,
-          code: buildings.code,
-          area: buildings.area,
-        } : null,
+        building: buildings
+          ? {
+              id: buildings.id,
+              name: buildings.name,
+              code: buildings.code,
+              area: buildings.area,
+            }
+          : null,
       })
       .from(shifts)
       .leftJoin(users, eq(shifts.inspectorId, users.id))
@@ -69,12 +71,12 @@ export async function getShifts(req: Request, res: Response) {
           return { ...shift, backup };
         }
         return { ...shift, backup: null };
-      })
+      }),
     );
 
     res.json(shiftsWithBackup);
   } catch (error) {
-    console.error('Error fetching shifts:', error);
+    console.error("Error fetching shifts:", error);
     res.status(500).send((error as Error).message);
   }
 }
@@ -85,7 +87,8 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
-    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
+    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } =
+      req.body;
 
     // Validate required fields
     if (!inspectorId || !roleId || !shiftTypeId || !buildingId || !week) {
@@ -113,7 +116,7 @@ export async function createShift(req: Request, res: Response) {
         buildingId,
         week,
         backupId,
-        status: 'PENDING',
+        status: "PENDING",
         createdBy: req.user.id,
       })
       .returning();
@@ -153,7 +156,7 @@ export async function createShift(req: Request, res: Response) {
 
     res.json(shift);
   } catch (error) {
-    console.error('Error creating shift:', error);
+    console.error("Error creating shift:", error);
     res.status(500).json({ message: "Error creating shift" });
   }
 }
@@ -163,8 +166,10 @@ export async function handleShiftResponse(req: Request, res: Response) {
     const { id } = req.params;
     const { action, rejectionReason } = req.body;
 
-    if (!['ACCEPT', 'REJECT'].includes(action)) {
-      return res.status(400).json({ message: "Invalid action. Must be ACCEPT or REJECT" });
+    if (!["ACCEPT", "REJECT"].includes(action)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid action. Must be ACCEPT or REJECT" });
     }
 
     // Get the shift and verify it exists and belongs to the current inspector
@@ -172,22 +177,23 @@ export async function handleShiftResponse(req: Request, res: Response) {
       .select()
       .from(shifts)
       .where(
-        and(
-          eq(shifts.id, parseInt(id)),
-          eq(shifts.inspectorId, req.user!.id)
-        )
+        and(eq(shifts.id, parseInt(id)), eq(shifts.inspectorId, req.user!.id)),
       )
       .limit(1);
 
     if (!shift) {
-      return res.status(404).json({ message: "Shift not found or you're not authorized" });
+      return res
+        .status(404)
+        .json({ message: "Shift not found or you're not authorized" });
     }
 
-    if (shift.status !== 'PENDING') {
-      return res.status(400).json({ message: "Shift has already been processed" });
+    if (shift.status !== "PENDING") {
+      return res
+        .status(400)
+        .json({ message: "Shift has already been processed" });
     }
 
-    if (action === 'REJECT' && !rejectionReason) {
+    if (action === "REJECT" && !rejectionReason) {
       return res.status(400).json({ message: "Rejection reason is required" });
     }
 
@@ -195,9 +201,9 @@ export async function handleShiftResponse(req: Request, res: Response) {
     const [updatedShift] = await db
       .update(shifts)
       .set({
-        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
+        status: action === "ACCEPT" ? "ACCEPTED" : "REJECTED",
         responseAt: new Date(),
-        rejectionReason: action === 'REJECT' ? rejectionReason : null,
+        rejectionReason: action === "REJECT" ? rejectionReason : null,
       })
       .where(eq(shifts.id, parseInt(id)))
       .returning();
@@ -216,7 +222,8 @@ export async function updateShift(req: Request, res: Response) {
     }
 
     const { id } = req.params;
-    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
+    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } =
+      req.body;
 
     // Validate that the shift exists
     const [existingShift] = await db
@@ -267,18 +274,23 @@ export async function updateShift(req: Request, res: Response) {
 
     res.json(updatedShift);
   } catch (error) {
-    console.error('Error updating shift:', error);
+    console.error("Error updating shift:", error);
     res.status(500).send((error as Error).message);
   }
 }
 
 export async function getInspectorsByShiftType(req: Request, res: Response) {
   try {
-    const shiftTypeId = req.query.shiftTypeId ? parseInt(req.query.shiftTypeId as string) : null;
+    const shiftTypeId = req.query.shiftTypeId
+      ? parseInt(req.query.shiftTypeId as string)
+      : null;
     const week = req.query.week ? parseInt(req.query.week as string) : null;
-
+    console.log("shiftTypeId:", shiftTypeId);
+    console.log("week:", week);
     if (!shiftTypeId || isNaN(shiftTypeId)) {
-      return res.status(400).json({ message: "Valid shift type ID is required" });
+      return res
+        .status(400)
+        .json({ message: "Valid shift type ID is required" });
     }
 
     // First verify that the shift type exists
@@ -289,7 +301,9 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
       .limit(1);
 
     if (!shiftType) {
-      return res.status(400).json({ message: "Invalid shift type ID. Shift type not found." });
+      return res
+        .status(400)
+        .json({ message: "Invalid shift type ID. Shift type not found." });
     }
 
     // Get all active inspectors
@@ -300,12 +314,7 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
         fullName: users.fullName,
       })
       .from(users)
-      .where(
-        and(
-          eq(users.isInspector, true),
-          eq(users.isActive, true)
-        )
-      );
+      .where(and(eq(users.isInspector, true), eq(users.isActive, true)));
 
     if (inspectors.length === 0) {
       return res.json([]);
@@ -323,35 +332,37 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
           and(
             eq(shifts.shiftTypeId, shiftTypeId),
             eq(shifts.week, week),
-            eq(shifts.status, 'ACCEPTED')
-          )
+            eq(shifts.status, "ACCEPTED"),
+          ),
         );
 
       // Create a Set of inspector IDs who already have shifts
-      const conflictingInspectorIds = new Set(conflicts.map(c => c.inspectorId));
+      const conflictingInspectorIds = new Set(
+        conflicts.map((c) => c.inspectorId),
+      );
 
       // Map inspectors with their availability
-      const inspectorsWithAvailability = inspectors.map(inspector => ({
+      const inspectorsWithAvailability = inspectors.map((inspector) => ({
         ...inspector,
-        hasConflict: conflictingInspectorIds.has(inspector.id)
+        hasConflict: conflictingInspectorIds.has(inspector.id),
       }));
 
       return res.json(inspectorsWithAvailability);
     }
 
     // If no week specified, return all inspectors as available
-    const inspectorsWithoutConflicts = inspectors.map(inspector => ({
+    const inspectorsWithoutConflicts = inspectors.map((inspector) => ({
       ...inspector,
-      hasConflict: false
+      hasConflict: false,
     }));
 
     return res.json(inspectorsWithoutConflicts);
   } catch (error) {
     console.error("Error fetching inspectors by shift type:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Error fetching inspectors",
       error: error instanceof Error ? error.message : String(error),
-      details: error instanceof Error ? error.stack : undefined
+      details: error instanceof Error ? error.stack : undefined,
     });
   }
 }

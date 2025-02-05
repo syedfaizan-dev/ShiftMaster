@@ -59,9 +59,25 @@ export default function CreateShift() {
     queryKey: ["/api/shift-types"],
   });
 
-  const { data: inspectorAvailability = [], isLoading: isLoadingAvailability } = useQuery<any[]>({
-    queryKey: ["/api/admin/shifts/inspectors/availability", form.watch("shiftTypeId"), form.watch("week")],
-    enabled: !!(form.watch("shiftTypeId") && form.watch("week")),
+  const shiftTypeId = form.watch("shiftTypeId");
+  const week = form.watch("week");
+
+  const { data: inspectorAvailability = [], isLoading: isLoadingAvailability } = useQuery({
+    queryKey: ["/api/admin/shifts/inspectors/availability", { shiftTypeId, week }],
+    queryFn: async () => {
+      if (!shiftTypeId || !week) return [];
+      const params = new URLSearchParams({
+        shiftTypeId,
+        week,
+      });
+      const response = await fetch(`/api/admin/shifts/inspectors/availability?${params}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch inspector availability");
+      }
+      return response.json();
+    },
+    enabled: Boolean(shiftTypeId && week),
   });
 
   const createShift = useMutation({
@@ -70,10 +86,10 @@ export default function CreateShift() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
           inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           shiftTypeId: parseInt(data.shiftTypeId),
+          week: parseInt(data.week),
           backupId: data.backupId ? parseInt(data.backupId) : null,
         }),
         credentials: "include",
