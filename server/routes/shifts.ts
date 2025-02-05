@@ -341,7 +341,7 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
       .where(
         and(
           eq(shifts.shiftTypeId, shiftTypeId),
-          eq(shifts.week, week.toString()),
+          eq(shifts.week, week),  
           eq(shifts.status, "ACCEPTED")
         )
       );
