@@ -864,7 +864,7 @@ export function registerRoutes(app: Express): Server {
         const result = await db.query.tasks.findMany({
           with: {
             inspector: true,
-            assignedUtility: true, // Changed from assignedAgency
+            assignedUtility: true, 
             shiftType: true,
             taskType: true,
           },
@@ -902,16 +902,16 @@ export function registerRoutes(app: Express): Server {
         } = req.body;
 
         // Verify that the assigned utility exists
-        const [utility] = await db // Changed from agency
+        const [utility] = await db
           .select()
-          .from(utilities) // Changed from agencies
-          .where(eq(utilities.id, assignedTo)) // Changed from agencies
+          .from(utilities)
+          .where(eq(utilities.id, assignedTo))
           .limit(1);
 
         if (!utility) {
           return res
             .status(400)
-            .json({ message: "Invalid utility assignment." }); // Changed from agency
+            .json({ message: "Invalid utility assignment." });
         }
 
         // Verify that the task type exists
@@ -976,36 +976,74 @@ export function registerRoutes(app: Express): Server {
         }
 
         // Verify that the assigned utility exists
-        const [utility] = await db // Changed from agency
+        const [utility] = await db
           .select()
-          .from(utilities) // Changed from agencies
-          .where(eq(utilities.id, assignedTo)) // Changed from agencies
+          .from(utilities)
+          .where(eq(utilities.id, parseInt(assignedTo)))
           .limit(1);
 
         if (!utility) {
-          return res
-            .status(400)
-            .json({ message: "Invalid utility assignment." }); // Changed from agency
+          return res.status(400).json({
+            message: "Invalid utility assignment. The selected utility does not exist."
+          });
         }
 
+        // Verify that the inspector exists
+        const [inspector] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, parseInt(inspectorId)))
+          .limit(1);
+
+        if (!inspector) {
+          return res.status(400).json({ message: "Invalid inspector assignment" });
+        }
+
+        // Verify that the task type exists
+        const [taskType] = await db
+          .select()
+          .from(taskTypes)
+          .where(eq(taskTypes.id, parseInt(taskTypeId)))
+          .limit(1);
+
+        if (!taskType) {
+          return res.status(400).json({ message: "Invalid task type" });
+        }
+
+        // Update the task with all the verified data
         const [updatedTask] = await db
           .update(tasks)
           .set({
-            inspectorId,
-            shiftTypeId,
-            taskTypeId,
+            inspectorId: parseInt(inspectorId),
+            shiftTypeId: parseInt(shiftTypeId),
+            taskTypeId: parseInt(taskTypeId),
             status,
             date: new Date(date),
             isFollowupNeeded,
-            assignedTo,
+            assignedTo: parseInt(assignedTo),
+            updatedAt: new Date(),
           })
           .where(eq(tasks.id, parseInt(id)))
           .returning();
 
-        res.json(updatedTask);
+        // Get the full task details with relations for the response
+        const taskWithRelations = await db.query.tasks.findFirst({
+          where: eq(tasks.id, updatedTask.id),
+          with: {
+            inspector: true,
+            assignedUtility: true,
+            shiftType: true,
+            taskType: true,
+          },
+        });
+
+        res.json(taskWithRelations);
       } catch (error) {
         console.error("Error updating task:", error);
-        res.status(500).json({ message: "Error updating task" });
+        res.status(500).json({
+          message: "Error updating task",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     },
   );
@@ -1339,7 +1377,7 @@ export function registerRoutes(app: Express): Server {
         .from(buildings)
         .leftJoin(users, eq(buildings.supervisorId, users.id));
 
-      console.log("Retrieved buildings:", buildingsData); // Add logging
+      console.log("Retrieved buildings:", buildingsData); 
       res.json(buildingsData);
     } catch (error) {
       console.error("Error fetching buildings:", error);

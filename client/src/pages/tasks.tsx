@@ -64,7 +64,7 @@ type TaskWithRelations = {
   isFollowupNeeded: boolean;
   assignedTo: number;
   inspector: { id: number; fullName: string; username: string };
-  assignedAgency: { id: number; name: string; description: string | null };
+  assignedUtility: { id: number; name: string; description: string | null };
   shiftType: { id: number; name: string; startTime: string; endTime: string };
   taskType: { id: number; name: string; description: string | null };
 };
@@ -170,7 +170,6 @@ export default function Tasks() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
         },
         body: JSON.stringify({
           ...updateData,
@@ -181,9 +180,15 @@ export default function Tasks() {
         }),
         credentials: "include",
       });
+
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(errorText || "Failed to update task");
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.message || "Failed to update task");
+        } catch (e) {
+          throw new Error(errorText || "Failed to update task");
+        }
       }
       return res.json();
     },
@@ -241,16 +246,16 @@ export default function Tasks() {
   const handleOpenDialog = (task?: TaskWithRelations) => {
     if (task) {
       setEditingTask(task);
-      const shiftTypeId = task.shiftTypeId ? task.shiftTypeId.toString() : "";
+      const shiftTypeId = task.shiftTypeId?.toString() || "";
       setSelectedShiftType(shiftTypeId);
       form.reset({
         shiftTypeId: shiftTypeId,
-        inspectorId: task.inspectorId ? task.inspectorId.toString() : "",
-        taskTypeId: task.taskTypeId ? task.taskTypeId.toString() : "",
+        inspectorId: task.inspectorId?.toString() || "",
+        taskTypeId: task.taskTypeId?.toString() || "",
         status: task.status || "PENDING",
-        date: task.date || "",
+        date: task.date ? new Date(task.date).toISOString().split('T')[0] : "",
         isFollowupNeeded: task.isFollowupNeeded || false,
-        assignedTo: task.assignedTo ? task.assignedTo.toString() : "",
+        assignedTo: task.assignedTo?.toString() || "",
       });
     } else {
       setEditingTask(null);
@@ -313,7 +318,7 @@ export default function Tasks() {
     },
     {
       header: "Assigned Utility",
-      accessorKey: "assignedAgency",
+      accessorKey: "assignedUtility",
       cell: (value: any) => value?.name || "Unknown",
     },
     {
@@ -365,7 +370,7 @@ export default function Tasks() {
     taskType: task.taskType,
     status: task.status,
     isFollowupNeeded: task.isFollowupNeeded,
-    assignedAgency: task.assignedAgency,
+    assignedUtility: task.assignedUtility,
   }));
 
   if (!user?.isAdmin) {
