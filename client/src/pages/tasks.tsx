@@ -317,45 +317,49 @@ export default function Tasks() {
       cell: (value: boolean) => (value ? "Yes" : "No"),
     },
     {
-      header: "Assigned Agency", // Updated header
-      accessorKey: "assignedAgency", // Updated accessor
-      cell: (value: any) => value?.name || "Unknown", // Updated to show agency name
+      header: "Assigned Agency",
+      accessorKey: "assignedAgency",
+      cell: (value: any) => value?.name || "Unknown",
     },
     {
       header: "Actions",
       accessorKey: "id",
-      cell: (value: any) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpenDialog(value)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the task.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => deleteTask.mutate(value)}>
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      ),
+      cell: (value: any, row: any) => {
+        // Find the complete task data from the tasks array
+        const task = tasks.find((t) => t.id === value);
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleOpenDialog(task)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the task.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteTask.mutate(value)}>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        );
+      },
     },
   ];
 
