@@ -66,22 +66,42 @@ export default function CreateShift() {
     queryKey: ["/api/admin/shifts/inspectors/availability", { shiftTypeId, week }],
     queryFn: async () => {
       if (!shiftTypeId || !week) return [];
-      console.log("Fetching availability with params:", { shiftTypeId, week });
-      const params = new URLSearchParams({
-        shiftTypeId: shiftTypeId.toString(),
-        week: week.toString(),
-      });
-      const response = await fetch(`/api/admin/shifts/inspectors/availability?${params}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("Availability API error:", error);
-        throw new Error(error.message || "Failed to fetch inspector availability");
+
+      // Ensure we have valid numbers
+      const parsedShiftTypeId = parseInt(shiftTypeId);
+      const parsedWeek = parseInt(week);
+
+      if (isNaN(parsedShiftTypeId) || isNaN(parsedWeek)) {
+        console.error("Invalid parameters:", { shiftTypeId, week });
+        return [];
       }
-      const data = await response.json();
-      console.log("Availability data:", data);
-      return data;
+
+      console.log("Fetching availability with params:", { parsedShiftTypeId, parsedWeek });
+
+      const params = new URLSearchParams({
+        shiftTypeId: parsedShiftTypeId.toString(),
+        week: parsedWeek.toString()
+      });
+
+      try {
+        console.log("Making request to:", `/api/admin/shifts/inspectors/availability?${params}`);
+        const response = await fetch(`/api/admin/shifts/inspectors/availability?${params}`, {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error("Availability API error:", error);
+          throw new Error(error.message || "Failed to fetch inspector availability");
+        }
+
+        const data = await response.json();
+        console.log("Availability data:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching inspector availability:", error);
+        throw error;
+      }
     },
     enabled: Boolean(shiftTypeId && week),
   });

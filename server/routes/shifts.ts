@@ -282,15 +282,21 @@ export async function updateShift(req: Request, res: Response) {
 export async function getInspectorsByShiftType(req: Request, res: Response) {
   try {
     console.log("Query params:", req.query);
-    const shiftTypeId = req.query.shiftTypeId ? parseInt(req.query.shiftTypeId as string) : null;
-    const week = req.query.week ? parseInt(req.query.week as string) : null;
+    const shiftTypeId = parseInt(req.query.shiftTypeId as string);
+    const week = parseInt(req.query.week as string);
 
-    console.log("Parsed params - shiftTypeId:", shiftTypeId, "week:", week);
-
-    if (!shiftTypeId || isNaN(shiftTypeId)) {
+    // Validate parameters
+    if (!req.query.shiftTypeId || !req.query.week) {
       return res.status(400).json({ 
-        message: "Valid shift type ID is required",
-        details: "Received: " + req.query.shiftTypeId
+        message: "Both shiftTypeId and week are required parameters",
+        details: `Received: shiftTypeId=${req.query.shiftTypeId}, week=${req.query.week}`
+      });
+    }
+
+    if (isNaN(shiftTypeId) || isNaN(week)) {
+      return res.status(400).json({ 
+        message: "Invalid parameters - must be numbers",
+        details: `Received: shiftTypeId=${req.query.shiftTypeId}, week=${req.query.week}`
       });
     }
 
@@ -308,6 +314,8 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
       });
     }
 
+    console.log("Found shift type:", shiftType);
+
     // Get all active inspectors
     const inspectors = await db
       .select({
@@ -318,47 +326,41 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
       .from(users)
       .where(eq(users.isInspector, true));
 
+    console.log("Found inspectors:", inspectors);
+
     if (inspectors.length === 0) {
       return res.json([]);
     }
 
-    // If week is provided, check for conflicts
-    if (week && !isNaN(week)) {
-      // Get all shifts for this week and shift type
-      const conflicts = await db
-        .select({
-          inspectorId: shifts.inspectorId,
-        })
-        .from(shifts)
-        .where(
-          and(
-            eq(shifts.shiftTypeId, shiftTypeId),
-            eq(shifts.week, week.toString()),
-            eq(shifts.status, "ACCEPTED"),
-          ),
-        );
-
-      // Create a Set of inspector IDs who already have shifts
-      const conflictingInspectorIds = new Set(
-        conflicts.map((c) => c.inspectorId),
+    // Get conflicts for the specified week
+    const conflicts = await db
+      .select({
+        inspectorId: shifts.inspectorId,
+      })
+      .from(shifts)
+      .where(
+        and(
+          eq(shifts.shiftTypeId, shiftTypeId),
+          eq(shifts.week, week.toString()),
+          eq(shifts.status, "ACCEPTED")
+        )
       );
 
-      // Map inspectors with their availability
-      const inspectorsWithAvailability = inspectors.map((inspector) => ({
-        ...inspector,
-        hasConflict: conflictingInspectorIds.has(inspector.id),
-      }));
+    console.log("Found conflicts:", conflicts);
 
-      return res.json(inspectorsWithAvailability);
-    }
+    // Create a Set of inspector IDs who already have shifts
+    const conflictingInspectorIds = new Set(
+      conflicts.map((c) => c.inspectorId)
+    );
 
-    // If no week specified, return all inspectors as available
-    const inspectorsWithoutConflicts = inspectors.map((inspector) => ({
+    // Map inspectors with their availability
+    const inspectorsWithAvailability = inspectors.map((inspector) => ({
       ...inspector,
-      hasConflict: false,
+      hasConflict: conflictingInspectorIds.has(inspector.id),
     }));
 
-    return res.json(inspectorsWithoutConflicts);
+    console.log("Sending response:", inspectorsWithAvailability);
+    return res.json(inspectorsWithAvailability);
   } catch (error) {
     console.error("Error fetching inspectors by shift type:", error);
     res.status(500).json({
