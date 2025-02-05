@@ -364,29 +364,28 @@ export default function CreateShift() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {inspectorsWithAvailability?.map((inspector) => (
-                  <Card key={inspector.id}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
+                  <Card key={inspector.id} className="h-[120px]">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col h-full justify-between">
                         <div>
-                          <h3 className="font-semibold">{inspector.fullName}</h3>
-                          <p className="text-sm text-muted-foreground">
+                          <h3 className="font-semibold truncate">{inspector.fullName}</h3>
+                          <p className="text-sm text-muted-foreground truncate">
                             {inspector.username}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mt-2">
                           {inspector.availability?.isAvailable ? (
                             <>
-                              <CheckCircle2 className="h-5 w-5 text-green-500" />
-                              <span className="text-green-500">Available</span>
+                              <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                              <span className="text-sm text-green-500 font-medium">Available</span>
                             </>
                           ) : (
                             <>
-                              <AlertCircle className="h-5 w-5 text-red-500" />
-                              <span className="text-red-500">
-                                Unavailable
-                                {inspector.availability?.reason && ` - ${inspector.availability.reason}`}
+                              <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                              <span className="text-sm text-red-500 font-medium truncate">
+                                {inspector.availability?.reason || "Unavailable"}
                               </span>
                             </>
                           )}
