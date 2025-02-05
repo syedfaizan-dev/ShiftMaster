@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +20,7 @@ const shiftSchema = z.object({
   roleId: z.string().min(1, "Role is required"),
   shiftTypeId: z.string().min(1, "Shift type is required"),
   week: z.string().min(1, "Week is required"),
-  backupId: z.string().optional(),
+  backupId: z.string(),
 });
 
 type ShiftFormData = z.infer<typeof shiftSchema>;
@@ -49,7 +49,7 @@ export default function CreateShift() {
       roleId: "",
       shiftTypeId: "",
       week: "",
-      backupId: "",
+      backupId: "none",
     },
   });
 
@@ -77,7 +77,7 @@ export default function CreateShift() {
           inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           shiftTypeId: parseInt(data.shiftTypeId),
-          backupId: data.backupId ? parseInt(data.backupId) : null,
+          backupId: data.backupId === "none" ? null : parseInt(data.backupId),
         }),
         credentials: "include",
       });
@@ -290,7 +290,7 @@ export default function CreateShift() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
+                            <SelectItem value="none">None</SelectItem>
                             {inspectorsWithAvailability?.map((inspector) => (
                               <SelectItem
                                 key={inspector.id}

@@ -13,6 +13,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogHeader,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +29,14 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Navbar from "@/components/navbar";
-
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 type ShiftWithRelations = {
   id: number;
   inspectorId: number;
@@ -30,7 +45,7 @@ type ShiftWithRelations = {
   buildingId: number;
   week: string;
   backupId: number | null;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
   responseAt: string | null;
   rejectionReason: string | null;
   inspector: { id: number; fullName: string; username: string };
@@ -49,8 +64,12 @@ export default function Shifts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
-  const [shiftToReject, setShiftToReject] = useState<ShiftWithRelations | null>(null);
+  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(
+    null,
+  );
+  const [shiftToReject, setShiftToReject] = useState<ShiftWithRelations | null>(
+    null,
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -61,8 +80,12 @@ export default function Shifts() {
     },
   });
 
-  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithRelations[]>({
-    queryKey: [user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts"],
+  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<
+    ShiftWithRelations[]
+  >({
+    queryKey: [
+      user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts",
+    ],
   });
 
   // Calculate pagination values
@@ -104,7 +127,15 @@ export default function Shifts() {
   });
 
   const respondToShift = useMutation({
-    mutationFn: async ({ id, action, rejectionReason }: { id: number; action: 'ACCEPT' | 'REJECT'; rejectionReason?: string }) => {
+    mutationFn: async ({
+      id,
+      action,
+      rejectionReason,
+    }: {
+      id: number;
+      action: "ACCEPT" | "REJECT";
+      rejectionReason?: string;
+    }) => {
       const res = await fetch(`/api/shifts/${id}/respond`, {
         method: "POST",
         headers: {
@@ -117,7 +148,10 @@ export default function Shifts() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Response submitted successfully" });
+      toast({
+        title: "Success",
+        description: "Response submitted successfully",
+      });
       setShiftToReject(null);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
@@ -133,14 +167,14 @@ export default function Shifts() {
   });
 
   const handleAccept = (shift: ShiftWithRelations) => {
-    respondToShift.mutate({ id: shift.id, action: 'ACCEPT' });
+    respondToShift.mutate({ id: shift.id, action: "ACCEPT" });
   };
 
   const handleReject = async (data: { rejectionReason: string }) => {
     if (!shiftToReject) return;
     await respondToShift.mutateAsync({
       id: shiftToReject.id,
-      action: 'REJECT',
+      action: "REJECT",
       rejectionReason: data.rejectionReason,
     });
   };
@@ -149,29 +183,29 @@ export default function Shifts() {
     {
       header: "Inspector Name",
       accessorKey: "inspector",
-      cell: (value: { fullName: string }) => value?.fullName || 'Unknown',
+      cell: (value: { fullName: string }) => value?.fullName || "Unknown",
     },
     {
       header: "Role",
       accessorKey: "role",
-      cell: (value: { name: string }) => value?.name || 'Unknown',
+      cell: (value: { name: string }) => value?.name || "Unknown",
     },
     {
       header: "Shift Type",
       accessorKey: "shiftType",
-      cell: (value: { name: string }) => value?.name || 'Unknown',
+      cell: (value: { name: string }) => value?.name || "Unknown",
     },
     {
       header: "Building",
       accessorKey: "building",
       cell: (value: { name: string; code: string }) =>
-        value ? `${value.name} (${value.code})` : 'Unknown',
+        value ? `${value.name} (${value.code})` : "Unknown",
     },
     {
       header: "Time",
       accessorKey: "shiftType",
       cell: (value: { startTime: string; endTime: string }) =>
-        `${value?.startTime || 'N/A'} - ${value?.endTime || 'N/A'}`,
+        `${value?.startTime || "N/A"} - ${value?.endTime || "N/A"}`,
     },
     {
       header: "Week",
@@ -193,7 +227,7 @@ export default function Shifts() {
       accessorKey: "id",
       cell: (_: any, row: ShiftWithRelations) => (
         <div className="space-x-2">
-          {(!user?.isAdmin && row.status === 'PENDING') ? (
+          {!user?.isAdmin && row.status === "PENDING" ? (
             <>
               <Button
                 variant="ghost"
@@ -212,14 +246,16 @@ export default function Shifts() {
                 <X className="h-4 w-4 text-red-600" />
               </Button>
             </>
-          ) : user?.isAdmin && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShiftToDelete(row)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+          ) : (
+            user?.isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShiftToDelete(row)}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            )
           )}
         </div>
       ),
@@ -247,10 +283,7 @@ export default function Shifts() {
         ) : (
           <>
             <div className="rounded-md border">
-              <ResponsiveTable
-                columns={columns}
-                data={currentShifts}
-              />
+              <ResponsiveTable columns={columns} data={currentShifts} />
             </div>
 
             <TablePagination
@@ -263,20 +296,25 @@ export default function Shifts() {
           </>
         )}
 
-
-        <AlertDialog open={!!shiftToDelete} onOpenChange={(open) => !open && setShiftToDelete(null)}>
+        <AlertDialog
+          open={!!shiftToDelete}
+          onOpenChange={(open) => !open && setShiftToDelete(null)}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Shift</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this shift? This action cannot be undone.
+                Are you sure you want to delete this shift? This action cannot
+                be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => shiftToDelete && deleteShift.mutate(shiftToDelete.id)}
+                onClick={() =>
+                  shiftToDelete && deleteShift.mutate(shiftToDelete.id)
+                }
                 disabled={deleteShift.isPending}
               >
                 {deleteShift.isPending ? (
@@ -285,18 +323,24 @@ export default function Shifts() {
                     Deleting...
                   </>
                 ) : (
-                  'Delete'
+                  "Delete"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
-        <Dialog open={!!shiftToReject} onOpenChange={(open) => !open && setShiftToReject(null)}>
+        <Dialog
+          open={!!shiftToReject}
+          onOpenChange={(open) => !open && setShiftToReject(null)}
+        >
           <DialogContent>
             <DialogTitle>Reject Shift</DialogTitle>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleReject)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(handleReject)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="rejectionReason"
@@ -304,7 +348,10 @@ export default function Shifts() {
                     <FormItem>
                       <FormLabel>Reason for Rejection</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Please provide a reason for rejecting this shift" />
+                        <Textarea
+                          {...field}
+                          placeholder="Please provide a reason for rejecting this shift"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -318,17 +365,14 @@ export default function Shifts() {
                   >
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={respondToShift.isPending}
-                  >
+                  <Button type="submit" disabled={respondToShift.isPending}>
                     {respondToShift.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Submitting...
                       </>
                     ) : (
-                      'Submit'
+                      "Submit"
                     )}
                   </Button>
                 </DialogFooter>

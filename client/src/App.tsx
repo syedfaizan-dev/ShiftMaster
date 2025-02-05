@@ -20,6 +20,7 @@ import InspectorsPage from "./pages/inspectors";
 // Update import name
 import Buildings from "@/pages/buildings";
 import Utilities from "@/pages/utilities";
+import CreateShift from "@/pages/create-shift";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/tasks" component={Tasks} />
           <Route path="/task-types" component={TaskTypes} />
           <Route path="/utilities" component={Utilities} />
+          <Route path="/create-shift" component={CreateShift} />
         </>
       )}
       <Route path="/requests" component={Requests} />
