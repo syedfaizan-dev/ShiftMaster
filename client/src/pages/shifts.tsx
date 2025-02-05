@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { TablePagination } from "@/components/table-pagination";
@@ -22,8 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import ShiftForm from "@/components/shift-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Pencil, Trash2, Check, X, Plus } from "lucide-react";
+import { Loader2, Pencil, Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/navbar";
 import { useForm } from "react-hook-form";
@@ -53,10 +53,11 @@ const rejectShiftSchema = z.object({
 });
 
 export default function Shifts() {
-  const [, setLocation] = useLocation();
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftWithRelations | null>(null);
   const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
   const [shiftToReject, setShiftToReject] = useState<ShiftWithRelations | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -141,7 +142,8 @@ export default function Shifts() {
   });
 
   const handleEdit = (shift: ShiftWithRelations) => {
-    //This function is not used anymore
+    setSelectedShift(shift);
+    setIsDialogOpen(true);
   };
 
   const handleAccept = (shift: ShiftWithRelations) => {
@@ -176,13 +178,13 @@ export default function Shifts() {
     {
       header: "Building",
       accessorKey: "building",
-      cell: (value: { name: string; code: string }) =>
+      cell: (value: { name: string; code: string }) => 
         value ? `${value.name} (${value.code})` : 'Unknown',
     },
     {
       header: "Time",
       accessorKey: "shiftType",
-      cell: (value: { startTime: string; endTime: string }) =>
+      cell: (value: { startTime: string; endTime: string }) => 
         `${value?.startTime || 'N/A'} - ${value?.endTime || 'N/A'}`,
     },
     {
@@ -253,8 +255,10 @@ export default function Shifts() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shifts</h1>
           {user?.isAdmin && (
-            <Button onClick={() => setLocation("/shifts/create")}>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button onClick={() => {
+              setSelectedShift(null);
+              setIsDialogOpen(true);
+            }}>
               Create New Shift
             </Button>
           )}
@@ -285,6 +289,18 @@ export default function Shifts() {
           </>
         )}
 
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogTitle>{selectedShift ? 'Edit Shift' : 'Create New Shift'}</DialogTitle>
+            <ShiftForm
+              onSuccess={() => {
+                setIsDialogOpen(false);
+                setSelectedShift(null);
+              }}
+              editShift={selectedShift}
+            />
+          </DialogContent>
+        </Dialog>
 
         <AlertDialog open={!!shiftToDelete} onOpenChange={(open) => !open && setShiftToDelete(null)}>
           <AlertDialogContent>
