@@ -245,18 +245,21 @@ export default function Tasks() {
   const handleOpenDialog = (task?: TaskWithRelations) => {
     if (task) {
       setEditingTask(task);
-      setSelectedShiftType(task.shiftTypeId.toString());
+      // Add type checking before accessing shiftTypeId
+      const shiftTypeId = task.shiftTypeId ? task.shiftTypeId.toString() : "";
+      setSelectedShiftType(shiftTypeId);
       form.reset({
-        shiftTypeId: task.shiftTypeId.toString(),
-        inspectorId: task.inspectorId.toString(),
-        taskTypeId: task.taskTypeId.toString(),
-        status: task.status,
-        date: task.date,
-        isFollowupNeeded: task.isFollowupNeeded,
-        assignedTo: task.assignedTo.toString(),
+        shiftTypeId: shiftTypeId,
+        inspectorId: task.inspectorId ? task.inspectorId.toString() : "",
+        taskTypeId: task.taskTypeId ? task.taskTypeId.toString() : "",
+        status: task.status || "PENDING",
+        date: task.date || "",
+        isFollowupNeeded: task.isFollowupNeeded || false,
+        assignedTo: task.assignedTo ? task.assignedTo.toString() : "",
       });
     } else {
       setEditingTask(null);
+      setSelectedShiftType(null);
       form.reset({
         shiftTypeId: "",
         inspectorId: "",
