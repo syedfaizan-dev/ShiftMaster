@@ -274,33 +274,62 @@ export async function updateShift(req: Request, res: Response) {
 
 export async function getInspectorsByShiftType(req: Request, res: Response) {
   try {
-    // Get the shift type ID from query params
+    // Get the shift type ID and week from query params
     const shiftTypeId = req.query.shiftTypeId ? parseInt(req.query.shiftTypeId as string) : null;
+    const week = req.query.week ? parseInt(req.query.week as string) : null;
 
-    if (!shiftTypeId) {
-      return res.status(400).json({ message: "Shift type ID is required" });
+    if (!shiftTypeId || !week) {
+      return res.status(400).json({ message: "Both shift type ID and week are required" });
     }
 
-    // Get all inspectors who have shifts of this type
-    const inspectorsWithShifts = await db
+    // Get all inspectors
+    const inspectors = await db
       .select({
         id: users.id,
         fullName: users.fullName,
         username: users.username,
       })
-      .from(shifts)
-      .leftJoin(users, eq(shifts.inspectorId, users.id))
-      .where(
-        and(
-          eq(shifts.shiftTypeId, shiftTypeId),
-          eq(shifts.status, 'ACCEPTED')
-        )
-      )
-      .groupBy(users.id, users.fullName, users.username);
+      .from(users)
+      .where(eq(users.isInspector, true));
 
-    res.json(inspectorsWithShifts);
+    // For each inspector, check if they have any conflicting shifts in the given week
+    const inspectorsWithAvailability = await Promise.all(
+      inspectors.map(async (inspector) => {
+        // Check for existing shifts in the same week
+        const existingShifts = await db
+          .select()
+          .from(shifts)
+          .where(
+            and(
+              eq(shifts.inspectorId, inspector.id),
+              eq(shifts.week, week),
+              eq(shifts.status, 'ACCEPTED')
+            )
+          );
+
+        // Check if any of the existing shifts are of the same type
+        const hasConflictingShift = existingShifts.some(
+          shift => shift.shiftTypeId === shiftTypeId
+        );
+
+        // If they have a conflicting shift, they're unavailable
+        const availability = {
+          isAvailable: !hasConflictingShift,
+          reason: hasConflictingShift
+            ? `Already assigned to ${existingShifts.length} shift(s) in week ${week}`
+            : undefined
+        };
+
+        return {
+          ...inspector,
+          availability
+        };
+      })
+    );
+
+    res.json(inspectorsWithAvailability);
   } catch (error) {
-    console.error("Error fetching inspectors by shift type:", error);
+    console.error("Error fetching inspectors availability:", error);
     res.status(500).json({ message: "Error fetching inspectors" });
   }
 }
