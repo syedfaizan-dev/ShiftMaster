@@ -66,16 +66,22 @@ export default function CreateShift() {
     queryKey: ["/api/admin/shifts/inspectors/availability", { shiftTypeId, week }],
     queryFn: async () => {
       if (!shiftTypeId || !week) return [];
+      console.log("Fetching availability with params:", { shiftTypeId, week });
       const params = new URLSearchParams({
-        shiftTypeId,
-        week,
+        shiftTypeId: shiftTypeId.toString(),
+        week: week.toString(),
       });
-      const response = await fetch(`/api/admin/shifts/inspectors/availability?${params}`);
+      const response = await fetch(`/api/admin/shifts/inspectors/availability?${params}`, {
+        credentials: 'include'
+      });
       if (!response.ok) {
         const error = await response.json();
+        console.error("Availability API error:", error);
         throw new Error(error.message || "Failed to fetch inspector availability");
       }
-      return response.json();
+      const data = await response.json();
+      console.log("Availability data:", data);
+      return data;
     },
     enabled: Boolean(shiftTypeId && week),
   });
@@ -244,7 +250,7 @@ export default function CreateShift() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue 
+                            <SelectValue
                               placeholder={
                                 !form.watch("shiftTypeId") || !form.watch("week")
                                   ? "Select shift type and week first"
@@ -283,7 +289,7 @@ export default function CreateShift() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue 
+                            <SelectValue
                               placeholder={
                                 !form.watch("shiftTypeId") || !form.watch("week")
                                   ? "Select shift type and week first"

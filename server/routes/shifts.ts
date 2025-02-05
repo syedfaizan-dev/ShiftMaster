@@ -281,16 +281,17 @@ export async function updateShift(req: Request, res: Response) {
 
 export async function getInspectorsByShiftType(req: Request, res: Response) {
   try {
-    const shiftTypeId = req.query.shiftTypeId
-      ? parseInt(req.query.shiftTypeId as string)
-      : null;
+    console.log("Query params:", req.query);
+    const shiftTypeId = req.query.shiftTypeId ? parseInt(req.query.shiftTypeId as string) : null;
     const week = req.query.week ? parseInt(req.query.week as string) : null;
-    console.log("shiftTypeId:", shiftTypeId);
-    console.log("week:", week);
+
+    console.log("Parsed params - shiftTypeId:", shiftTypeId, "week:", week);
+
     if (!shiftTypeId || isNaN(shiftTypeId)) {
-      return res
-        .status(400)
-        .json({ message: "Valid shift type ID is required" });
+      return res.status(400).json({ 
+        message: "Valid shift type ID is required",
+        details: "Received: " + req.query.shiftTypeId
+      });
     }
 
     // First verify that the shift type exists
@@ -301,9 +302,10 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
       .limit(1);
 
     if (!shiftType) {
-      return res
-        .status(400)
-        .json({ message: "Invalid shift type ID. Shift type not found." });
+      return res.status(400).json({ 
+        message: "Invalid shift type ID. Shift type not found.",
+        details: `No shift type found with ID ${shiftTypeId}`
+      });
     }
 
     // Get all active inspectors
@@ -314,7 +316,7 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
         fullName: users.fullName,
       })
       .from(users)
-      .where(and(eq(users.isInspector, true), eq(users.isActive, true)));
+      .where(eq(users.isInspector, true));
 
     if (inspectors.length === 0) {
       return res.json([]);
@@ -331,7 +333,7 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
         .where(
           and(
             eq(shifts.shiftTypeId, shiftTypeId),
-            eq(shifts.week, week),
+            eq(shifts.week, week.toString()),
             eq(shifts.status, "ACCEPTED"),
           ),
         );
