@@ -20,7 +20,7 @@ import InspectorsPage from "./pages/inspectors";
 // Update import name
 import Buildings from "@/pages/buildings";
 import Utilities from "@/pages/utilities";
-
+import CreateShift from "@/pages/create-shift";
 function Router() {
   const { user, isLoading } = useUser();
 
@@ -57,6 +57,8 @@ function Router() {
         </>
       )}
       <Route path="/requests" component={Requests} />
+      <Route path="/create-shift" component={CreateShift} />
+
       <Route component={NotFound} />
     </Switch>
   );
