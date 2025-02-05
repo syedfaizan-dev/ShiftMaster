@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { db } from "@db";
 import { shifts, users, roles, shiftTypes, buildings } from "@db/schema";
 import { NotificationService } from "server/services/notification";
@@ -295,7 +295,7 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
     // For each inspector, check if they have any conflicting shifts in the given week
     const inspectorsWithAvailability = await Promise.all(
       inspectors.map(async (inspector) => {
-        // Check for existing shifts in the same week
+        // Check for existing shifts of the same type in the same week
         const existingShifts = await db
           .select()
           .from(shifts)
@@ -303,20 +303,32 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
             and(
               eq(shifts.inspectorId, inspector.id),
               eq(shifts.week, week),
-              eq(shifts.status, 'ACCEPTED')
+              eq(shifts.shiftTypeId, shiftTypeId),
+              // Consider both ACCEPTED and PENDING shifts as conflicts
+              or(
+                eq(shifts.status, 'ACCEPTED'),
+                eq(shifts.status, 'PENDING')
+              )
             )
           );
 
-        // Check if any of the existing shifts are of the same type
-        const hasConflictingShift = existingShifts.some(
-          shift => shift.shiftTypeId === shiftTypeId
-        );
+        const hasConflictingShift = existingShifts.length > 0;
 
-        // If they have a conflicting shift, they're unavailable
+        // Get shift type details for better error message
+        let shiftTypeName = '';
+        if (hasConflictingShift) {
+          const [shiftType] = await db
+            .select()
+            .from(shiftTypes)
+            .where(eq(shiftTypes.id, shiftTypeId))
+            .limit(1);
+          shiftTypeName = shiftType?.name || 'Unknown shift type';
+        }
+
         const availability = {
           isAvailable: !hasConflictingShift,
           reason: hasConflictingShift
-            ? `Already assigned to ${existingShifts.length} shift(s) in week ${week}`
+            ? `Already assigned to ${shiftTypeName} in week ${week}`
             : undefined
         };
 
