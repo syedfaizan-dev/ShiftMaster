@@ -11,7 +11,7 @@ import {
   tasks,
   taskTypes,
   buildings,
-  agencies,
+  utilities,
 } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import {
@@ -864,7 +864,7 @@ export function registerRoutes(app: Express): Server {
         const result = await db.query.tasks.findMany({
           with: {
             inspector: true,
-            assignedAgency: true,
+            assignedUtility: true, // Changed from assignedAgency
             shiftType: true,
             taskType: true,
           },
@@ -901,17 +901,17 @@ export function registerRoutes(app: Express): Server {
           assignedTo,
         } = req.body;
 
-        // Verify that the assigned agency exists
-        const [agency] = await db
+        // Verify that the assigned utility exists
+        const [utility] = await db // Changed from agency
           .select()
-          .from(agencies)
-          .where(eq(agencies.id, assignedTo))
+          .from(utilities) // Changed from agencies
+          .where(eq(utilities.id, assignedTo)) // Changed from agencies
           .limit(1);
 
-        if (!agency) {
+        if (!utility) {
           return res
             .status(400)
-            .json({ message: "Invalid agency assignment." });
+            .json({ message: "Invalid utility assignment." }); // Changed from agency
         }
 
         // Verify that the task type exists
@@ -975,17 +975,17 @@ export function registerRoutes(app: Express): Server {
           return res.status(404).json({ message: "Task not found" });
         }
 
-        // Verify that the assigned agency exists
-        const [agency] = await db
+        // Verify that the assigned utility exists
+        const [utility] = await db // Changed from agency
           .select()
-          .from(agencies)
-          .where(eq(agencies.id, assignedTo))
+          .from(utilities) // Changed from agencies
+          .where(eq(utilities.id, assignedTo)) // Changed from agencies
           .limit(1);
 
-        if (!agency) {
+        if (!utility) {
           return res
             .status(400)
-            .json({ message: "Invalid agency assignment." });
+            .json({ message: "Invalid utility assignment." }); // Changed from agency
         }
 
         const [updatedTask] = await db
@@ -1558,39 +1558,39 @@ export function registerRoutes(app: Express): Server {
   // Add agency routes within the registerRoutes function
   // Admin: Get all agencies
   app.get(
-    "/api/admin/agencies",
+    "/api/admin/utilities",
     requireAdmin,
     async (req: Request, res: Response) => {
       try {
-        const allAgencies = await db.select().from(agencies);
-        res.json(allAgencies);
+        const allUtilities = await db.select().from(utilities);
+        res.json(allUtilities);
       } catch (error) {
-        console.error("Error fetching agencies:", error);
-        res.status(500).json({ message: "Error fetching agencies" });
+        console.error("Error fetching utilities:", error);
+        res.status(500).json({ message: "Error fetching utilities" });
       }
     },
   );
 
   // Admin: Create agency
   app.post(
-    "/api/admin/agencies",
+    "/api/admin/utilities",
     requireAdmin,
     async (req: Request, res: Response) => {
       try {
         const { name, description } = req.body;
 
-        const [existingAgency] = await db
+        const [existingUtility] = await db
           .select()
-          .from(agencies)
-          .where(eq(agencies.name, name))
+          .from(utilities)
+          .where(eq(utilities.name, name))
           .limit(1);
 
-        if (existingAgency) {
-          return res.status(400).json({ message: "Agency with this name already exists" });
+        if (existingUtility) {
+          return res.status(400).json({ message: "Utility with this name already exists" });
         }
 
-        const [newAgency] = await db
-          .insert(agencies)
+        const [newUtility] = await db
+          .insert(utilities)
           .values({
             name,
             description,
@@ -1598,74 +1598,88 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        res.json(newAgency);
+        res.json(newUtility);
       } catch (error) {
-        console.error("Error creating agency:", error);
-        res.status(500).json({ message: "Error creating agency" });
+        console.error("Error creating utility:", error);
+        res.status(500).json({ message: "Error creating utility" });
       }
     },
   );
 
   // Admin: Update agency
   app.put(
-    "/api/admin/agencies/:id",
+    "/api/admin/utilities/:id",
     requireAdmin,
     async (req: Request, res: Response) => {
       try {
         const { id } = req.params;
         const { name, description } = req.body;
 
-        const [existingAgency] = await db
+        const [existingUtility] = await db
           .select()
-          .from(agencies)
-          .where(eq(agencies.id, parseInt(id)))
+          .from(utilities)
+          .where(eq(utilities.id, parseInt(id)))
           .limit(1);
 
-        if (!existingAgency) {
-          return res.status(404).json({ message: "Agency not found" });
+        if (!existingUtility) {
+          return res.status(404).json({ message: "Utility not found" });
         }
 
-        const [updatedAgency] = await db
-          .update(agencies)
+        const [updatedUtility] = await db
+          .update(utilities)
           .set({
             name,
             description,
           })
-          .where(eq(agencies.id, parseInt(id)))
+          .where(eq(utilities.id, parseInt(id)))
           .returning();
 
-        res.json(updatedAgency);
+        res.json(updatedUtility);
       } catch (error) {
-        console.error("Error updating agency:", error);
-        res.status(500).json({ message: "Error updating agency" });
+        console.error("Error updating utility:", error);
+        res.status(500).json({ message: "Error updating utility" });
       }
     },
   );
 
   // Admin: Delete agency
   app.delete(
-    "/api/admin/agencies/:id",
+    "/api/admin/utilities/:id",
     requireAdmin,
     async (req: Request, res: Response) => {
       try {
         const { id } = req.params;
 
-        const [existingAgency] = await db
+        const [existingUtility] = await db
           .select()
-          .from(agencies)
-          .where(eq(agencies.id, parseInt(id)))
+          .from(utilities)
+          .where(eq(utilities.id, parseInt(id)))
           .limit(1);
 
-        if (!existingAgency) {
-          return res.status(404).json({ message: "Agency not found" });
+        if (!existingUtility) {
+          return res.status(404).json({ message: "Utility not found" });
         }
 
-        await db.delete(agencies).where(eq(agencies.id, parseInt(id)));
+        // Check if utility is assigned to any tasks
+        const [assignedTask] = await db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.assignedTo, parseInt(id)))
+          .limit(1);
 
-        res.json({ message: "Agency deleted successfully" });
+        if (assignedTask) {
+          return res.status(400).json({
+            message: "Cannot delete utility with assigned tasks. Please reassign the tasks first.",
+          });
+        }
+
+        // Delete the utility
+        await db.delete(utilities).where(eq(utilities.id, parseInt(id)));
+
+        res.json({ message: "Utility deleted successfully" });
       } catch (error) {
-        console.error("Error deleting agency:", error);
-        res.status(500).json({ message: "Error deleting agency" });
+        console.error("Error deleting utility:", error);
+        res.status(500).json({ message: "Error deleting utility" });
       }
     },
   );

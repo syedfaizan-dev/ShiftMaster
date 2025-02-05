@@ -49,7 +49,7 @@ const taskSchema = z.object({
   status: z.string().min(1, "Status is required"),
   date: z.string().min(1, "Date is required"),
   isFollowupNeeded: z.boolean(),
-  assignedTo: z.string().min(1, "Assigned agency is required"), // Changed label
+  assignedTo: z.string().min(1, "Assigned utility is required"),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -64,7 +64,7 @@ type TaskWithRelations = {
   isFollowupNeeded: boolean;
   assignedTo: number;
   inspector: { id: number; fullName: string; username: string };
-  assignedAgency: { id: number; name: string; description: string | null }; // Updated type
+  assignedAgency: { id: number; name: string; description: string | null };
   shiftType: { id: number; name: string; startTime: string; endTime: string };
   taskType: { id: number; name: string; description: string | null };
 };
@@ -77,7 +77,6 @@ export default function Tasks() {
   const [selectedShiftType, setSelectedShiftType] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null);
 
-  // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -123,9 +122,8 @@ export default function Tasks() {
     }
   });
 
-  // Replace employees query with agencies query
-  const { data: agencies = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/agencies"],
+  const { data: utilities = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/utilities"],
   });
 
   const { data: taskTypes = [] } = useQuery<any[]>({
@@ -227,12 +225,10 @@ export default function Tasks() {
     },
   });
 
-  // Calculate pagination values
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const currentTasks = tasks.slice(startIndex, endIndex);
 
-  // Handle pagination changes
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -245,7 +241,6 @@ export default function Tasks() {
   const handleOpenDialog = (task?: TaskWithRelations) => {
     if (task) {
       setEditingTask(task);
-      // Add type checking before accessing shiftTypeId
       const shiftTypeId = task.shiftTypeId ? task.shiftTypeId.toString() : "";
       setSelectedShiftType(shiftTypeId);
       form.reset({
@@ -317,7 +312,7 @@ export default function Tasks() {
       cell: (value: boolean) => (value ? "Yes" : "No"),
     },
     {
-      header: "Assigned Agency",
+      header: "Assigned Utility",
       accessorKey: "assignedAgency",
       cell: (value: any) => value?.name || "Unknown",
     },
@@ -325,7 +320,6 @@ export default function Tasks() {
       header: "Actions",
       accessorKey: "id",
       cell: (value: any, row: any) => {
-        // Find the complete task data from the tasks array
         const task = tasks.find((t) => t.id === value);
         return (
           <div className="flex items-center gap-2">
@@ -363,7 +357,6 @@ export default function Tasks() {
     },
   ];
 
-  // Transform the data for the table
   const transformedData = tasks.map((task) => ({
     id: task.id,
     date: task.date,
@@ -630,23 +623,23 @@ export default function Tasks() {
                     name="assignedTo"
                     render={({ field }) => (
                       <FormItem className="mb-6">
-                        <FormLabel>Assign To Agency</FormLabel>
+                        <FormLabel>Assign To Utility</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select agency" />
+                              <SelectValue placeholder="Select utility" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {agencies?.map((agency) => (
+                            {utilities?.map((utility) => (
                               <SelectItem
-                                key={agency.id}
-                                value={agency.id.toString()}
+                                key={utility.id}
+                                value={utility.id.toString()}
                               >
-                                {agency.name}
+                                {utility.name}
                               </SelectItem>
                             ))}
                           </SelectContent>

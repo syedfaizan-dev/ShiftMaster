@@ -206,7 +206,7 @@ export const tasks = pgTable("tasks", {
   status: text("status").default("PENDING").notNull(),
   date: timestamp("date").notNull(),
   isFollowupNeeded: boolean("is_followup_needed").default(false).notNull(),
-  assignedTo: integer("assigned_to").references(() => agencies.id).notNull(),
+  assignedTo: integer("assigned_to").references(() => utilities.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
 });
@@ -216,9 +216,9 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.inspectorId],
     references: [users.id],
   }),
-  assignedAgency: one(agencies, {
+  assignedUtility: one(utilities, {
     fields: [tasks.assignedTo],
-    references: [agencies.id],
+    references: [utilities.id],
   }),
   shiftType: one(shiftTypes, {
     fields: [tasks.shiftTypeId],
@@ -248,12 +248,12 @@ export type InsertTask = typeof tasks.$inferInsert;
 
 export type TaskWithRelations = Task & {
   inspector?: User;
-  assignedAgency?: Agency;
+  assignedUtility?: Utility;
   shiftType?: typeof shiftTypes.$inferSelect;
   taskType?: TaskType;
 };
 
-export const agencies = pgTable("agencies", {
+export const utilities = pgTable("utilities", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
@@ -261,20 +261,20 @@ export const agencies = pgTable("agencies", {
   createdBy: integer("created_by").references(() => users.id),
 });
 
-export const agencyRelations = relations(agencies, ({ one }) => ({
+export const utilityRelations = relations(utilities, ({ one }) => ({
   creator: one(users, {
-    fields: [agencies.createdBy],
+    fields: [utilities.createdBy],
     references: [users.id],
   }),
 }));
 
-export const insertAgencySchema = createInsertSchema(agencies);
-export const selectAgencySchema = createSelectSchema(agencies);
+export const insertUtilitySchema = createInsertSchema(utilities);
+export const selectUtilitySchema = createSelectSchema(utilities);
 
-export type Agency = typeof agencies.$inferSelect;
-export type InsertAgency = typeof agencies.$inferInsert;
+export type Utility = typeof utilities.$inferSelect;
+export type InsertUtility = typeof utilities.$inferInsert;
 
-export type AgencyWithRelations = Agency & {
+export type UtilityWithRelations = Utility & {
   creator?: User;
 };
 
