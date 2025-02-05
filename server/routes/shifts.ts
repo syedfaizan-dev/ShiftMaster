@@ -281,12 +281,23 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
       return res.status(400).json({ message: "Valid shift type ID is required" });
     }
 
-    // Get all inspectors first
+    // First verify that the shift type exists
+    const [shiftType] = await db
+      .select()
+      .from(shiftTypes)
+      .where(eq(shiftTypes.id, shiftTypeId))
+      .limit(1);
+
+    if (!shiftType) {
+      return res.status(400).json({ message: "Invalid shift type ID. Shift type not found." });
+    }
+
+    // Get all active inspectors
     const inspectors = await db
       .select({
         id: users.id,
-        fullName: users.fullName,
         username: users.username,
+        fullName: users.fullName,
       })
       .from(users)
       .where(
@@ -296,8 +307,13 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
         )
       );
 
+    if (inspectors.length === 0) {
+      return res.json([]);
+    }
+
     // If week is provided, check for conflicts
     if (week && !isNaN(week)) {
+      // Get all shifts for this week and shift type
       const conflicts = await db
         .select({
           inspectorId: shifts.inspectorId,
@@ -311,18 +327,19 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
           )
         );
 
+      // Create a Set of inspector IDs who already have shifts
       const conflictingInspectorIds = new Set(conflicts.map(c => c.inspectorId));
 
-      // Add conflict information to each inspector
-      const inspectorsWithConflicts = inspectors.map(inspector => ({
+      // Map inspectors with their availability
+      const inspectorsWithAvailability = inspectors.map(inspector => ({
         ...inspector,
         hasConflict: conflictingInspectorIds.has(inspector.id)
       }));
 
-      return res.json(inspectorsWithConflicts);
+      return res.json(inspectorsWithAvailability);
     }
 
-    // If no week provided, just return inspectors without conflict info
+    // If no week specified, return all inspectors as available
     const inspectorsWithoutConflicts = inspectors.map(inspector => ({
       ...inspector,
       hasConflict: false
@@ -333,7 +350,8 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
     console.error("Error fetching inspectors by shift type:", error);
     res.status(500).json({ 
       message: "Error fetching inspectors",
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      details: error instanceof Error ? error.stack : undefined
     });
   }
 }
