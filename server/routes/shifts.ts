@@ -365,3 +365,13 @@ export async function getInspectorsByShiftTypeForTask(req: Request, res: Respons
     res.status(500).json({ message: "Error fetching inspectors" });
   }
 }
+
+// Export all route handlers
+export default {
+  getShifts,
+  createShift,
+  handleShiftResponse,
+  updateShift,
+  getInspectorsByShiftType,
+  getInspectorsByShiftTypeForTask,
+};

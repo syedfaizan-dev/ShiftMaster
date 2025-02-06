@@ -23,6 +23,7 @@ import {
   createShift,
   handleShiftResponse,
   getInspectorsByShiftType,
+  getInspectorsByShiftTypeForTask,
 } from "./routes/shifts";
 import { getBuildingsWithShifts } from "./routes/buildingRoutes";
 import { sql } from "drizzle-orm";
@@ -338,6 +339,9 @@ export function registerRoutes(app: Express): Server {
 
   // Admin: Get all shifts (also using the same getShifts handler)
   app.get("/api/admin/shifts", requireAdmin, getShifts);
+
+  // Add this new route with the existing shift routes
+  app.get("/api/admin/shifts/inspectors-for-task", requireAdmin, getInspectorsByShiftTypeForTask);
 
   // Admin: Create shift
   app.post("/api/admin/shifts", requireAdmin, createShift);
