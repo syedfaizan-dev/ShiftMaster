@@ -108,10 +108,10 @@ export default function Tasks() {
   });
 
   const { data: inspectors = [], isLoading: isLoadingInspectors } = useQuery<any[]>({
-    queryKey: ["/api/admin/shifts/inspectors", selectedShiftType],
-    enabled: !!selectedShiftType,
+    queryKey: ["/api/admin/shifts/inspectors-for-task", selectedShiftType],
     queryFn: async () => {
-      const response = await fetch(`/api/admin/shifts/inspectors?shiftTypeId=${selectedShiftType}`, {
+      if (!selectedShiftType) return [];
+      const response = await fetch(`/api/admin/shifts/inspectors-for-task?shiftTypeId=${selectedShiftType}`, {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -119,7 +119,8 @@ export default function Tasks() {
         throw new Error(error.message || 'Failed to fetch inspectors');
       }
       return response.json();
-    }
+    },
+    enabled: !!selectedShiftType
   });
 
   const { data: utilities = [] } = useQuery<any[]>({

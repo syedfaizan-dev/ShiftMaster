@@ -53,7 +53,7 @@ type Building = {
   id: number;
   name: string;
   code: string;
-}
+};
 
 export default function CreateShift() {
   const { user } = useUser();
@@ -296,7 +296,10 @@ export default function CreateShift() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Building</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select building" />
