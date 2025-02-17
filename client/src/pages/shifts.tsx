@@ -111,9 +111,10 @@ export default function Shifts() {
     shiftId: number;
     dayOfWeek: number;
   } | null>(null);
-  const [editingInspectors, setEditingInspectors] = useState<number | null>(
-    null,
-  );
+  const [editingInspectors, setEditingInspectors] = useState<{
+    shiftId: number;
+    week: string;
+  } | null>(null);
 
   const shiftDayForm = useForm<EditShiftDayFormData>({
     defaultValues: {
@@ -141,6 +142,8 @@ export default function Shifts() {
       },
     });
 
+  const buildings = buildingsData?.buildings || [];
+
   const { data: shiftTypes } = useQuery<ShiftType[]>({
     queryKey: ["/api/shift-types"],
     queryFn: async () => {
@@ -154,27 +157,17 @@ export default function Shifts() {
     },
   });
 
-  const getAvailableInspectors = async (week: string) => {
-    const response = await fetch(`/api/shifts/${week}/available-inspectors`, {
-      credentials: "include"
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch available inspectors");
-    }
-    return response.json();
-  };
-
   const { data: inspectors, isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
-    queryKey: [editingInspectors ? `/api/shifts/${buildings
-      .flatMap(b => b.shifts)
-      .find(s => s.id === editingInspectors)?.week}/available-inspectors` : null],
+    queryKey: [editingInspectors ? `/api/shifts/${editingInspectors.week}/available-inspectors` : null],
     queryFn: async () => {
-      const shift = buildings
-        .flatMap(b => b.shifts)
-        .find(s => s.id === editingInspectors);
-
-      if (!shift) return [];
-      return getAvailableInspectors(shift.week);
+      if (!editingInspectors) return [];
+      const response = await fetch(`/api/shifts/${editingInspectors.week}/available-inspectors`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch available inspectors");
+      }
+      return response.json();
     },
     enabled: !!editingInspectors,
   });
@@ -253,7 +246,6 @@ export default function Shifts() {
     },
   });
 
-  const buildings = buildingsData?.buildings || [];
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
 
@@ -273,11 +265,27 @@ export default function Shifts() {
       isPrimary: false,
     }));
     updateInspectorGroup.mutate({
-      shiftId: editingInspectors,
+      shiftId: editingInspectors.shiftId,
       inspectors: inspectorList,
     });
   };
 
+  const handleEditInspectors = (shiftId: number, week: string) => {
+    setEditingInspectors({ shiftId, week });
+
+    // Pre-populate form with current inspectors
+    const shift = buildings
+      .flatMap((b) => b.shifts)
+      .find((s) => s.id === shiftId);
+
+    if (shift) {
+      inspectorGroupForm.reset({
+        inspectors: shift.shiftInspectors.map((si) =>
+          si.inspector.id.toString()
+        ),
+      });
+    }
+  };
 
   return (
     <Navbar>
@@ -341,7 +349,7 @@ export default function Shifts() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setEditingInspectors(shift.id)}
+                                  onClick={() => handleEditInspectors(shift.id, shift.week)}
                                 >
                                   <UserPlus className="w-4 h-4 mr-1" />
                                   Edit Inspectors
@@ -506,19 +514,6 @@ export default function Shifts() {
         <Dialog
           open={!!editingInspectors}
           onOpenChange={(open) => {
-            if (open) {
-              // Pre-populate form with current inspectors when opening
-              const shift = buildings
-                .flatMap((b) => b.shifts)
-                .find((s) => s.id === editingInspectors);
-              if (shift) {
-                inspectorGroupForm.reset({
-                  inspectors: shift.shiftInspectors.map((si) =>
-                    si.inspector.id.toString(),
-                  ),
-                });
-              }
-            }
             if (!open) {
               setEditingInspectors(null);
             }
