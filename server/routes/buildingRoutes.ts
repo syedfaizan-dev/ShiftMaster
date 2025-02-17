@@ -1,9 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "@db";
-import { 
-  buildings, shifts, users, roles, shiftTypes, weeklyShiftAssignments,
-  weeklyInspectorGroups, weeklyGroupInspectors, dailyShiftTypes 
-} from "@db/schema";
+import { buildings, shifts, users, roles, shiftTypes, shiftInspectors } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function getBuildingsWithShifts(req: Request, res: Response) {
@@ -31,81 +28,92 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
 
     const buildingsData = await buildingsQuery;
 
-    // Map through buildings to get weekly shift assignments and related data
+    // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
       buildingsData.map(async (building) => {
-        // Get weekly shift assignments for this building
-        const weeklyAssignments = await db
-          .select()
-          .from(weeklyShiftAssignments)
-          .where(eq(weeklyShiftAssignments.buildingId, building.id));
+        // Get shifts for this building
+        const buildingShifts = await db
+          .select({
+            id: shifts.id,
+            roleId: shifts.roleId,
+            shiftTypeId: shifts.shiftTypeId,
+            week: shifts.week,
+            status: shifts.status,
+            responseAt: shifts.responseAt,
+            rejectionReason: shifts.rejectionReason,
+          })
+          .from(shifts)
+          .where(eq(shifts.buildingId, building.id));
 
-        // For each weekly assignment, get all inspector groups and their shifts
-        const assignmentsWithDetails = await Promise.all(
-          weeklyAssignments.map(async (assignment) => {
-            // Get all inspector groups for this weekly assignment
-            const inspectorGroups = await db
+        // For each shift, get all inspectors and related data
+        const shiftsWithInspectors = await Promise.all(
+          buildingShifts.map(async (shift) => {
+            // Get all inspectors for this shift
+            const shiftInspectorsData = await db
               .select({
-                id: weeklyInspectorGroups.id,
-                role: {
-                  id: roles.id,
-                  name: roles.name,
+                inspector: {
+                  id: users.id,
+                  fullName: users.fullName,
+                  username: users.username,
+                },
+                isPrimary: shiftInspectors.isPrimary,
+                shift: {
+                  id: shifts.id,
+                  week: shifts.week,
+                  shiftType: {
+                    id: shiftTypes.id,
+                    name: shiftTypes.name,
+                    startTime: shiftTypes.startTime,
+                    endTime: shiftTypes.endTime,
+                  },
                 },
               })
-              .from(weeklyInspectorGroups)
-              .leftJoin(roles, eq(weeklyInspectorGroups.roleId, roles.id))
-              .where(eq(weeklyInspectorGroups.weeklyShiftAssignmentId, assignment.id));
+              .from(shiftInspectors)
+              .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+              .leftJoin(shifts, eq(shiftInspectors.shiftId, shifts.id))
+              .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id))
+              .where(eq(shiftInspectors.shiftId, shift.id));
 
-            // For each group, get inspectors and daily shifts
-            const groupsWithDetails = await Promise.all(
-              inspectorGroups.map(async (group) => {
-                // Get inspectors in this group
-                const inspectors = await db
-                  .select({
-                    inspector: {
-                      id: users.id,
-                      fullName: users.fullName,
-                      username: users.username,
-                    },
-                    isPrimary: weeklyGroupInspectors.isPrimary,
-                  })
-                  .from(weeklyGroupInspectors)
-                  .leftJoin(users, eq(weeklyGroupInspectors.inspectorId, users.id))
-                  .where(eq(weeklyGroupInspectors.weeklyInspectorGroupId, group.id));
+            // Get role details
+            const [role] = await db
+              .select({
+                id: roles.id,
+                name: roles.name,
+              })
+              .from(roles)
+              .where(eq(roles.id, shift.roleId))
+              .limit(1);
 
-                // Get daily shift types for this group
-                const dailyShifts = await db
-                  .select({
-                    dayOfWeek: dailyShiftTypes.dayOfWeek,
-                    shiftType: {
-                      id: shiftTypes.id,
-                      name: shiftTypes.name,
-                      startTime: shiftTypes.startTime,
-                      endTime: shiftTypes.endTime,
-                    },
-                  })
-                  .from(dailyShiftTypes)
-                  .leftJoin(shiftTypes, eq(dailyShiftTypes.shiftTypeId, shiftTypes.id))
-                  .where(eq(dailyShiftTypes.weeklyInspectorGroupId, group.id));
-
-                return {
-                  ...group,
-                  inspectors,
-                  dailyShifts,
-                };
-              }),
-            );
+            // Get shift type details
+            const [shiftType] = await db
+              .select({
+                id: shiftTypes.id,
+                name: shiftTypes.name,
+                startTime: shiftTypes.startTime,
+                endTime: shiftTypes.endTime,
+              })
+              .from(shiftTypes)
+              .where(eq(shiftTypes.id, shift.shiftTypeId))
+              .limit(1);
 
             return {
-              ...assignment,
-              inspectorGroups: groupsWithDetails,
+              ...shift,
+              shiftInspectors: shiftInspectorsData,
+              role,
+              shiftType,
+              building: {
+                id: building.id,
+                name: building.name,
+                code: building.code,
+                area: building.area,
+              },
             };
           }),
         );
 
         return {
           ...building,
-          weeklyAssignments: assignmentsWithDetails,
+          shifts: shiftsWithInspectors,
         };
       }),
     );
