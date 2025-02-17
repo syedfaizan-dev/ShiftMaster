@@ -48,6 +48,7 @@ export const shiftInspectors = pgTable("shift_inspectors", {
   id: serial("id").primaryKey(),
   shiftId: integer("shift_id").references(() => shifts.id).notNull(),
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
+  inspectorType: text("inspector_type").notNull().default('PRIMARY'), // Can be 'PRIMARY' or 'BACKUP'
   isPrimary: boolean("is_primary").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
