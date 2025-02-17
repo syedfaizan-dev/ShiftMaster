@@ -90,14 +90,15 @@ const WeeklyTable = ({ shifts, week, onDeleteShift, isAdmin }: WeeklyTableProps)
   const getShiftTypeAbbreviation = (shift: ShiftWithRelations | undefined) => {
     if (!shift) return "//";
 
-    const startHour = parseInt(shift.shiftType.startTime.split(":")[0]);
+    const startTime = shift.shiftType.startTime;
+    const [hours] = startTime.split(':').map(Number);
 
     // Morning shift (6am - 2pm)
-    if (startHour >= 6 && startHour < 14) {
+    if (hours >= 6 && hours < 14) {
       return "Mo";
     }
     // Afternoon shift (2pm - 10pm)
-    else if (startHour >= 14 && startHour < 22) {
+    else if (hours >= 14 && hours < 22) {
       return "A";
     }
     // Night shift (10pm - 6am)
