@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { Building, PersonStanding, Clock } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import { format } from "date-fns";
 
 interface BuildingData {
   id: number;
@@ -21,6 +20,7 @@ interface BuildingData {
   } | null;
   shifts: Array<{
     id: number;
+    week: string;
     shiftInspectors: Array<{
       inspector: {
         id: number;
@@ -28,16 +28,15 @@ interface BuildingData {
         username: string;
       };
       isPrimary: boolean;
-      shift: {
+    }>;
+    days: Array<{
+      dayOfWeek: number;
+      shiftType: {
         id: number;
-        week: string;
-        shiftType: {
-          id: number;
-          name: string;
-          startTime: string;
-          endTime: string;
-        };
-      };
+        name: string;
+        startTime: string;
+        endTime: string;
+      } | null;
     }>;
   }>;
 }
@@ -82,12 +81,9 @@ export function BuildingsOverview() {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-6">
       {data?.buildings.map((building) => (
-        <Card 
-          key={building.id} 
-          className="group hover:shadow-lg transition-shadow duration-200 overflow-hidden"
-        >
+        <Card key={building.id}>
           <CardHeader className="bg-secondary/10 pb-4">
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center gap-2">
@@ -108,70 +104,70 @@ export function BuildingsOverview() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
-            {building.shifts?.length > 0 && building.shifts.some(shift => shift.shiftInspectors?.length > 0) ? (
+            {building.shifts?.length > 0 ? (
               <div className="space-y-4">
                 <h4 className="text-sm font-medium flex items-center gap-2 text-primary">
                   <Clock className="h-4 w-4" />
                   Current Shift Assignments
                 </h4>
-                <div className="space-y-3">
-                  {building.shifts.map((shift) => {
-                    // Group all inspectors for this shift
-                    const inspectors = shift.shiftInspectors || [];
-                    const primaryInspector = inspectors.find(si => si.isPrimary);
-                    const backupInspectors = inspectors.filter(si => !si.isPrimary);
-
-                    return (
-                      <div
-                        key={shift.id}
-                        className="p-3 rounded-lg bg-secondary/20 hover:bg-secondary/30 transition-colors duration-200"
-                      >
-                        <div className="flex flex-col gap-2">
-                          {/* Inspector Cell */}
-                          <div className="mb-2 p-2 bg-background/60 rounded-lg">
-                            <div className="flex flex-col gap-1">
-                              {primaryInspector && (
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium">{primaryInspector.inspector.fullName}</span>
-                                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                                    Primary
-                                  </span>
-                                </div>
-                              )}
-                              {backupInspectors.length > 0 && (
-                                <div className="text-sm text-muted-foreground">
-                                  Backup: {backupInspectors.map(si => si.inspector.fullName).join(', ')}
-                                </div>
-                              )}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="text-xs uppercase text-muted-foreground">
+                        <th className="px-4 py-2 text-left">Inspectors</th>
+                        <th className="px-4 py-2 text-center">Sun</th>
+                        <th className="px-4 py-2 text-center">Mon</th>
+                        <th className="px-4 py-2 text-center">Tue</th>
+                        <th className="px-4 py-2 text-center">Wed</th>
+                        <th className="px-4 py-2 text-center">Thu</th>
+                        <th className="px-4 py-2 text-center">Fri</th>
+                        <th className="px-4 py-2 text-center">Sat</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {building.shifts.map((shift) => (
+                        <tr key={shift.id} className="border-t border-secondary/20">
+                          <td className="px-4 py-3">
+                            <div className="space-y-2">
+                              {shift.shiftInspectors
+                                .sort((a, b) => (a.isPrimary === b.isPrimary ? 0 : a.isPrimary ? -1 : 1))
+                                .map((si) => (
+                                  <div key={si.inspector.id} className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {si.inspector.fullName}
+                                    </span>
+                                    {si.isPrimary && (
+                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                        Primary
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Week {shift.week}
+                              </div>
                             </div>
-                          </div>
-
-                          {/* Shift Type Row */}
-                          <div className="grid grid-cols-7 gap-1">
-                            {[0, 1, 2, 3, 4, 5, 6].map((day) => {
-                              const dayShift = shift.days?.find(d => d.dayOfWeek === day); //This line assumes the existence of 'days' property in shift object.  It needs to be added to the BuildingData interface if it's not present.
-                              return (
+                          </td>
+                          {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+                            const dayShift = shift.days?.find(d => d.dayOfWeek === day);
+                            return (
+                              <td key={day} className="px-4 py-3 text-center">
                                 <div
-                                  key={day}
-                                  className={`p-2 rounded text-center ${
+                                  className={`rounded-md py-1 ${
                                     dayShift?.shiftType
-                                      ? 'bg-primary/10 text-primary'
+                                      ? 'bg-primary/10 text-primary font-medium'
                                       : 'bg-secondary/10'
                                   }`}
                                 >
                                   {dayShift?.shiftType?.name.charAt(0) || '-'}
                                 </div>
-                              );
-                            })}
-                          </div>
-
-                          <div className="text-sm text-muted-foreground mt-1">
-                            Week {shift.week}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : (
