@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, time } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, time, date } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { type InferSelectModel } from "drizzle-orm";
@@ -56,9 +56,9 @@ export const shiftInspectors = pgTable("shift_inspectors", {
 export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
   roleId: integer("role_id").references(() => roles.id).notNull(),
-  shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   buildingId: integer("building_id").references(() => buildings.id).notNull(),
-  week: text("week").notNull(),
+  week: text("week").notNull(), // Format: YYYY-WW
+  groupName: text("group_name").notNull(), // New field for inspector groups
   status: text("status").default('PENDING').notNull(),
   responseAt: timestamp("response_at"),
   rejectionReason: text("rejection_reason"),
@@ -81,6 +81,15 @@ export const requests = pgTable("requests", {
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   metadata: jsonb("metadata"),
+});
+
+export const shiftDays = pgTable("shift_days", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").references(() => shifts.id).notNull(),
+  dayOfWeek: integer("day_of_week").notNull(), // 0 = Sunday, 1 = Monday, etc.
+  shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const requestsRelations = relations(requests, ({ one }) => ({
@@ -116,13 +125,10 @@ export const buildingsRelations = relations(buildings, ({ one, many }) => ({
 
 export const shiftsRelations = relations(shifts, ({ one, many }) => ({
   inspectors: many(shiftInspectors),
+  days: many(shiftDays),
   role: one(roles, {
     fields: [shifts.roleId],
     references: [roles.id],
-  }),
-  shiftType: one(shiftTypes, {
-    fields: [shifts.shiftTypeId],
-    references: [shiftTypes.id],
   }),
   building: one(buildings, {
     fields: [shifts.buildingId],
@@ -303,3 +309,27 @@ export const selectShiftInspectorSchema = createSelectSchema(shiftInspectors);
 
 export type ShiftInspector = typeof shiftInspectors.$inferSelect;
 export type InsertShiftInspector = typeof shiftInspectors.$inferInsert;
+
+export const shiftDaysRelations = relations(shiftDays, ({ one }) => ({
+  shift: one(shifts, {
+    fields: [shiftDays.shiftId],
+    references: [shifts.id],
+  }),
+  shiftType: one(shiftTypes, {
+    fields: [shiftDays.shiftTypeId],
+    references: [shiftTypes.id],
+  }),
+}));
+
+export type ShiftDay = typeof shiftDays.$inferSelect;
+export type InsertShiftDay = typeof shiftDays.$inferInsert;
+
+export type ShiftWithDays = Shift & {
+  days?: ShiftDay[];
+  inspectors?: Array<{
+    inspector: User;
+    isPrimary: boolean;
+  }>;
+  role?: Role;
+  building?: Building;
+};

@@ -1,7 +1,15 @@
 import { Request, Response } from "express";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@db";
-import { shifts, users, roles, shiftTypes, buildings, shiftInspectors } from "@db/schema";
+import { 
+  shifts, 
+  users, 
+  roles, 
+  shiftTypes, 
+  buildings, 
+  shiftInspectors,
+  shiftDays 
+} from "@db/schema";
 import { NotificationService } from "server/services/notification";
 
 export async function getShifts(req: Request, res: Response) {
@@ -9,70 +17,87 @@ export async function getShifts(req: Request, res: Response) {
     const query = db
       .select({
         id: shifts.id,
-        inspectorId: shifts.inspectorId,
         roleId: shifts.roleId,
-        shiftTypeId: shifts.shiftTypeId,
         buildingId: shifts.buildingId,
         week: shifts.week,
-        backupId: shifts.backupId,
+        groupName: shifts.groupName,
         status: shifts.status,
         rejectionReason: shifts.rejectionReason,
         responseAt: shifts.responseAt,
-        inspector: {
-          id: users.id,
-          fullName: users.fullName,
-          username: users.username,
-        },
         role: {
           id: roles.id,
           name: roles.name,
         },
-        shiftType: {
-          id: shiftTypes.id,
-          name: shiftTypes.name,
-          startTime: shiftTypes.startTime,
-          endTime: shiftTypes.endTime,
-        },
-        building: buildings ? {
+        building: {
           id: buildings.id,
           name: buildings.name,
           code: buildings.code,
           area: buildings.area,
-        } : null,
+        },
       })
       .from(shifts)
-      .leftJoin(users, eq(shifts.inspectorId, users.id))
       .leftJoin(roles, eq(shifts.roleId, roles.id))
-      .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id))
       .leftJoin(buildings, eq(shifts.buildingId, buildings.id));
 
     // If not admin, only show user's shifts
     if (!req.user?.isAdmin) {
-      query.where(eq(shifts.inspectorId, req.user!.id));
+      const userShifts = await db
+        .select({ shiftId: shiftInspectors.shiftId })
+        .from(shiftInspectors)
+        .where(eq(shiftInspectors.inspectorId, req.user!.id));
+
+      const shiftIds = userShifts.map(s => s.shiftId);
+      if (shiftIds.length > 0) {
+        query.where(and(shifts.id.in(shiftIds)));
+      } else {
+        return res.json([]); // Return empty if user has no shifts
+      }
     }
 
     const shiftsData = await query;
 
-    // Get backup inspector details in a separate query
-    const shiftsWithBackup = await Promise.all(
+    // Get inspectors and daily assignments for each shift
+    const shiftsWithDetails = await Promise.all(
       shiftsData.map(async (shift) => {
-        if (shift.backupId) {
-          const [backup] = await db
-            .select({
+        // Get all inspectors for this shift
+        const shiftInspectorsData = await db
+          .select({
+            inspector: {
               id: users.id,
               fullName: users.fullName,
               username: users.username,
-            })
-            .from(users)
-            .where(eq(users.id, shift.backupId))
-            .limit(1);
-          return { ...shift, backup };
-        }
-        return { ...shift, backup: null };
+            },
+            isPrimary: shiftInspectors.isPrimary,
+          })
+          .from(shiftInspectors)
+          .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+          .where(eq(shiftInspectors.shiftId, shift.id));
+
+        // Get daily assignments
+        const dailyAssignments = await db
+          .select({
+            id: shiftDays.id,
+            dayOfWeek: shiftDays.dayOfWeek,
+            shiftType: {
+              id: shiftTypes.id,
+              name: shiftTypes.name,
+              startTime: shiftTypes.startTime,
+              endTime: shiftTypes.endTime,
+            },
+          })
+          .from(shiftDays)
+          .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
+          .where(eq(shiftDays.shiftId, shift.id));
+
+        return {
+          ...shift,
+          inspectors: shiftInspectorsData,
+          days: dailyAssignments,
+        };
       })
     );
 
-    res.json(shiftsWithBackup);
+    res.json(shiftsWithDetails);
   } catch (error) {
     console.error('Error fetching shifts:', error);
     res.status(500).send((error as Error).message);
@@ -85,104 +110,80 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
-    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
+    const { 
+      inspectors, 
+      roleId, 
+      buildingId, 
+      week, 
+      groupName,
+      dailyAssignments 
+    } = req.body;
 
     // Validate required fields
-    if (!inspectorId || !roleId || !shiftTypeId || !buildingId || !week) {
+    if (!inspectors?.length || !roleId || !buildingId || !week || !groupName || !dailyAssignments?.length) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Check if inspector exists
-    const [inspector] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, inspectorId))
-      .limit(1);
-
-    if (!inspector) {
-      return res.status(400).json({ message: "Invalid inspector ID" });
-    }
-
-    // Create shift
-    const [shift] = await db
-      .insert(shifts)
-      .values({
-        roleId,
-        shiftTypeId,
-        buildingId,
-        week,
-        status: 'PENDING',
-        createdBy: req.user.id,
-      })
-      .returning();
-
-    // Add primary inspector
-    await db.insert(shiftInspectors).values({
-      shiftId: shift.id,
-      inspectorId: parseInt(inspectorId),
-      isPrimary: true,
-    });
-
-    // Add backup inspector if provided
-    if (backupId && backupId !== "none") {
-      await db.insert(shiftInspectors).values({
-        shiftId: shift.id,
-        inspectorId: parseInt(backupId),
-        isPrimary: false,
-      });
-    }
-
-    // Get role details for notification
-    const [role] = await db
-      .select()
-      .from(roles)
-      .where(eq(roles.id, shift.roleId))
-      .limit(1);
-
-    // Notify assigned inspector
-    await NotificationService.notifyShiftAssignment({
-      userId: inspector.id,
-      userEmail: inspector.username,
-      shiftId: shift.id,
-      role: role.name,
-    });
-
-    // If there's a backup inspector, notify them too
-    if (backupId && backupId !== "none") {
-      const [backup] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, parseInt(backupId)))
-        .limit(1);
-
-      if (backup) {
-        await NotificationService.notifyShiftAssignment({
-          userId: backup.id,
-          userEmail: backup.username,
-          shiftId: shift.id,
-          role: `Backup ${role.name}`,
-        });
-      }
-    }
-
-    // Return the created shift with inspector details
-    const shiftWithInspectors = {
-      ...shift,
-      inspectors: await db
-        .select({
-          inspector: {
-            id: users.id,
-            fullName: users.fullName,
-            username: users.username,
-          },
-          isPrimary: shiftInspectors.isPrimary,
+    // Start a transaction
+    const result = await db.transaction(async (tx) => {
+      // Create shift
+      const [shift] = await tx
+        .insert(shifts)
+        .values({
+          roleId,
+          buildingId,
+          week,
+          groupName,
+          status: 'PENDING',
+          createdBy: req.user!.id,
         })
-        .from(shiftInspectors)
-        .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-        .where(eq(shiftInspectors.shiftId, shift.id)),
-    };
+        .returning();
 
-    res.json(shiftWithInspectors);
+      // Add inspectors
+      await Promise.all(
+        inspectors.map(async (inspector: { id: number, isPrimary: boolean }) => {
+          await tx.insert(shiftInspectors).values({
+            shiftId: shift.id,
+            inspectorId: inspector.id,
+            isPrimary: inspector.isPrimary,
+          });
+        })
+      );
+
+      // Add daily assignments
+      await Promise.all(
+        dailyAssignments.map(async (assignment: { dayOfWeek: number, shiftTypeId: number }) => {
+          await tx.insert(shiftDays).values({
+            shiftId: shift.id,
+            dayOfWeek: assignment.dayOfWeek,
+            shiftTypeId: assignment.shiftTypeId,
+          });
+        })
+      );
+
+      return shift;
+    });
+
+    // Get complete shift details with relationships
+    const completeShift = await db.query.shifts.findFirst({
+      where: eq(shifts.id, result.id),
+      with: {
+        inspectors: {
+          with: {
+            inspector: true,
+          },
+        },
+        days: {
+          with: {
+            shiftType: true,
+          },
+        },
+        role: true,
+        building: true,
+      },
+    });
+
+    res.json(completeShift);
   } catch (error) {
     console.error('Error creating shift:', error);
     res.status(500).json({ message: "Error creating shift" });
