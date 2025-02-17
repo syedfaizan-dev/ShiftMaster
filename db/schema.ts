@@ -44,16 +44,9 @@ export const shiftTypes = pgTable("shift_types", {
   createdBy: integer("created_by").references(() => users.id),
 });
 
-export const shiftInspectors = pgTable("shift_inspectors", {
-  id: serial("id").primaryKey(),
-  shiftId: integer("shift_id").references(() => shifts.id).notNull(),
-  inspectorId: integer("inspector_id").references(() => users.id).notNull(),
-  assignedAt: timestamp("assigned_at").defaultNow(),
-  assignedBy: integer("assigned_by").references(() => users.id),
-});
-
 export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
+  inspectorId: integer("inspector_id").references(() => users.id).notNull(),
   roleId: integer("role_id").references(() => roles.id).notNull(),
   shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   buildingId: integer("building_id").references(() => buildings.id).notNull(),
@@ -114,8 +107,11 @@ export const buildingsRelations = relations(buildings, ({ one, many }) => ({
   }),
 }));
 
-export const shiftsRelations = relations(shifts, ({ one, many }) => ({
-  inspectors: many(shiftInspectors),
+export const shiftsRelations = relations(shifts, ({ one }) => ({
+  inspector: one(users, {
+    fields: [shifts.inspectorId],
+    references: [users.id],
+  }),
   backup: one(users, {
     fields: [shifts.backupId],
     references: [users.id],
@@ -283,33 +279,9 @@ export type UtilityWithRelations = Utility & {
 };
 
 export type ShiftWithRelations = Shift & {
-  inspectors?: (ShiftInspector & {
-    inspector?: User;
-  })[];
+  inspector?: User;
   backup?: User | null;
   role?: Role;
   shiftType?: typeof shiftTypes.$inferSelect;
   building?: Building;
 };
-
-export const shiftInspectorsRelations = relations(shiftInspectors, ({ one }) => ({
-  shift: one(shifts, {
-    fields: [shiftInspectors.shiftId],
-    references: [shifts.id],
-  }),
-  inspector: one(users, {
-    fields: [shiftInspectors.inspectorId],
-    references: [users.id],
-  }),
-  assigner: one(users, {
-    fields: [shiftInspectors.assignedBy],
-    references: [users.id],
-  }),
-}));
-
-export type ShiftInspector = typeof shiftInspectors.$inferSelect;
-export type InsertShiftInspector = typeof shiftInspectors.$inferInsert;
-
-// Export schemas for the new table
-export const insertShiftInspectorSchema = createInsertSchema(shiftInspectors);
-export const selectShiftInspectorSchema = createSelectSchema(shiftInspectors);

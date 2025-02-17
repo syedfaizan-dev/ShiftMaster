@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@db";
-import { shifts, users, roles, shiftTypes, buildings, shiftInspectors } from "@db/schema";
+import { shifts, users, roles, shiftTypes, buildings } from "@db/schema";
 import { NotificationService } from "server/services/notification";
 
 export async function getShifts(req: Request, res: Response) {
@@ -9,6 +9,7 @@ export async function getShifts(req: Request, res: Response) {
     const query = db
       .select({
         id: shifts.id,
+        inspectorId: shifts.inspectorId,
         roleId: shifts.roleId,
         shiftTypeId: shifts.shiftTypeId,
         buildingId: shifts.buildingId,
@@ -17,6 +18,11 @@ export async function getShifts(req: Request, res: Response) {
         status: shifts.status,
         rejectionReason: shifts.rejectionReason,
         responseAt: shifts.responseAt,
+        inspector: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+        },
         role: {
           id: roles.id,
           name: roles.name,
@@ -27,39 +33,31 @@ export async function getShifts(req: Request, res: Response) {
           startTime: shiftTypes.startTime,
           endTime: shiftTypes.endTime,
         },
-        building: {
+        building: buildings ? {
           id: buildings.id,
           name: buildings.name,
           code: buildings.code,
           area: buildings.area,
-        },
+        } : null,
       })
       .from(shifts)
+      .leftJoin(users, eq(shifts.inspectorId, users.id))
       .leftJoin(roles, eq(shifts.roleId, roles.id))
       .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id))
       .leftJoin(buildings, eq(shifts.buildingId, buildings.id));
 
+    // If not admin, only show user's shifts
+    if (!req.user?.isAdmin) {
+      query.where(eq(shifts.inspectorId, req.user!.id));
+    }
+
     const shiftsData = await query;
 
-    // Get inspectors and backup details
-    const shiftsWithDetails = await Promise.all(
+    // Get backup inspector details in a separate query
+    const shiftsWithBackup = await Promise.all(
       shiftsData.map(async (shift) => {
-        // Get assigned inspectors
-        const inspectors = await db
-          .select({
-            id: users.id,
-            fullName: users.fullName,
-            username: users.username,
-            assignedAt: shiftInspectors.assignedAt,
-          })
-          .from(shiftInspectors)
-          .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-          .where(eq(shiftInspectors.shiftId, shift.id));
-
-        // Get backup inspector if exists
-        let backup = null;
         if (shift.backupId) {
-          const [backupUser] = await db
+          const [backup] = await db
             .select({
               id: users.id,
               fullName: users.fullName,
@@ -68,18 +66,13 @@ export async function getShifts(req: Request, res: Response) {
             .from(users)
             .where(eq(users.id, shift.backupId))
             .limit(1);
-          backup = backupUser;
+          return { ...shift, backup };
         }
-
-        return {
-          ...shift,
-          inspectors,
-          backup,
-        };
+        return { ...shift, backup: null };
       })
     );
 
-    res.json(shiftsWithDetails);
+    res.json(shiftsWithBackup);
   } catch (error) {
     console.error('Error fetching shifts:', error);
     res.status(500).send((error as Error).message);
@@ -92,27 +85,29 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
-    const { inspectorIds, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
+    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
 
     // Validate required fields
-    if (!inspectorIds?.length || !roleId || !shiftTypeId || !buildingId || !week) {
+    if (!inspectorId || !roleId || !shiftTypeId || !buildingId || !week) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Verify all inspectors exist
-    const inspectors = await db
+    // Check if inspector exists
+    const [inspector] = await db
       .select()
       .from(users)
-      .where(inArray(users.id, inspectorIds));
+      .where(eq(users.id, inspectorId))
+      .limit(1);
 
-    if (inspectors.length !== inspectorIds.length) {
-      return res.status(400).json({ message: "One or more invalid inspector IDs" });
+    if (!inspector) {
+      return res.status(400).json({ message: "Invalid inspector ID" });
     }
 
-    // Create shift
+    // Create shift with PENDING status
     const [shift] = await db
       .insert(shifts)
       .values({
+        inspectorId,
         roleId,
         shiftTypeId,
         buildingId,
@@ -123,15 +118,6 @@ export async function createShift(req: Request, res: Response) {
       })
       .returning();
 
-    // Assign inspectors
-    await db.insert(shiftInspectors).values(
-      inspectorIds.map(inspectorId => ({
-        shiftId: shift.id,
-        inspectorId,
-        assignedBy: req.user.id,
-      }))
-    );
-
     // Get role details for notification
     const [role] = await db
       .select()
@@ -139,17 +125,13 @@ export async function createShift(req: Request, res: Response) {
       .where(eq(roles.id, shift.roleId))
       .limit(1);
 
-    // Notify all assigned inspectors
-    await Promise.all(
-      inspectors.map(inspector =>
-        NotificationService.notifyShiftAssignment({
-          userId: inspector.id,
-          userEmail: inspector.username,
-          shiftId: shift.id,
-          role: role.name,
-        })
-      )
-    );
+    // Notify assigned inspector
+    await NotificationService.notifyShiftAssignment({
+      userId: inspector.id,
+      userEmail: inspector.username,
+      shiftId: shift.id,
+      role: role.name,
+    });
 
     // If there's a backup inspector, notify them too
     if (shift.backupId) {
@@ -169,50 +151,11 @@ export async function createShift(req: Request, res: Response) {
       }
     }
 
-    // Return the created shift with all details
-    const createdShift = await getShiftWithDetails(shift.id);
-    res.json(createdShift);
+    res.json(shift);
   } catch (error) {
     console.error('Error creating shift:', error);
     res.status(500).json({ message: "Error creating shift" });
   }
-}
-
-async function getShiftWithDetails(shiftId: number) {
-  const [shift] = await db
-    .select()
-    .from(shifts)
-    .where(eq(shifts.id, shiftId))
-    .limit(1);
-
-  if (!shift) return null;
-
-  const inspectors = await db
-    .select({
-      id: users.id,
-      fullName: users.fullName,
-      username: users.username,
-      assignedAt: shiftInspectors.assignedAt,
-    })
-    .from(shiftInspectors)
-    .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-    .where(eq(shiftInspectors.shiftId, shiftId));
-
-  let backup = null;
-  if (shift.backupId) {
-    const [backupUser] = await db
-      .select({
-        id: users.id,
-        fullName: users.fullName,
-        username: users.username,
-      })
-      .from(users)
-      .where(eq(users.id, shift.backupId))
-      .limit(1);
-    backup = backupUser;
-  }
-
-  return { ...shift, inspectors, backup };
 }
 
 export async function handleShiftResponse(req: Request, res: Response) {
@@ -231,8 +174,7 @@ export async function handleShiftResponse(req: Request, res: Response) {
       .where(
         and(
           eq(shifts.id, parseInt(id)),
-          // This condition needs adjustment for multiple inspectors.  Consider if a shift can be rejected by any assigned inspector
-          inArray(shifts.inspectorId, (await db.select(shiftInspectors.inspectorId).from(shiftInspectors).where(eq(shiftInspectors.shiftId, parseInt(id)))).map(r=>r.inspectorId))
+          eq(shifts.inspectorId, req.user!.id)
         )
       )
       .limit(1);
@@ -274,7 +216,7 @@ export async function updateShift(req: Request, res: Response) {
     }
 
     const { id } = req.params;
-    const { inspectorIds, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
+    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
 
     // Validate that the shift exists
     const [existingShift] = await db
@@ -313,6 +255,7 @@ export async function updateShift(req: Request, res: Response) {
     const [updatedShift] = await db
       .update(shifts)
       .set({
+        inspectorId,
         roleId,
         shiftTypeId,
         buildingId,
@@ -321,16 +264,6 @@ export async function updateShift(req: Request, res: Response) {
       })
       .where(eq(shifts.id, parseInt(id)))
       .returning();
-
-    //Update inspectors.  First delete existing then insert new ones.
-    await db.delete(shiftInspectors).where(eq(shiftInspectors.shiftId, parseInt(id)));
-    await db.insert(shiftInspectors).values(
-      inspectorIds.map(inspectorId => ({
-        shiftId: parseInt(id),
-        inspectorId,
-        assignedBy: req.user.id,
-      }))
-    );
 
     res.json(updatedShift);
   } catch (error) {
@@ -368,7 +301,7 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
           .from(shifts)
           .where(
             and(
-              inArray(shifts.inspectorId, (await db.select(shiftInspectors.inspectorId).from(shiftInspectors).where(eq(shiftInspectors.inspectorId, inspector.id))).map(r=>r.inspectorId)),
+              eq(shifts.inspectorId, inspector.id),
               eq(shifts.week, week),
               eq(shifts.status, 'ACCEPTED')
             )
@@ -417,8 +350,7 @@ export async function getInspectorsByShiftTypeForTask(req: Request, res: Respons
         username: users.username,
       })
       .from(shifts)
-      .leftJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
-      .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+      .leftJoin(users, eq(shifts.inspectorId, users.id))
       .where(
         and(
           eq(shifts.shiftTypeId, shiftTypeId),

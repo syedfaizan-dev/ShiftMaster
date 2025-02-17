@@ -23,7 +23,7 @@ type Building = {
 
 type ShiftWithRelations = {
   id: number;
-  inspectors: {inspector: User}[];
+  inspectorId: number;
   roleId: number;
   shiftTypeId: number;
   buildingId: number;
@@ -37,7 +37,7 @@ type ShiftFormProps = {
 };
 
 const shiftSchema = z.object({
-  inspectorIds: z.array(z.string()).min(1, "At least one inspector is required"),
+  inspectorId: z.string().min(1, "Inspector is required"),
   roleId: z.string().min(1, "Role is required"),
   shiftTypeId: z.string().min(1, "Shift type is required"),
   buildingId: z.string().min(1, "Building is required"),
@@ -53,7 +53,7 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
   const form = useForm({
     resolver: zodResolver(shiftSchema),
     defaultValues: {
-      inspectorIds: editShift ? editShift.inspectors.map(i => i.inspector.id.toString()) : [],
+      inspectorId: editShift ? editShift.inspectorId.toString() : "",
       roleId: editShift ? editShift.roleId.toString() : "",
       shiftTypeId: editShift ? editShift.shiftTypeId.toString() : "",
       buildingId: editShift ? editShift.buildingId.toString() : "",
@@ -82,13 +82,13 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
   });
 
   const createShift = useMutation({
-    mutationFn: async (data: z.infer<typeof shiftSchema>) => {
+    mutationFn: async (data: any) => {
       const res = await fetch("/api/admin/shifts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          inspectorIds: data.inspectorIds.map(id => parseInt(id)),
+          inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           shiftTypeId: parseInt(data.shiftTypeId),
           buildingId: parseInt(data.buildingId),
@@ -105,7 +105,7 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
     onSuccess: () => {
       toast({ 
         title: "Success", 
-        description: "Shift created successfully",
+        description: editShift ? "Shift updated successfully" : "Shift created successfully",
         duration: 3000,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
@@ -132,7 +132,7 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          inspectorIds: data.inspectorIds.map(id => parseInt(id)),
+          inspectorId: parseInt(data.inspectorId),
           roleId: parseInt(data.roleId),
           shiftTypeId: parseInt(data.shiftTypeId),
           buildingId: parseInt(data.buildingId),
@@ -185,61 +185,24 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="inspectorIds"
+            name="inspectorId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Inspectors</FormLabel>
-                <Select 
-                  onValueChange={(value) => {
-                    const currentValues = field.value || [];
-                    if (!currentValues.includes(value)) {
-                      field.onChange([...currentValues, value]);
-                    }
-                  }}
-                  value={field.value?.[field.value.length - 1] || ""}
-                  multiple
-                >
+                <FormLabel>Inspector</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select inspectors" />
+                      <SelectValue placeholder="Select an inspector" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {inspectors.map((inspector) => (
-                      <SelectItem 
-                        key={inspector.id} 
-                        value={inspector.id.toString()}
-                        disabled={field.value?.includes(inspector.id.toString())}
-                      >
+                      <SelectItem key={inspector.id} value={inspector.id.toString()}>
                         {inspector.fullName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {field.value?.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {field.value.map((inspectorId) => {
-                      const inspector = inspectors.find(i => i.id.toString() === inspectorId);
-                      return (
-                        <div
-                          key={inspectorId}
-                          className="flex items-center gap-1 bg-secondary/20 px-2 py-1 rounded-md"
-                        >
-                          <span className="text-sm">{inspector?.fullName}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              field.onChange(field.value.filter(id => id !== inspectorId));
-                            }}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
                 <FormMessage />
               </FormItem>
             )}
