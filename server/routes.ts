@@ -25,6 +25,7 @@ import {
   handleShiftResponse,
   getInspectorsByShiftType,
   getInspectorsByShiftTypeForTask,
+  updateShiftDay,
 } from "./routes/shifts";
 import { getBuildingsWithShifts } from "./routes/buildingRoutes";
 import { getInspectors } from "./routes/inspectors";
@@ -1076,8 +1077,7 @@ export function registerRoutes(app: Express): Server {
             fullName: users.fullName,
           })
           .from(users)
-          .replit_final_file>
-where(
+          .where(
             and(
               eq(users.isAdmin, false),
               eq(users.isManager, false),
@@ -1600,6 +1600,23 @@ where(
         console.error("Error updating shift inspectors:", error);
         res.status(500).json({ 
           message: "Error updating shift inspectors",
+          error: error instanceof Error ? error.message : "Unknown error" 
+        });
+      }
+    }
+  );
+
+  // Add the new route before the server creation
+  app.put(
+    "/api/shifts/:id/days/:dayOfWeek",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        await updateShiftDay(req, res);
+      } catch (error) {
+        console.error("Error in shift day update route:", error);
+        res.status(500).json({ 
+          message: "Error updating shift day",
           error: error instanceof Error ? error.message : "Unknown error" 
         });
       }

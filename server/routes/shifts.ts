@@ -458,6 +458,54 @@ export async function updateShiftInspectors(req: Request, res: Response) {
   }
 }
 
+export async function updateShiftDay(req: Request, res: Response) {
+  try {
+    const { id, dayOfWeek } = req.params;
+    const { shiftTypeId } = req.body;
+
+    // Validate parameters
+    if (!id || dayOfWeek === undefined || !shiftTypeId) {
+      return res.status(400).json({ 
+        message: "Missing required parameters",
+        error: "Shift ID, day of week, and shift type ID are required" 
+      });
+    }
+
+    // Start a transaction
+    const result = await db.transaction(async (tx) => {
+      // Delete existing day assignment if any
+      await tx
+        .delete(shiftDays)
+        .where(
+          and(
+            eq(shiftDays.shiftId, parseInt(id)),
+            eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
+          )
+        );
+
+      // Insert new day assignment
+      const [newDay] = await tx
+        .insert(shiftDays)
+        .values({
+          shiftId: parseInt(id),
+          dayOfWeek: parseInt(dayOfWeek),
+          shiftTypeId: parseInt(shiftTypeId),
+        })
+        .returning();
+
+      return newDay;
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error updating shift day:", error);
+    res.status(500).json({ 
+      message: "Error updating shift day",
+      error: error instanceof Error ? error.message : "Unknown error" 
+    });
+  }
+}
+
 export default {
   getShifts,
   createShift,
@@ -466,4 +514,5 @@ export default {
   getInspectorsByShiftType,
   getInspectorsByShiftTypeForTask,
   updateShiftInspectors,
+  updateShiftDay,
 };
