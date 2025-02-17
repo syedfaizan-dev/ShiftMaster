@@ -37,6 +37,15 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+
 type ShiftWithRelations = {
   id: number;
   inspectorId: number;
@@ -53,6 +62,18 @@ type ShiftWithRelations = {
   shiftType: { id: number; name: string; startTime: string; endTime: string };
   backup?: { id: number; fullName: string; username: string } | null;
   building: { id: number; name: string; code: string; area: string };
+};
+
+type BuildingWithShifts = {
+  id: number;
+  name: string;
+  code: string;
+  area: string;
+  shifts: ShiftWithRelations[];
+};
+
+type BuildingsResponse = {
+  buildings: BuildingWithShifts[];
 };
 
 const rejectShiftSchema = z.object({
@@ -80,27 +101,24 @@ export default function Shifts() {
     },
   });
 
-  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<
-    ShiftWithRelations[]
-  >({
-    queryKey: [
-      user?.isAdmin || user?.isManager ? "/api/admin/shifts" : "/api/shifts",
-    ],
+  const { data: buildingsData, isLoading: isLoadingBuildings } = useQuery<BuildingsResponse>({
+    queryKey: ["/api/buildings/with-shifts"],
+    queryFn: async () => {
+      const response = await fetch("/api/buildings/with-shifts", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch buildings");
+      }
+      return response.json();
+    },
   });
 
-  // Calculate pagination values
+  const buildings = buildingsData?.buildings || [];
+
+  // Calculate pagination values for shifts within each building
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const currentShifts = shifts.slice(startIndex, endIndex);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setCurrentPage(1);
-  };
 
   const deleteShift = useMutation({
     mutationFn: async (id: number) => {
@@ -114,8 +132,7 @@ export default function Shifts() {
     onSuccess: () => {
       toast({ title: "Success", description: "Shift deleted successfully" });
       setShiftToDelete(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
     },
     onError: (error: Error) => {
       toast({
@@ -154,8 +171,7 @@ export default function Shifts() {
       });
       setShiftToReject(null);
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
     },
     onError: (error: Error) => {
       toast({
@@ -194,12 +210,6 @@ export default function Shifts() {
       header: "Shift Type",
       accessorKey: "shiftType",
       cell: (value: { name: string }) => value?.name || "Unknown",
-    },
-    {
-      header: "Building",
-      accessorKey: "building",
-      cell: (value: { name: string; code: string }) =>
-        value ? `${value.name} (${value.code})` : "Unknown",
     },
     {
       header: "Time",
@@ -266,7 +276,7 @@ export default function Shifts() {
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Shifts</h1>
+          <h1 className="text-3xl font-bold">Shifts by Building</h1>
           {user?.isAdmin && (
             <Button onClick={() => setLocation("/create-shift")}>
               Create New Shift
@@ -274,26 +284,46 @@ export default function Shifts() {
           )}
         </div>
 
-        {isLoadingShifts ? (
+        {isLoadingBuildings ? (
           <div className="flex justify-center p-4">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : shifts.length === 0 ? (
-          <p className="text-center text-gray-500">No shifts found</p>
+        ) : buildings.length === 0 ? (
+          <p className="text-center text-gray-500">No buildings found</p>
         ) : (
-          <>
-            <div className="rounded-md border">
-              <ResponsiveTable columns={columns} data={currentShifts} />
-            </div>
-
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={shifts.length}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
-          </>
+          <div className="grid gap-6">
+            {buildings.map((building: BuildingWithShifts) => (
+              <Card key={building.id}>
+                <CardHeader>
+                  <CardTitle>{building.name}</CardTitle>
+                  <CardDescription>
+                    Code: {building.code} | Area: {building.area}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {building.shifts.length === 0 ? (
+                    <p className="text-center text-gray-500">No shifts assigned</p>
+                  ) : (
+                    <>
+                      <div className="rounded-md border">
+                        <ResponsiveTable
+                          columns={columns}
+                          data={building.shifts.slice(startIndex, endIndex)}
+                        />
+                      </div>
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalItems={building.shifts.length}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={setPageSize}
+                      />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
 
         <AlertDialog
@@ -335,7 +365,9 @@ export default function Shifts() {
           onOpenChange={(open) => !open && setShiftToReject(null)}
         >
           <DialogContent>
-            <DialogTitle>Reject Shift</DialogTitle>
+            <DialogHeader>
+              <DialogTitle>Reject Shift</DialogTitle>
+            </DialogHeader>
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(handleReject)}

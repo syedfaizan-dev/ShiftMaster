@@ -1082,8 +1082,7 @@ export function registerRoutes(app: Express): Server {
             ),
           );
 
-        res.json(employees);
-      } catch (error) {
+        res.json(employees);      } catch (error) {
         console.error("Error fetching employees:", error);
         res.status(500).json({ message: "Error fetching employees" });
       }
