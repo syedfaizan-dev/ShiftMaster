@@ -206,7 +206,7 @@ export default function Shifts() {
 
   const columns = [
     {
-      header: "Inspectors",
+      header: "Inspectors Group",
       accessorKey: "shiftInspectors",
       cell: (inspectors: ShiftInspector[]) => (
         <div className="space-y-1">
@@ -215,14 +215,18 @@ export default function Shifts() {
               <span className="text-sm">
                 {si.inspector.fullName}
               </span>
-              {si.isPrimary && (
-                <Badge variant="outline" className="text-xs">
-                  Primary
-                </Badge>
-              )}
             </div>
           ))}
         </div>
+      ),
+    },
+    {
+      header: "Inspectors Info",
+      accessorKey: "shiftInspectors",
+      cell: (inspectors: ShiftInspector[]) => (
+        <span className="text-sm">
+          {inspectors?.length || 0} inspector{inspectors?.length !== 1 ? 's' : ''}
+        </span>
       ),
     },
     {
