@@ -115,44 +115,63 @@ export function BuildingsOverview() {
                   Current Shift Assignments
                 </h4>
                 <div className="space-y-3">
-                  {building.shifts.map((shift) => (
-                    shift.shiftInspectors?.map((si, index) => (
+                  {building.shifts.map((shift) => {
+                    // Group all inspectors for this shift
+                    const inspectors = shift.shiftInspectors || [];
+                    const primaryInspector = inspectors.find(si => si.isPrimary);
+                    const backupInspectors = inspectors.filter(si => !si.isPrimary);
+
+                    return (
                       <div
-                        key={`${si.inspector.id}-${si.shift.id}`}
-                        className={`
-                          p-3 rounded-lg transition-colors duration-200
-                          ${index % 2 === 0 ? 'bg-secondary/20' : 'bg-secondary/10'}
-                          hover:bg-secondary/30
-                        `}
+                        key={shift.id}
+                        className="p-3 rounded-lg bg-secondary/20 hover:bg-secondary/30 transition-colors duration-200"
                       >
-                        <div className="flex flex-col gap-1">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {si.inspector.fullName}
-                              </span>
-                              {si.isPrimary && (
-                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                                  Primary
-                                </span>
+                        <div className="flex flex-col gap-2">
+                          {/* Inspector Cell */}
+                          <div className="mb-2 p-2 bg-background/60 rounded-lg">
+                            <div className="flex flex-col gap-1">
+                              {primaryInspector && (
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium">{primaryInspector.inspector.fullName}</span>
+                                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                    Primary
+                                  </span>
+                                </div>
+                              )}
+                              {backupInspectors.length > 0 && (
+                                <div className="text-sm text-muted-foreground">
+                                  Backup: {backupInspectors.map(si => si.inspector.fullName).join(', ')}
+                                </div>
                               )}
                             </div>
-                            <span className="text-sm text-muted-foreground">
-                              Week {si.shift.week}
-                            </span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span className="font-medium">{si.shift.shiftType.name}</span>
-                            <span>•</span>
-                            <span>
-                              {format(new Date(`2000-01-01T${si.shift.shiftType.startTime}`), "h:mm a")} - 
-                              {format(new Date(`2000-01-01T${si.shift.shiftType.endTime}`), "h:mm a")}
-                            </span>
+
+                          {/* Shift Type Row */}
+                          <div className="grid grid-cols-7 gap-1">
+                            {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+                              const dayShift = shift.days?.find(d => d.dayOfWeek === day); //This line assumes the existence of 'days' property in shift object.  It needs to be added to the BuildingData interface if it's not present.
+                              return (
+                                <div
+                                  key={day}
+                                  className={`p-2 rounded text-center ${
+                                    dayShift?.shiftType
+                                      ? 'bg-primary/10 text-primary'
+                                      : 'bg-secondary/10'
+                                  }`}
+                                >
+                                  {dayShift?.shiftType?.name.charAt(0) || '-'}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="text-sm text-muted-foreground mt-1">
+                            Week {shift.week}
                           </div>
                         </div>
                       </div>
-                    ))
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
