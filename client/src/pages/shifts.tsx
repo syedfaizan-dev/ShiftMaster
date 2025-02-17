@@ -42,7 +42,6 @@ type ShiftWithRelations = {
   shiftTypeId: number;
   buildingId: number;
   week: string;
-  day: number; // 0-6 for Sunday-Saturday
   status: "PENDING" | "ACCEPTED" | "REJECTED";
   responseAt: string | null;
   rejectionReason: string | null;
@@ -86,27 +85,6 @@ const WeeklyTable = ({ shifts, week, onDeleteShift, isAdmin }: WeeklyTableProps)
     return groups;
   }, []);
 
-  // Helper function to get shift type abbreviation
-  const getShiftTypeAbbreviation = (shift: ShiftWithRelations | undefined) => {
-    if (!shift) return "//";
-
-    const startTime = shift.shiftType.startTime;
-    const [hours] = startTime.split(':').map(Number);
-
-    // Morning shift (6am - 2pm)
-    if (hours >= 6 && hours < 14) {
-      return "Mo";
-    }
-    // Afternoon shift (2pm - 10pm)
-    else if (hours >= 14 && hours < 22) {
-      return "A";
-    }
-    // Night shift (10pm - 6am)
-    else {
-      return "N";
-    }
-  };
-
   const columns = [
     {
       header: "Inspectors Group",
@@ -134,56 +112,77 @@ const WeeklyTable = ({ shifts, week, onDeleteShift, isAdmin }: WeeklyTableProps)
       header: "Sunday",
       accessorKey: "shifts",
       cell: (shifts: ShiftWithRelations[]) => {
-        const shift = shifts.find(s => s.day === 0);
-        return getShiftTypeAbbreviation(shift);
+        const shift = shifts.find(s => {
+          // Logic to determine if shift is on Sunday based on shift type
+          return true; // Placeholder
+        });
+        return shift ? `${shift.shiftType.startTime} - ${shift.shiftType.endTime}` : "-";
       },
     },
     {
       header: "Monday",
       accessorKey: "shifts",
       cell: (shifts: ShiftWithRelations[]) => {
-        const shift = shifts.find(s => s.day === 1);
-        return getShiftTypeAbbreviation(shift);
+        const shift = shifts.find(s => {
+          // Logic to determine if shift is on Monday
+          return true; // Placeholder
+        });
+        return shift ? `${shift.shiftType.startTime} - ${shift.shiftType.endTime}` : "-";
       },
     },
     {
       header: "Tuesday",
       accessorKey: "shifts",
       cell: (shifts: ShiftWithRelations[]) => {
-        const shift = shifts.find(s => s.day === 2);
-        return getShiftTypeAbbreviation(shift);
+        const shift = shifts.find(s => {
+          // Logic to determine if shift is on Tuesday
+          return true; // Placeholder
+        });
+        return shift ? `${shift.shiftType.startTime} - ${shift.shiftType.endTime}` : "-";
       },
     },
     {
       header: "Wednesday",
       accessorKey: "shifts",
       cell: (shifts: ShiftWithRelations[]) => {
-        const shift = shifts.find(s => s.day === 3);
-        return getShiftTypeAbbreviation(shift);
+        const shift = shifts.find(s => {
+          // Logic to determine if shift is on Wednesday
+          return true; // Placeholder
+        });
+        return shift ? `${shift.shiftType.startTime} - ${shift.shiftType.endTime}` : "-";
       },
     },
     {
       header: "Thursday",
       accessorKey: "shifts",
       cell: (shifts: ShiftWithRelations[]) => {
-        const shift = shifts.find(s => s.day === 4);
-        return getShiftTypeAbbreviation(shift);
+        const shift = shifts.find(s => {
+          // Logic to determine if shift is on Thursday
+          return true; // Placeholder
+        });
+        return shift ? `${shift.shiftType.startTime} - ${shift.shiftType.endTime}` : "-";
       },
     },
     {
       header: "Friday",
       accessorKey: "shifts",
       cell: (shifts: ShiftWithRelations[]) => {
-        const shift = shifts.find(s => s.day === 5);
-        return getShiftTypeAbbreviation(shift);
+        const shift = shifts.find(s => {
+          // Logic to determine if shift is on Friday
+          return true; // Placeholder
+        });
+        return shift ? `${shift.shiftType.startTime} - ${shift.shiftType.endTime}` : "-";
       },
     },
     {
       header: "Saturday",
       accessorKey: "shifts",
       cell: (shifts: ShiftWithRelations[]) => {
-        const shift = shifts.find(s => s.day === 6);
-        return getShiftTypeAbbreviation(shift);
+        const shift = shifts.find(s => {
+          // Logic to determine if shift is on Saturday
+          return true; // Placeholder
+        });
+        return shift ? `${shift.shiftType.startTime} - ${shift.shiftType.endTime}` : "-";
       },
     },
   ];
