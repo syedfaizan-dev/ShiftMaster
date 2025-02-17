@@ -21,31 +21,47 @@ type Building = {
   area: string;
 };
 
-type ShiftWithRelations = {
+type Role = {
   id: number;
-  inspectorId: number;
-  roleId: number;
-  shiftTypeId: number;
-  buildingId: number;
-  week: number;
-  backupId: number | null;
+  name: string;
+};
+
+type ShiftType = {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+};
+
+type DailyShiftType = {
+  dayOfWeek: "SUNDAY" | "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY";
+  shiftTypeId: string;
+};
+
+type Inspector = {
+  id: string;
+  isPrimary: boolean;
 };
 
 type ShiftFormProps = {
   onSuccess: () => void;
-  editShift?: ShiftWithRelations | null;
 };
 
 const shiftSchema = z.object({
-  inspectorId: z.string().min(1, "Inspector is required"),
-  roleId: z.string().min(1, "Role is required"),
-  shiftTypeId: z.string().min(1, "Shift type is required"),
   buildingId: z.string().min(1, "Building is required"),
   week: z.string().min(1, "Week is required"),
-  backupId: z.string().optional(),
+  roleId: z.string().min(1, "Role is required"),
+  inspectors: z.array(z.object({
+    id: z.string(),
+    isPrimary: z.boolean(),
+  })).min(1, "At least one inspector is required"),
+  dailyShifts: z.array(z.object({
+    dayOfWeek: z.enum(["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"]),
+    shiftTypeId: z.string(),
+  })),
 });
 
-export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
+export default function ShiftForm({ onSuccess }: ShiftFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -53,12 +69,11 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
   const form = useForm({
     resolver: zodResolver(shiftSchema),
     defaultValues: {
-      inspectorId: editShift ? editShift.inspectorId.toString() : "",
-      roleId: editShift ? editShift.roleId.toString() : "",
-      shiftTypeId: editShift ? editShift.shiftTypeId.toString() : "",
-      buildingId: editShift ? editShift.buildingId.toString() : "",
-      week: editShift ? editShift.week.toString() : "",
-      backupId: editShift?.backupId ? editShift.backupId.toString() : "",
+      buildingId: "",
+      week: "",
+      roleId: "",
+      inspectors: [],
+      dailyShifts: [],
     },
   });
 
@@ -66,14 +81,13 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
     queryKey: [user?.isAdmin ? "/api/admin/users" : "/api/users"],
   });
 
-  // Filter users to only show inspectors
   const inspectors = users.filter(user => user.isInspector);
 
-  const { data: roles } = useQuery<any[]>({
+  const { data: roles } = useQuery<Role[]>({
     queryKey: [user?.isAdmin ? "/api/admin/roles" : "/api/roles"],
   });
 
-  const { data: shiftTypes } = useQuery<any[]>({
+  const { data: shiftTypes } = useQuery<ShiftType[]>({
     queryKey: ["/api/shift-types"],
   });
 
@@ -81,79 +95,41 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
     queryKey: ["/api/admin/buildings"],
   });
 
-  const createShift = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch("/api/admin/shifts", {
+  const createWeeklyShift = useMutation({
+    mutationFn: async (data: z.infer<typeof shiftSchema>) => {
+      const res = await fetch("/api/admin/weekly-shifts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
-          inspectorId: parseInt(data.inspectorId),
-          roleId: parseInt(data.roleId),
-          shiftTypeId: parseInt(data.shiftTypeId),
           buildingId: parseInt(data.buildingId),
-          backupId: data.backupId ? parseInt(data.backupId) : null,
+          week: data.week,
+          role: {
+            id: parseInt(data.roleId),
+          },
+          inspectors: data.inspectors.map(inspector => ({
+            id: parseInt(inspector.id),
+            isPrimary: inspector.isPrimary,
+          })),
+          dailyShifts: data.dailyShifts.map(shift => ({
+            dayOfWeek: shift.dayOfWeek,
+            shiftTypeId: parseInt(shift.shiftTypeId),
+          })),
         }),
         credentials: "include",
       });
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(errorText || 'Failed to create shift');
+        throw new Error(errorText || 'Failed to create weekly shift assignment');
       }
       return res.json();
     },
     onSuccess: () => {
       toast({ 
         title: "Success", 
-        description: editShift ? "Shift updated successfully" : "Shift created successfully",
+        description: "Weekly shift assignment created successfully",
         duration: 3000,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
-      form.reset();
-      onSuccess();
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message,
-        duration: 5000,
-      });
-    },
-  });
-
-  const updateShift = useMutation({
-    mutationFn: async (data: any) => {
-      if (!editShift) throw new Error("No shift selected for update");
-
-      const res = await fetch(`/api/admin/shifts/${editShift.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          inspectorId: parseInt(data.inspectorId),
-          roleId: parseInt(data.roleId),
-          shiftTypeId: parseInt(data.shiftTypeId),
-          buildingId: parseInt(data.buildingId),
-          backupId: data.backupId ? parseInt(data.backupId) : null,
-        }),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || 'Failed to update shift');
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ 
-        title: "Success", 
-        description: "Shift updated successfully",
-        duration: 3000,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/shifts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
       form.reset();
       onSuccess();
     },
@@ -169,95 +145,26 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
 
   const onSubmit = async (data: z.infer<typeof shiftSchema>) => {
     try {
-      if (editShift) {
-        await updateShift.mutateAsync(data);
-      } else {
-        await createShift.mutateAsync(data);
-      }
+      await createWeeklyShift.mutateAsync(data);
     } catch (error) {
-      console.error('Shift operation failed:', error);
+      console.error('Weekly shift assignment operation failed:', error);
     }
   };
+
+  const daysOfWeek = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ] as const;
 
   return (
     <div className="overflow-y-auto flex-1 px-6 py-4">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="inspectorId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Inspector</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an inspector" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {inspectors.map((inspector) => (
-                      <SelectItem key={inspector.id} value={inspector.id.toString()}>
-                        {inspector.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="roleId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Role</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {roles?.map((role) => (
-                      <SelectItem key={role.id} value={role.id.toString()}>
-                        {role.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="shiftTypeId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Shift Type</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a shift type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {shiftTypes?.map((type) => (
-                      <SelectItem key={type.id} value={type.id.toString()}>
-                        {type.name} ({type.startTime} - {type.endTime})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <FormField
             control={form.control}
             name="buildingId"
@@ -310,20 +217,20 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
 
           <FormField
             control={form.control}
-            name="backupId"
+            name="roleId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Backup Inspector</FormLabel>
+                <FormLabel>Role</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a backup inspector" />
+                      <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {inspectors.map((inspector) => (
-                      <SelectItem key={inspector.id} value={inspector.id.toString()}>
-                        {inspector.fullName}
+                    {roles?.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -333,16 +240,122 @@ export default function ShiftForm({ onSuccess, editShift }: ShiftFormProps) {
             )}
           />
 
+          {daysOfWeek.map((day) => (
+            <FormField
+              key={day}
+              control={form.control}
+              name={`dailyShifts.${day}`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{day.charAt(0) + day.slice(1).toLowerCase()}</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      const currentShifts = form.getValues("dailyShifts");
+                      const updatedShifts = value
+                        ? [...currentShifts, { dayOfWeek: day, shiftTypeId: value }]
+                        : currentShifts.filter((shift) => shift.dayOfWeek !== day);
+                      form.setValue("dailyShifts", updatedShifts);
+                    }}
+                    value={
+                      form
+                        .getValues("dailyShifts")
+                        .find((shift) => shift.dayOfWeek === day)?.shiftTypeId || ""
+                    }
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select shift type (optional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">No Shift</SelectItem>
+                      {shiftTypes?.map((type) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          {type.name} ({type.startTime} - {type.endTime})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ))}
+
+          <FormField
+            control={form.control}
+            name="inspectors"
+            render={() => (
+              <FormItem>
+                <FormLabel>Inspectors</FormLabel>
+                <div className="space-y-2">
+                  {inspectors.map((inspector) => {
+                    const isSelected = form
+                      .getValues("inspectors")
+                      .some((i) => i.id === inspector.id.toString());
+                    return (
+                      <div key={inspector.id} className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          onClick={() => {
+                            const currentInspectors = form.getValues("inspectors");
+                            if (isSelected) {
+                              form.setValue(
+                                "inspectors",
+                                currentInspectors.filter((i) => i.id !== inspector.id.toString())
+                              );
+                            } else {
+                              form.setValue("inspectors", [
+                                ...currentInspectors,
+                                { id: inspector.id.toString(), isPrimary: false },
+                              ]);
+                            }
+                          }}
+                        >
+                          {inspector.fullName}
+                        </Button>
+                        {isSelected && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const currentInspectors = form.getValues("inspectors");
+                              const inspectorIndex = currentInspectors.findIndex(
+                                (i) => i.id === inspector.id.toString()
+                              );
+                              const updatedInspectors = [...currentInspectors];
+                              updatedInspectors[inspectorIndex] = {
+                                ...updatedInspectors[inspectorIndex],
+                                isPrimary: !updatedInspectors[inspectorIndex].isPrimary,
+                              };
+                              form.setValue("inspectors", updatedInspectors);
+                            }}
+                          >
+                            {form
+                              .getValues("inspectors")
+                              .find((i) => i.id === inspector.id.toString())?.isPrimary
+                              ? "Primary"
+                              : "Make Primary"}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <div className="sticky bottom-0 bg-white pb-4 pt-2">
             <Button 
               type="submit" 
-              disabled={createShift.isPending || updateShift.isPending}
+              disabled={createWeeklyShift.isPending}
               className="w-full"
             >
-              {editShift 
-                ? (updateShift.isPending ? "Updating..." : "Update Shift")
-                : (createShift.isPending ? "Creating..." : "Create Shift")
-              }
+              {createWeeklyShift.isPending ? "Creating..." : "Create Weekly Assignment"}
             </Button>
           </div>
         </form>
