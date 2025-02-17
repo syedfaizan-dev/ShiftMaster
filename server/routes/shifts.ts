@@ -10,7 +10,6 @@ import {
   shiftInspectors,
   shiftDays 
 } from "@db/schema";
-import { NotificationService } from "server/services/notification";
 
 export async function getShifts(req: Request, res: Response) {
   try {
@@ -399,6 +398,66 @@ export async function getInspectorsByShiftTypeForTask(req: Request, res: Respons
   }
 }
 
+export async function updateShiftInspectors(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { inspectors } = req.body;
+
+    if (!Array.isArray(inspectors)) {
+      return res.status(400).json({ message: "Inspectors must be an array" });
+    }
+
+    // Start a transaction
+    const result = await db.transaction(async (tx) => {
+      // First, delete existing inspector assignments for this shift
+      await tx
+        .delete(shiftInspectors)
+        .where(eq(shiftInspectors.shiftId, parseInt(id)));
+
+      // Then, insert new inspector assignments
+      await Promise.all(
+        inspectors.map(async (inspector: { id: number; isPrimary: boolean }) => {
+          await tx
+            .insert(shiftInspectors)
+            .values({
+              shiftId: parseInt(id),
+              inspectorId: inspector.id,
+              isPrimary: inspector.isPrimary,
+            });
+        })
+      );
+
+      // Return the updated shift with its inspectors
+      const updatedShift = await tx
+        .select({
+          id: shifts.id,
+          inspectors: {
+            inspector: {
+              id: users.id,
+              fullName: users.fullName,
+              username: users.username,
+            },
+            isPrimary: shiftInspectors.isPrimary,
+          },
+        })
+        .from(shifts)
+        .leftJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
+        .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+        .where(eq(shifts.id, parseInt(id)));
+
+      return updatedShift;
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error updating shift inspectors:", error);
+    res.status(500).json({ 
+      message: "Error updating shift inspectors",
+      error: error instanceof Error ? error.message : "Unknown error" 
+    });
+  }
+}
+
 export default {
   getShifts,
   createShift,
@@ -406,4 +465,5 @@ export default {
   updateShift,
   getInspectorsByShiftType,
   getInspectorsByShiftTypeForTask,
+  updateShiftInspectors,
 };
