@@ -44,14 +44,21 @@ export const shiftTypes = pgTable("shift_types", {
   createdBy: integer("created_by").references(() => users.id),
 });
 
+export const shiftInspectors = pgTable("shift_inspectors", {
+  id: serial("id").primaryKey(),
+  shiftId: integer("shift_id").references(() => shifts.id).notNull(),
+  inspectorId: integer("inspector_id").references(() => users.id).notNull(),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
-  inspectorId: integer("inspector_id").references(() => users.id).notNull(),
   roleId: integer("role_id").references(() => roles.id).notNull(),
   shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   buildingId: integer("building_id").references(() => buildings.id).notNull(),
   week: text("week").notNull(),
-  backupId: integer("backup_id").references(() => users.id),
   status: text("status").default('PENDING').notNull(),
   responseAt: timestamp("response_at"),
   rejectionReason: text("rejection_reason"),
@@ -107,15 +114,8 @@ export const buildingsRelations = relations(buildings, ({ one, many }) => ({
   }),
 }));
 
-export const shiftsRelations = relations(shifts, ({ one }) => ({
-  inspector: one(users, {
-    fields: [shifts.inspectorId],
-    references: [users.id],
-  }),
-  backup: one(users, {
-    fields: [shifts.backupId],
-    references: [users.id],
-  }),
+export const shiftsRelations = relations(shifts, ({ one, many }) => ({
+  inspectors: many(shiftInspectors),
   role: one(roles, {
     fields: [shifts.roleId],
     references: [roles.id],
@@ -127,6 +127,17 @@ export const shiftsRelations = relations(shifts, ({ one }) => ({
   building: one(buildings, {
     fields: [shifts.buildingId],
     references: [buildings.id],
+  }),
+}));
+
+export const shiftInspectorsRelations = relations(shiftInspectors, ({ one }) => ({
+  shift: one(shifts, {
+    fields: [shiftInspectors.shiftId],
+    references: [shifts.id],
+  }),
+  inspector: one(users, {
+    fields: [shiftInspectors.inspectorId],
+    references: [users.id],
   }),
 }));
 
@@ -169,7 +180,6 @@ export const insertRequestSchema = createInsertSchema(requests);
 export const selectRequestSchema = createSelectSchema(requests);
 export const insertBuildingSchema = createInsertSchema(buildings);
 export const selectBuildingSchema = createSelectSchema(buildings);
-
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -279,9 +289,17 @@ export type UtilityWithRelations = Utility & {
 };
 
 export type ShiftWithRelations = Shift & {
-  inspector?: User;
-  backup?: User | null;
+  inspectors?: Array<{
+    inspector: User;
+    isPrimary: boolean;
+  }>;
   role?: Role;
   shiftType?: typeof shiftTypes.$inferSelect;
   building?: Building;
 };
+
+export const insertShiftInspectorSchema = createInsertSchema(shiftInspectors);
+export const selectShiftInspectorSchema = createSelectSchema(shiftInspectors);
+
+export type ShiftInspector = typeof shiftInspectors.$inferSelect;
+export type InsertShiftInspector = typeof shiftInspectors.$inferInsert;

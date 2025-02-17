@@ -19,22 +19,26 @@ interface BuildingData {
     fullName: string;
     username: string;
   } | null;
-  shiftInspectors: Array<{
-    inspector: {
-      id: number;
-      fullName: string;
-      username: string;
-    };
-    shift: {
-      id: number;
-      week: string;
-      shiftType: {
+  shifts: Array<{
+    id: number;
+    shiftInspectors: Array<{
+      inspector: {
         id: number;
-        name: string;
-        startTime: string;
-        endTime: string;
+        fullName: string;
+        username: string;
       };
-    };
+      isPrimary: boolean;
+      shift: {
+        id: number;
+        week: string;
+        shiftType: {
+          id: number;
+          name: string;
+          startTime: string;
+          endTime: string;
+        };
+      };
+    }>;
   }>;
 }
 
@@ -104,39 +108,50 @@ export function BuildingsOverview() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
-            {building.shiftInspectors.length > 0 ? (
+            {building.shifts?.length > 0 && building.shifts.some(shift => shift.shiftInspectors?.length > 0) ? (
               <div className="space-y-4">
                 <h4 className="text-sm font-medium flex items-center gap-2 text-primary">
                   <Clock className="h-4 w-4" />
                   Current Shift Assignments
                 </h4>
                 <div className="space-y-3">
-                  {building.shiftInspectors.map((si, index) => (
-                    <div
-                      key={`${si.inspector.id}-${si.shift.id}`}
-                      className={`
-                        p-3 rounded-lg transition-colors duration-200
-                        ${index % 2 === 0 ? 'bg-secondary/20' : 'bg-secondary/10'}
-                        hover:bg-secondary/30
-                      `}
-                    >
-                      <div className="flex flex-col gap-1">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{si.inspector.fullName}</span>
-                          <span className="text-sm text-muted-foreground">
-                            Week {si.shift.week}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="font-medium">{si.shift.shiftType.name}</span>
-                          <span>•</span>
-                          <span>
-                            {format(new Date(`2000-01-01T${si.shift.shiftType.startTime}`), "h:mm a")} - 
-                            {format(new Date(`2000-01-01T${si.shift.shiftType.endTime}`), "h:mm a")}
-                          </span>
+                  {building.shifts.map((shift) => (
+                    shift.shiftInspectors?.map((si, index) => (
+                      <div
+                        key={`${si.inspector.id}-${si.shift.id}`}
+                        className={`
+                          p-3 rounded-lg transition-colors duration-200
+                          ${index % 2 === 0 ? 'bg-secondary/20' : 'bg-secondary/10'}
+                          hover:bg-secondary/30
+                        `}
+                      >
+                        <div className="flex flex-col gap-1">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {si.inspector.fullName}
+                              </span>
+                              {si.isPrimary && (
+                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                  Primary
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              Week {si.shift.week}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span className="font-medium">{si.shift.shiftType.name}</span>
+                            <span>•</span>
+                            <span>
+                              {format(new Date(`2000-01-01T${si.shift.shiftType.startTime}`), "h:mm a")} - 
+                              {format(new Date(`2000-01-01T${si.shift.shiftType.endTime}`), "h:mm a")}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ))
                   ))}
                 </div>
               </div>

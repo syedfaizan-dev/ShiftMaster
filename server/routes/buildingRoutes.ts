@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "@db";
-import { buildings, shifts, users, roles, shiftTypes } from "@db/schema";
+import { buildings, shifts, users, roles, shiftTypes, shiftInspectors } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function getBuildingsWithShifts(req: Request, res: Response) {
@@ -12,8 +12,14 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
         name: buildings.name,
         code: buildings.code,
         area: buildings.area,
+        supervisor: {
+          id: users.id,
+          fullName: users.fullName,
+          username: users.username,
+        },
       })
-      .from(buildings);
+      .from(buildings)
+      .leftJoin(users, eq(buildings.supervisorId, users.id));
 
     // If user is not an admin, only show buildings they supervise
     if (!req.user?.isAdmin) {
@@ -25,15 +31,13 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
     // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
       buildingsData.map(async (building) => {
-        // Get shifts for this building with all related data
+        // Get shifts for this building
         const buildingShifts = await db
           .select({
             id: shifts.id,
-            inspectorId: shifts.inspectorId,
             roleId: shifts.roleId,
             shiftTypeId: shifts.shiftTypeId,
             week: shifts.week,
-            backupId: shifts.backupId,
             status: shifts.status,
             responseAt: shifts.responseAt,
             rejectionReason: shifts.rejectionReason,
@@ -41,34 +45,34 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
           .from(shifts)
           .where(eq(shifts.buildingId, building.id));
 
-        // Get related data for each shift
-        const shiftsWithRelations = await Promise.all(
+        // For each shift, get all inspectors and related data
+        const shiftsWithInspectors = await Promise.all(
           buildingShifts.map(async (shift) => {
-            // Get inspector details
-            const [inspector] = await db
+            // Get all inspectors for this shift
+            const shiftInspectorsData = await db
               .select({
-                id: users.id,
-                fullName: users.fullName,
-                username: users.username,
-              })
-              .from(users)
-              .where(eq(users.id, shift.inspectorId))
-              .limit(1);
-
-            // Get backup inspector details if exists
-            let backup = null;
-            if (shift.backupId) {
-              const [backupData] = await db
-                .select({
+                inspector: {
                   id: users.id,
                   fullName: users.fullName,
                   username: users.username,
-                })
-                .from(users)
-                .where(eq(users.id, shift.backupId))
-                .limit(1);
-              backup = backupData;
-            }
+                },
+                isPrimary: shiftInspectors.isPrimary,
+                shift: {
+                  id: shifts.id,
+                  week: shifts.week,
+                  shiftType: {
+                    id: shiftTypes.id,
+                    name: shiftTypes.name,
+                    startTime: shiftTypes.startTime,
+                    endTime: shiftTypes.endTime,
+                  },
+                },
+              })
+              .from(shiftInspectors)
+              .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+              .leftJoin(shifts, eq(shiftInspectors.shiftId, shifts.id))
+              .leftJoin(shiftTypes, eq(shifts.shiftTypeId, shiftTypes.id))
+              .where(eq(shiftInspectors.shiftId, shift.id));
 
             // Get role details
             const [role] = await db
@@ -94,10 +98,9 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
 
             return {
               ...shift,
-              inspector,
+              shiftInspectors: shiftInspectorsData,
               role,
               shiftType,
-              backup,
               building: {
                 id: building.id,
                 name: building.name,
@@ -110,7 +113,7 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
 
         return {
           ...building,
-          shifts: shiftsWithRelations,
+          shifts: shiftsWithInspectors,
         };
       }),
     );
