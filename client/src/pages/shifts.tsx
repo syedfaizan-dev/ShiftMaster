@@ -56,7 +56,6 @@ type Inspector = {
 type ShiftInspector = {
   inspector: Inspector;
   isPrimary: boolean;
-  inspectorType: 'PRIMARY' | 'BACKUP';
 };
 
 type ShiftWithRelations = {
@@ -209,46 +208,22 @@ export default function Shifts() {
     {
       header: "Inspectors",
       accessorKey: "shiftInspectors",
-      cell: (inspectors: ShiftInspector[]) => {
-        const primaryInspectors = inspectors?.filter(si => si.inspectorType === 'PRIMARY') || [];
-        const backupInspectors = inspectors?.filter(si => si.inspectorType === 'BACKUP') || [];
-
-        return (
-          <div className="space-y-2">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Primary</p>
-              {primaryInspectors.map((si, index) => (
-                <div key={`primary-${si.inspector.id}-${index}`} className="flex items-center gap-1">
-                  <span className="text-sm">
-                    {si.inspector.fullName}
-                  </span>
-                  {si.isPrimary && (
-                    <Badge variant="outline" className="text-xs">
-                      Lead
-                    </Badge>
-                  )}
-                </div>
-              ))}
-              {primaryInspectors.length === 0 && (
-                <span className="text-sm text-muted-foreground">No primary inspectors</span>
+      cell: (inspectors: ShiftInspector[]) => (
+        <div className="space-y-1">
+          {inspectors?.map((si, index) => (
+            <div key={`${si.inspector.id}-${index}`} className="flex items-center gap-1">
+              <span className="text-sm">
+                {si.inspector.fullName}
+              </span>
+              {si.isPrimary && (
+                <Badge variant="outline" className="text-xs">
+                  Primary
+                </Badge>
               )}
             </div>
-
-            {backupInspectors.length > 0 && (
-              <div className="space-y-1 pt-2 border-t">
-                <p className="text-xs font-medium text-muted-foreground">Backup</p>
-                {backupInspectors.map((si, index) => (
-                  <div key={`backup-${si.inspector.id}-${index}`} className="flex items-center gap-1">
-                    <span className="text-sm">
-                      {si.inspector.fullName}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      },
+          ))}
+        </div>
+      ),
     },
     {
       header: "Role",
