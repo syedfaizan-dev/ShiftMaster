@@ -158,7 +158,7 @@ export default function Shifts() {
     },
   });
 
-  const { data: inspectors } = useQuery<Inspector[]>({
+  const { data: inspectors, isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
     queryKey: ["/api/inspectors"],
     queryFn: async () => {
       const response = await fetch("/api/inspectors", {
@@ -238,7 +238,7 @@ export default function Shifts() {
     if (!editingInspectors) return;
     const inspectorList = data.inspectors.map(id => ({
       id: parseInt(id),
-      isPrimary: false, // Primary field is no longer needed
+      isPrimary: false, 
     }));
     updateInspectorGroup.mutate({
       shiftId: editingInspectors,
@@ -486,54 +486,64 @@ export default function Shifts() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Inspectors</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          const currentValues = field.value || [];
-                          if (!currentValues.includes(value)) {
-                            field.onChange([...currentValues, value]);
-                          }
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Add inspectors" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {inspectors?.map((inspector) => (
-                            <SelectItem key={inspector.id} value={inspector.id.toString()}>
-                              {inspector.fullName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="mt-2 space-y-2">
-                        {field.value.map((inspectorId) => {
-                          const inspector = inspectors?.find(
-                            (i) => i.id.toString() === inspectorId
-                          );
-                          return (
-                            <div
-                              key={inspectorId}
-                              className="flex items-center justify-between bg-muted p-2 rounded-md"
-                            >
-                              <span>{inspector?.fullName}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  field.onChange(
-                                    field.value.filter((id) => id !== inspectorId)
-                                  );
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {isLoadingInspectors ? (
+                        <div className="flex items-center justify-center p-4">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : inspectors ? (
+                        <>
+                          <Select
+                            onValueChange={(value) => {
+                              const currentValues = field.value || [];
+                              if (!currentValues.includes(value)) {
+                                field.onChange([...currentValues, value]);
+                              }
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Add inspectors" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {inspectors.map((inspector) => (
+                                <SelectItem key={inspector.id} value={inspector.id.toString()}>
+                                  {inspector.fullName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="mt-2 space-y-2">
+                            {field.value.map((inspectorId) => {
+                              const inspector = inspectors?.find(
+                                (i) => i.id.toString() === inspectorId
+                              );
+                              return (
+                                <div
+                                  key={inspectorId}
+                                  className="flex items-center justify-between bg-muted p-2 rounded-md"
+                                >
+                                  <span>{inspector?.fullName}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      field.onChange(
+                                        field.value.filter((id) => id !== inspectorId)
+                                      );
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <p>No inspectors found</p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
