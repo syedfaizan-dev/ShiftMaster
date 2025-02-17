@@ -238,7 +238,7 @@ export default function Shifts() {
     if (!editingInspectors) return;
     const inspectorList = data.inspectors.map(id => ({
       id: parseInt(id),
-      isPrimary: false, 
+      isPrimary: false,
     }));
     updateInspectorGroup.mutate({
       shiftId: editingInspectors,
@@ -316,7 +316,7 @@ export default function Shifts() {
                             <table className="w-full">
                               <thead>
                                 <tr className="border-b bg-muted/50">
-                                  <th className="p-2 text-left font-medium">Inspectors</th>
+                                  <th className="p-2 text-left font-medium w-1/4">Inspectors</th>
                                   {DAYS.map((day, index) => (
                                     <th key={day} className="p-2 text-center font-medium">
                                       <div className="flex flex-col items-center">
@@ -337,35 +337,38 @@ export default function Shifts() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {shift.shiftInspectors?.map((si, index) => (
-                                  <tr key={`${si.inspector.id}-${index}`} className="border-b">
-                                    <td className="p-2">
-                                      <div className="flex flex-col">
-                                        <span>{si.inspector.fullName}</span>
-                                        {si.isPrimary && (
-                                          <span className="text-xs text-muted-foreground">
-                                            (Primary)
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    {DAYS.map((_, dayIndex) => {
-                                      const dayShift = shift.days?.find(
-                                        (d) => d.dayOfWeek === dayIndex
-                                      );
-                                      return (
-                                        <td
-                                          key={dayIndex}
-                                          className={`p-2 text-center ${getShiftTypeColor(
-                                            dayShift?.shiftType
-                                          )}`}
-                                        >
-                                          {getShiftTypeDisplay(dayShift?.shiftType)}
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
-                                ))}
+                                <tr>
+                                  <td className="p-2 align-top">
+                                    <div className="space-y-1">
+                                      {shift.shiftInspectors?.map((si, index) => (
+                                        <div key={`${si.inspector.id}-${index}`} 
+                                             className="flex items-center gap-2">
+                                          <span>{si.inspector.fullName}</span>
+                                          {si.isPrimary && (
+                                            <Badge variant="outline" className="text-xs">
+                                              Primary
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </td>
+                                  {DAYS.map((_, dayIndex) => {
+                                    const dayShift = shift.days?.find(
+                                      (d) => d.dayOfWeek === dayIndex
+                                    );
+                                    return (
+                                      <td
+                                        key={dayIndex}
+                                        className={`p-2 text-center ${getShiftTypeColor(
+                                          dayShift?.shiftType
+                                        )}`}
+                                      >
+                                        {getShiftTypeDisplay(dayShift?.shiftType)}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
                               </tbody>
                             </table>
                           </div>
