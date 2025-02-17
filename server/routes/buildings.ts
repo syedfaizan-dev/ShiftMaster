@@ -8,10 +8,12 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
     // First get all buildings with their supervisors
     const buildingsData = await db
       .select({
-        id: buildings.id,
-        name: buildings.name,
-        code: buildings.code,
-        area: buildings.area,
+        building: {
+          id: buildings.id,
+          name: buildings.name,
+          code: buildings.code,
+          area: buildings.area,
+        },
         supervisor: {
           id: users.id,
           fullName: users.fullName,
@@ -21,15 +23,24 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
       .from(buildings)
       .leftJoin(users, eq(buildings.supervisorId, users.id));
 
+    if (!buildingsData) {
+      console.error('No buildings data found');
+      return res.status(404).json({ message: "No buildings found" });
+    }
+
     // For each building, get its shifts and inspectors
     const buildingsWithShifts = await Promise.all(
-      buildingsData.map(async (building) => {
+      buildingsData.map(async (buildingData) => {
         try {
+          const { building, supervisor } = buildingData;
+
           // Get all active shifts for this building with their types
           const currentShifts = await db
             .select({
-              id: shifts.id,
-              week: shifts.week,
+              shift: {
+                id: shifts.id,
+                week: shifts.week,
+              },
               shiftType: {
                 id: shiftTypes.id,
                 name: shiftTypes.name,
@@ -46,35 +57,40 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
 
           // For each shift, get its inspectors
           const shiftInspectorDetails = await Promise.all(
-            currentShifts.map(async (shift) => {
-              // Get all inspectors for this shift
-              const inspectors = await db
-                .select({
-                  id: users.id,
-                  fullName: users.fullName,
-                  username: users.username,
-                })
-                .from(shiftInspectors)
-                .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-                .where(eq(shiftInspectors.shiftId, shift.id));
+            currentShifts.map(async (shiftData) => {
+              try {
+                const inspectors = await db
+                  .select({
+                    inspector: {
+                      id: users.id,
+                      fullName: users.fullName,
+                      username: users.username,
+                    },
+                  })
+                  .from(shiftInspectors)
+                  .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+                  .where(eq(shiftInspectors.shiftId, shiftData.shift.id));
 
-              return {
-                ...shift,
-                inspectors: inspectors.map(inspector => ({
-                  id: inspector.id,
-                  fullName: inspector.fullName,
-                  username: inspector.username,
-                })),
-              };
+                return {
+                  ...shiftData.shift,
+                  shiftType: shiftData.shiftType,
+                  inspector: inspectors[0]?.inspector || null,
+                  inspectors: inspectors.map(i => ({ inspector: i.inspector })),
+                };
+              } catch (error) {
+                console.error(`Error fetching inspectors for shift ${shiftData.shift.id}:`, error);
+                throw error;
+              }
             })
           );
 
           return {
             ...building,
+            supervisor,
             shiftInspectors: shiftInspectorDetails,
           };
         } catch (error) {
-          console.error(`Error processing building ${building.id}:`, error);
+          console.error(`Error processing building ${buildingData.building.id}:`, error);
           throw error;
         }
       })
