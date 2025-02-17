@@ -12,6 +12,7 @@ import {
   taskTypes,
   buildings,
   utilities,
+  shiftInspectors,
 } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import {
@@ -1075,7 +1076,8 @@ export function registerRoutes(app: Express): Server {
             fullName: users.fullName,
           })
           .from(users)
-          .where(
+          .replit_final_file>
+where(
             and(
               eq(users.isAdmin, false),
               eq(users.isManager, false),
@@ -1554,6 +1556,10 @@ export function registerRoutes(app: Express): Server {
         const { id } = req.params;
         const { inspectors } = req.body;
 
+        if (!Array.isArray(inspectors)) {
+          return res.status(400).json({ message: "Inspectors must be an array" });
+        }
+
         // Start a transaction
         const result = await db.transaction(async (tx) => {
           // First, delete existing inspector assignments for this shift
@@ -1575,22 +1581,16 @@ export function registerRoutes(app: Express): Server {
           );
 
           // Return the updated shift with its inspectors
-          const updatedShift = await tx
-            .select({
-              id: shifts.id,
+          const updatedShift = await tx.query.shifts.findFirst({
+            where: eq(shifts.id, parseInt(id)),
+            with: {
               inspectors: {
-                inspector: {
-                  id: users.id,
-                  fullName: users.fullName,
-                  username: users.username,
-                },
-                isPrimary: shiftInspectors.isPrimary,
-              },
-            })
-            .from(shifts)
-            .leftJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
-            .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-            .where(eq(shifts.id, parseInt(id)));
+                include: {
+                  inspector: true
+                }
+              }
+            }
+          });
 
           return updatedShift;
         });
