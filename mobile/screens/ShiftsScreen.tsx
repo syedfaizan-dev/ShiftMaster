@@ -174,25 +174,13 @@ export default function ShiftsScreen() {
               Role: {shift.role?.name || 'Unknown'}
             </Text>
 
-            {/* Inspectors Section */}
-            <View style={styles.inspectorsContainer}>
-              <Text style={styles.sectionHeader}>Inspectors:</Text>
-              <View style={styles.inspectorsList}>
-                {shift.inspectors.map((inspector) => (
-                  <View key={inspector.inspector.id} style={styles.inspectorItem}>
-                    <Text style={styles.inspectorName}>
-                      {inspector.inspector.fullName}
-                      {inspector.isPrimary && ' (P)'}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Weekly Schedule */}
+            {/* Weekly Table */}
             <View style={styles.weekTable}>
               {/* Header Row */}
               <View style={styles.tableRow}>
+                <View style={[styles.inspectorCell, styles.headerCell]}>
+                  <Text style={styles.headerText}>Inspectors</Text>
+                </View>
                 {DAYS.map((day) => (
                   <View key={day} style={[styles.dayCell, styles.headerCell]}>
                     <Text style={styles.headerText}>{day}</Text>
@@ -200,14 +188,22 @@ export default function ShiftsScreen() {
                 ))}
               </View>
 
-              {/* Single Row for Shift Types */}
-              <View style={styles.tableRow}>
-                {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                  <React.Fragment key={day}>
-                    {renderDayShift(shift.days, day)}
-                  </React.Fragment>
-                ))}
-              </View>
+              {/* Inspector Rows */}
+              {shift.inspectors.map((inspector) => (
+                <View key={inspector.inspector.id} style={styles.tableRow}>
+                  <View style={styles.inspectorCell}>
+                    <Text style={styles.inspectorName}>
+                      {inspector.inspector.fullName}
+                      {inspector.isPrimary ? ' (P)' : ''}
+                    </Text>
+                  </View>
+                  {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                    <React.Fragment key={day}>
+                      {renderDayShift(shift.days, day)}
+                    </React.Fragment>
+                  ))}
+                </View>
+              ))}
             </View>
 
             <Text style={[
@@ -310,41 +306,17 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 10,
   },
-  inspectorsContainer: {
-    marginBottom: 15,
-    backgroundColor: '#f8f9fa',
-    padding: 10,
-    borderRadius: 6,
-  },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#444',
-  },
-  inspectorsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  inspectorItem: {
-    backgroundColor: '#edf2f7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  inspectorName: {
-    fontSize: 13,
-    color: '#2d3748',
-  },
   weekTable: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 4,
+    marginTop: 10,
     marginBottom: 10,
   },
   tableRow: {
     flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
   headerCell: {
     backgroundColor: '#f8f9fa',
@@ -355,6 +327,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
+  inspectorCell: {
+    flex: 2,
+    padding: 8,
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#ddd',
+  },
+  inspectorName: {
+    fontSize: 12,
+  },
   dayCell: {
     flex: 1,
     padding: 8,
@@ -362,8 +344,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRightWidth: 1,
     borderRightColor: '#ddd',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
   },
   shiftTypeText: {
     fontSize: 12,
@@ -459,5 +439,34 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#ef4444',
+  },
+  shiftCard: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 5,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  shiftDate: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  shiftTime: {
+    color: '#666',
+    marginTop: 5,
+  },
+  shiftRole: {
+    marginTop: 5,
+    fontWeight: '500',
+  },
+  shiftInspector: {
+    marginTop: 2,
+    color: '#444',
+  },
+  shiftBackup: {
+    marginTop: 2,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
