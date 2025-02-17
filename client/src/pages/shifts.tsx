@@ -37,13 +37,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
@@ -61,7 +55,6 @@ type ShiftInspector = {
 type ShiftWithRelations = {
   id: number;
   roleId: number;
-  shiftTypeId: number;
   buildingId: number;
   week: string;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
@@ -69,8 +62,8 @@ type ShiftWithRelations = {
   rejectionReason: string | null;
   shiftInspectors: ShiftInspector[];
   role: { id: number; name: string };
-  shiftType: { id: number; name: string; startTime: string; endTime: string };
   building: { id: number; name: string; code: string; area: string };
+  days?: {dayOfWeek:number, shiftType?: {name:string}}[]
 };
 
 type BuildingWithShifts = {
@@ -85,6 +78,24 @@ type BuildingsResponse = {
   buildings: BuildingWithShifts[];
 };
 
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const getShiftTypeDisplay = (shiftType?: { name: string }) => {
+  if (!shiftType) return '-';
+  if (shiftType.name.toLowerCase().includes('morning')) return 'Mo';
+  if (shiftType.name.toLowerCase().includes('afternoon')) return 'A';
+  if (shiftType.name.toLowerCase().includes('night')) return 'N';
+  return '-';
+};
+
+const getShiftTypeColor = (shiftType?: { name: string }) => {
+  if (!shiftType) return 'bg-white';
+  if (shiftType.name.toLowerCase().includes('morning')) return 'bg-blue-50';
+  if (shiftType.name.toLowerCase().includes('afternoon')) return 'bg-orange-50';
+  if (shiftType.name.toLowerCase().includes('night')) return 'bg-purple-50';
+  return 'bg-white';
+};
+
 const rejectShiftSchema = z.object({
   rejectionReason: z.string().min(1, "Please provide a reason for rejection"),
 });
@@ -94,12 +105,8 @@ export default function Shifts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(
-    null,
-  );
-  const [shiftToReject, setShiftToReject] = useState<ShiftWithRelations | null>(
-    null,
-  );
+  const [shiftToDelete, setShiftToDelete] = useState<ShiftWithRelations | null>(null);
+  const [shiftToReject, setShiftToReject] = useState<ShiftWithRelations | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -204,100 +211,44 @@ export default function Shifts() {
     });
   };
 
-  const columns = [
-    {
-      header: "Inspectors Group",
-      accessorKey: "shiftInspectors",
-      cell: (inspectors: ShiftInspector[]) => (
-        <div className="space-y-1">
-          {inspectors?.map((si, index) => (
-            <div key={`${si.inspector.id}-${index}`} className="flex items-center gap-1">
-              <span className="text-sm">
-                {si.inspector.fullName}
-              </span>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: "Inspectors Info",
-      accessorKey: "shiftInspectors",
-      cell: (inspectors: ShiftInspector[]) => (
-        <span className="text-sm">
-          {inspectors?.length || 0} inspector{inspectors?.length !== 1 ? 's' : ''}
-        </span>
-      ),
-    },
-    {
-      header: "Role",
-      accessorKey: "role",
-      cell: (value: { name: string }) => value?.name || "Unknown",
-    },
-    {
-      header: "Shift Type",
-      accessorKey: "shiftType",
-      cell: (value: { name: string }) => value?.name || "Unknown",
-    },
-    {
-      header: "Time",
-      accessorKey: "shiftType",
-      cell: (value: { startTime: string; endTime: string }) =>
-        `${value?.startTime || "N/A"} - ${value?.endTime || "N/A"}`,
-    },
-    {
-      header: "Week",
-      accessorKey: "week",
-      cell: (value: string) => `Week ${value}`,
-    },
-    {
-      header: "Status",
-      accessorKey: "status",
-      cell: (value: string) => (
-        <Badge variant={value === "ACCEPTED" ? "success" : value === "REJECTED" ? "destructive" : "default"}>
-          {value}
-        </Badge>
-      ),
-    },
-    {
-      header: "Actions",
-      accessorKey: "id",
-      cell: (_: any, row: ShiftWithRelations) => (
-        <div className="space-x-2">
-          {!user?.isAdmin && row.status === "PENDING" ? (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleAccept(row)}
-                disabled={respondToShift.isPending}
-              >
-                <Check className="h-4 w-4 text-green-600" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShiftToReject(row)}
-                disabled={respondToShift.isPending}
-              >
-                <X className="h-4 w-4 text-red-600" />
-              </Button>
-            </>
-          ) : (
-            user?.isAdmin && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShiftToDelete(row)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            )
-          )}
-        </div>
-      ),
-    },
-  ];
+  const renderShiftTable = (shift: ShiftWithRelations) => {
+    return (
+      <div className="rounded-md border">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="p-2 text-left font-medium">Inspectors</th>
+              {DAYS.map(day => (
+                <th key={day} className="p-2 text-center font-medium">{day}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shift.shiftInspectors?.map((si, index) => (
+              <tr key={`${si.inspector.id}-${index}`} className="border-b">
+                <td className="p-2">
+                  <div className="flex flex-col">
+                    <span>{si.inspector.fullName}</span>
+                    {si.isPrimary && (
+                      <span className="text-xs text-muted-foreground">(Primary)</span>
+                    )}
+                  </div>
+                </td>
+                {DAYS.map((_, dayIndex) => {
+                  const dayShift = shift.days?.find(d => d.dayOfWeek === dayIndex);
+                  return (
+                    <td key={dayIndex} className={`p-2 text-center ${getShiftTypeColor(dayShift?.shiftType)}`}>
+                      {getShiftTypeDisplay(dayShift?.shiftType)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <Navbar>
@@ -331,13 +282,65 @@ export default function Shifts() {
                   {building.shifts.length === 0 ? (
                     <p className="text-center text-gray-500">No shifts assigned</p>
                   ) : (
-                    <>
-                      <div className="rounded-md border">
-                        <ResponsiveTable
-                          columns={columns}
-                          data={building.shifts.slice(startIndex, endIndex)}
-                        />
-                      </div>
+                    <div className="space-y-6">
+                      {building.shifts.slice(startIndex, endIndex).map((shift) => (
+                        <div key={shift.id} className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="text-lg font-semibold">
+                                Week {shift.week} - Group {shift.shiftInspectors[0]?.inspector.fullName}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Role: {shift.role?.name}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant={
+                                  shift.status === "ACCEPTED"
+                                    ? "success"
+                                    : shift.status === "REJECTED"
+                                    ? "destructive"
+                                    : "default"
+                                }
+                              >
+                                {shift.status}
+                              </Badge>
+                              {!user?.isAdmin && shift.status === "PENDING" ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleAccept(shift)}
+                                    disabled={respondToShift.isPending}
+                                  >
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShiftToReject(shift)}
+                                    disabled={respondToShift.isPending}
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </>
+                              ) : (
+                                user?.isAdmin && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShiftToDelete(shift)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                          {renderShiftTable(shift)}
+                        </div>
+                      ))}
                       <TablePagination
                         currentPage={currentPage}
                         totalItems={building.shifts.length}
@@ -345,7 +348,7 @@ export default function Shifts() {
                         onPageChange={setCurrentPage}
                         onPageSizeChange={setPageSize}
                       />
-                    </>
+                    </div>
                   )}
                 </CardContent>
               </Card>
