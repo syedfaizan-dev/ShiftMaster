@@ -108,8 +108,7 @@ type EditShiftDayFormData = {
 };
 
 type EditInspectorGroupFormData = {
-  inspectorIds: string[];
-  primaryInspectorId: string;
+  inspectors: string[];
 };
 
 export default function Shifts() {
@@ -129,8 +128,7 @@ export default function Shifts() {
 
   const inspectorGroupForm = useForm<EditInspectorGroupFormData>({
     defaultValues: {
-      inspectorIds: [],
-      primaryInspectorId: "",
+      inspectors: [],
     },
   });
 
@@ -238,9 +236,9 @@ export default function Shifts() {
 
   const handleInspectorGroupSubmit = (data: EditInspectorGroupFormData) => {
     if (!editingInspectors) return;
-    const inspectorList = data.inspectorIds.map(id => ({
+    const inspectorList = data.inspectors.map(id => ({
       id: parseInt(id),
-      isPrimary: id === data.primaryInspectorId,
+      isPrimary: false, // Primary field is no longer needed
     }));
     updateInspectorGroup.mutate({
       shiftId: editingInspectors,
@@ -289,8 +287,8 @@ export default function Shifts() {
                                     shift.status === "ACCEPTED"
                                       ? "success"
                                       : shift.status === "REJECTED"
-                                      ? "destructive"
-                                      : "default"
+                                        ? "destructive"
+                                        : "default"
                                   }
                                 >
                                   {shift.status}
@@ -453,13 +451,28 @@ export default function Shifts() {
         {/* Edit Inspector Group Dialog */}
         <Dialog
           open={!!editingInspectors}
-          onOpenChange={(open) => !open && setEditingInspectors(null)}
+          onOpenChange={(open) => {
+            if (open) {
+              // Pre-populate form with current inspectors when opening
+              const shift = buildings
+                .flatMap(b => b.shifts)
+                .find(s => s.id === editingInspectors);
+              if (shift) {
+                inspectorGroupForm.reset({
+                  inspectors: shift.shiftInspectors.map(si => si.inspector.id.toString())
+                });
+              }
+            }
+            if (!open) {
+              setEditingInspectors(null);
+            }
+          }}
         >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Inspector Group</DialogTitle>
               <DialogDescription>
-                Select inspectors and designate a primary inspector for this shift.
+                Select inspectors for this shift.
               </DialogDescription>
             </DialogHeader>
             <Form {...inspectorGroupForm}>
@@ -469,7 +482,7 @@ export default function Shifts() {
               >
                 <FormField
                   control={inspectorGroupForm.control}
-                  name="inspectorIds"
+                  name="inspectors"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Inspectors</FormLabel>
@@ -521,40 +534,6 @@ export default function Shifts() {
                           );
                         })}
                       </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={inspectorGroupForm.control}
-                  name="primaryInspectorId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Primary Inspector</FormLabel>
-                      <Select onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select primary inspector" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {inspectorGroupForm
-                            .watch("inspectorIds")
-                            .map((inspectorId) => {
-                              const inspector = inspectors?.find(
-                                (i) => i.id.toString() === inspectorId
-                              );
-                              return (
-                                <SelectItem
-                                  key={inspectorId}
-                                  value={inspectorId}
-                                >
-                                  {inspector?.fullName}
-                                </SelectItem>
-                              );
-                            })}
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
