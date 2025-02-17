@@ -268,6 +268,17 @@ export default function Shifts() {
     });
   };
 
+  // Function to check if inspector is assigned in the same week
+  const isInspectorAssignedInWeek = (inspectorId: number, currentShiftId: number, week: string) => {
+    return buildings.some(building =>
+      building.shifts.some(shift =>
+        shift.id !== currentShiftId &&
+        shift.week === week &&
+        shift.shiftInspectors.some(si => si.inspector.id === inspectorId)
+      )
+    );
+  };
+
   return (
     <Navbar>
       <div className="p-6">
@@ -517,7 +528,7 @@ export default function Shifts() {
             <DialogHeader>
               <DialogTitle>Edit Inspector Group</DialogTitle>
               <DialogDescription>
-                Select inspectors for this shift.
+                Select inspectors for this shift. Inspectors already assigned to other shifts this week are not available.
               </DialogDescription>
             </DialogHeader>
             <Form {...inspectorGroupForm}>
@@ -553,14 +564,29 @@ export default function Shifts() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {inspectors.map((inspector) => (
-                                <SelectItem
-                                  key={inspector.id}
-                                  value={inspector.id.toString()}
-                                >
-                                  {inspector.fullName}
-                                </SelectItem>
-                              ))}
+                              {inspectors.map((inspector) => {
+                                const currentShift = buildings
+                                  .flatMap((b) => b.shifts)
+                                  .find((s) => s.id === editingInspectors);
+
+                                const isAssigned = currentShift && 
+                                  isInspectorAssignedInWeek(
+                                    inspector.id,
+                                    currentShift.id,
+                                    currentShift.week
+                                  );
+
+                                if (isAssigned) return null;
+
+                                return (
+                                  <SelectItem
+                                    key={inspector.id}
+                                    value={inspector.id.toString()}
+                                  >
+                                    {inspector.fullName}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                           <div className="mt-2 space-y-2">
