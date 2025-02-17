@@ -128,19 +128,18 @@ export default function Shifts() {
     },
   });
 
-  const { data: buildingsData, isLoading: isLoadingBuildings } =
-    useQuery<BuildingsResponse>({
-      queryKey: ["/api/buildings/with-shifts"],
-      queryFn: async () => {
-        const response = await fetch("/api/buildings/with-shifts", {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch buildings");
-        }
-        return response.json();
-      },
-    });
+  const { data: buildingsData, isLoading: isLoadingBuildings } = useQuery<BuildingsResponse>({
+    queryKey: ["/api/buildings/with-shifts"],
+    queryFn: async () => {
+      const response = await fetch("/api/buildings/with-shifts", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch buildings");
+      }
+      return response.json();
+    },
+  });
 
   const buildings = buildingsData?.buildings || [];
 
@@ -157,19 +156,29 @@ export default function Shifts() {
     },
   });
 
+  // Updated inspectors query with better cache handling
   const { data: inspectors, isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
-    queryKey: [editingInspectors ? `/api/shifts/${editingInspectors.week}/available-inspectors` : null],
+    queryKey: ["available-inspectors", editingInspectors?.shiftId, editingInspectors?.week],
     queryFn: async () => {
       if (!editingInspectors) return [];
-      const response = await fetch(`/api/shifts/${editingInspectors.week}/available-inspectors`, {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch available inspectors");
+      try {
+        const response = await fetch(`/api/shifts/${editingInspectors.week}/available-inspectors`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch available inspectors");
+        }
+        return response.json();
+      } catch (error) {
+        console.error("Error fetching inspectors:", error);
+        throw error;
       }
-      return response.json();
     },
     enabled: !!editingInspectors,
+    // Force refetch when switching shifts
+    refetchOnMount: true,
+    // Don't cache the results
+    cacheTime: 0,
   });
 
   const updateShiftDay = useMutation({
@@ -233,9 +242,9 @@ export default function Shifts() {
         description: "Inspector group updated successfully",
       });
       setEditingInspectors(null);
-      queryClient.invalidateQueries({
-        queryKey: ["/api/buildings/with-shifts"],
-      });
+      // Invalidate both buildings and available inspectors queries
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["available-inspectors"] });
     },
     onError: (error: Error) => {
       toast({
@@ -245,6 +254,30 @@ export default function Shifts() {
       });
     },
   });
+
+  const handleEditInspectors = (shiftId: number, week: string) => {
+    // Reset form and clear previous selection
+    inspectorGroupForm.reset({ inspectors: [] });
+
+    // Update editing state
+    setEditingInspectors({ shiftId, week });
+
+    // Pre-populate form with current inspectors after a short delay
+    // This ensures the state update has completed
+    setTimeout(() => {
+      const shift = buildings
+        .flatMap((b) => b.shifts)
+        .find((s) => s.id === shiftId);
+
+      if (shift) {
+        inspectorGroupForm.reset({
+          inspectors: shift.shiftInspectors.map((si) =>
+            si.inspector.id.toString()
+          ),
+        });
+      }
+    }, 0);
+  };
 
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -268,23 +301,6 @@ export default function Shifts() {
       shiftId: editingInspectors.shiftId,
       inspectors: inspectorList,
     });
-  };
-
-  const handleEditInspectors = (shiftId: number, week: string) => {
-    setEditingInspectors({ shiftId, week });
-
-    // Pre-populate form with current inspectors
-    const shift = buildings
-      .flatMap((b) => b.shifts)
-      .find((s) => s.id === shiftId);
-
-    if (shift) {
-      inspectorGroupForm.reset({
-        inspectors: shift.shiftInspectors.map((si) =>
-          si.inspector.id.toString()
-        ),
-      });
-    }
   };
 
   return (
@@ -416,7 +432,7 @@ export default function Shifts() {
                                           key={dayIndex}
                                           className={`p-2 text-center`}
                                         >
-                                          {dayShift?.shiftType.name}
+                                          {dayShift?.shiftType?.name}
                                         </td>
                                       );
                                     })}
@@ -515,6 +531,8 @@ export default function Shifts() {
           open={!!editingInspectors}
           onOpenChange={(open) => {
             if (!open) {
+              // Clear form and editing state when closing
+              inspectorGroupForm.reset({ inspectors: [] });
               setEditingInspectors(null);
             }
           }}
@@ -543,7 +561,7 @@ export default function Shifts() {
                         <div className="flex items-center justify-center p-4">
                           <Loader2 className="h-6 w-6 animate-spin" />
                         </div>
-                      ) : inspectors ? (
+                      ) : inspectors && inspectors.length > 0 ? (
                         <>
                           <Select
                             onValueChange={(value) => {
@@ -572,7 +590,7 @@ export default function Shifts() {
                           <div className="mt-2 space-y-2">
                             {field.value.map((inspectorId) => {
                               const inspector = inspectors?.find(
-                                (i) => i.id.toString() === inspectorId,
+                                (i) => i.id.toString() === inspectorId
                               );
                               return (
                                 <div
@@ -587,8 +605,8 @@ export default function Shifts() {
                                     onClick={() => {
                                       field.onChange(
                                         field.value.filter(
-                                          (id) => id !== inspectorId,
-                                        ),
+                                          (id) => id !== inspectorId
+                                        )
                                       );
                                     }}
                                   >
