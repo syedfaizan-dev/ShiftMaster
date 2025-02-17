@@ -45,22 +45,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+
+type Inspector = {
+  id: number;
+  fullName: string;
+  username: string;
+};
+
+type ShiftInspector = {
+  inspector: Inspector;
+  isPrimary: boolean;
+};
 
 type ShiftWithRelations = {
   id: number;
-  inspectorId: number;
   roleId: number;
   shiftTypeId: number;
   buildingId: number;
   week: string;
-  backupId: number | null;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
   responseAt: string | null;
   rejectionReason: string | null;
-  inspector: { id: number; fullName: string; username: string };
+  shiftInspectors: ShiftInspector[];
   role: { id: number; name: string };
   shiftType: { id: number; name: string; startTime: string; endTime: string };
-  backup?: { id: number; fullName: string; username: string } | null;
   building: { id: number; name: string; code: string; area: string };
 };
 
@@ -197,9 +206,24 @@ export default function Shifts() {
 
   const columns = [
     {
-      header: "Inspector Name",
-      accessorKey: "inspector",
-      cell: (value: { fullName: string }) => value?.fullName || "Unknown",
+      header: "Inspectors",
+      accessorKey: "shiftInspectors",
+      cell: (inspectors: ShiftInspector[]) => (
+        <div className="space-y-1">
+          {inspectors?.map((si, index) => (
+            <div key={`${si.inspector.id}-${index}`} className="flex items-center gap-1">
+              <span className="text-sm">
+                {si.inspector.fullName}
+              </span>
+              {si.isPrimary && (
+                <Badge variant="outline" className="text-xs">
+                  Primary
+                </Badge>
+              )}
+            </div>
+          ))}
+        </div>
+      ),
     },
     {
       header: "Role",
@@ -223,14 +247,13 @@ export default function Shifts() {
       cell: (value: string) => `Week ${value}`,
     },
     {
-      header: "Backup Inspector",
-      accessorKey: "backup",
-      cell: (value: { fullName: string } | null) => value?.fullName || "-",
-    },
-    {
       header: "Status",
       accessorKey: "status",
-      cell: (value: string) => value || "PENDING",
+      cell: (value: string) => (
+        <Badge variant={value === "ACCEPTED" ? "success" : value === "REJECTED" ? "destructive" : "default"}>
+          {value}
+        </Badge>
+      ),
     },
     {
       header: "Actions",
