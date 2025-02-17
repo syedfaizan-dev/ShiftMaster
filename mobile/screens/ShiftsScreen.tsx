@@ -11,19 +11,55 @@ import {
   Modal,
 } from 'react-native';
 
-type ShiftWithRelations = {
+type ShiftType = {
   id: number;
-  inspectorId: number;
-  roleId: number;
+  name: string;
   startTime: string;
   endTime: string;
+};
+
+type Inspector = {
+  id: number;
+  fullName: string;
+  username: string;
+};
+
+type DayShift = {
+  id: number;
+  dayOfWeek: number;
+  shiftType: ShiftType;
+};
+
+type ShiftWithRelations = {
+  id: number;
   week: string;
-  backupId: number | null;
+  groupName: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   rejectionReason: string | null;
-  inspector: { id: number; fullName: string; username: string };
   role: { id: number; name: string };
-  backup?: { id: number; fullName: string; username: string } | null;
+  inspectors: Array<{
+    inspector: Inspector;
+    isPrimary: boolean;
+  }>;
+  days: DayShift[];
+};
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const getShiftTypeDisplay = (shiftType?: ShiftType) => {
+  if (!shiftType) return '-';
+  if (shiftType.name.toLowerCase().includes('morning')) return 'Mo';
+  if (shiftType.name.toLowerCase().includes('afternoon')) return 'A';
+  if (shiftType.name.toLowerCase().includes('night')) return 'N';
+  return '-';
+};
+
+const getShiftTypeColor = (shiftType?: ShiftType) => {
+  if (!shiftType) return styles.noShift;
+  if (shiftType.name.toLowerCase().includes('morning')) return styles.morningShift;
+  if (shiftType.name.toLowerCase().includes('afternoon')) return styles.afternoonShift;
+  if (shiftType.name.toLowerCase().includes('night')) return styles.nightShift;
+  return styles.noShift;
 };
 
 export default function ShiftsScreen() {
@@ -109,6 +145,19 @@ export default function ShiftsScreen() {
     fetchShifts();
   }, []);
 
+  const renderDayShift = (days: DayShift[], dayOfWeek: number) => {
+    const dayShift = days.find(d => d.dayOfWeek === dayOfWeek);
+    const shiftType = dayShift?.shiftType;
+    const displayText = getShiftTypeDisplay(shiftType);
+    const colorStyle = getShiftTypeColor(shiftType);
+
+    return (
+      <View style={[styles.dayCell, colorStyle]}>
+        <Text style={styles.shiftTypeText}>{displayText}</Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -117,25 +166,46 @@ export default function ShiftsScreen() {
         }
       >
         {shifts.map((shift) => (
-          <View key={shift.id} style={styles.shiftCard}>
-            <Text style={styles.shiftDate}>
-              {new Date(shift.startTime).toLocaleDateString()}
+          <View key={shift.id} style={styles.weekCard}>
+            <Text style={styles.weekHeader}>
+              Week: {shift.week} - Group: {shift.groupName}
             </Text>
-            <Text style={styles.shiftTime}>
-              {new Date(shift.startTime).toLocaleTimeString()} - 
-              {new Date(shift.endTime).toLocaleTimeString()}
-            </Text>
-            <Text style={styles.shiftRole}>
+            <Text style={styles.roleText}>
               Role: {shift.role?.name || 'Unknown'}
             </Text>
-            <Text style={styles.shiftInspector}>
-              Inspector: {shift.inspector?.fullName || 'Unknown'}
-            </Text>
-            {shift.backup && (
-              <Text style={styles.shiftBackup}>
-                Backup: {shift.backup.fullName}
-              </Text>
-            )}
+
+            {/* Weekly Table */}
+            <View style={styles.weekTable}>
+              {/* Header Row */}
+              <View style={styles.tableRow}>
+                <View style={[styles.inspectorCell, styles.headerCell]}>
+                  <Text style={styles.headerText}>Inspectors</Text>
+                </View>
+                {DAYS.map((day) => (
+                  <View key={day} style={[styles.dayCell, styles.headerCell]}>
+                    <Text style={styles.headerText}>{day}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Inspector Rows */}
+              {shift.inspectors.map((inspector) => (
+                <View key={inspector.inspector.id} style={styles.tableRow}>
+                  <View style={styles.inspectorCell}>
+                    <Text style={styles.inspectorName}>
+                      {inspector.inspector.fullName}
+                      {inspector.isPrimary ? ' (P)' : ''}
+                    </Text>
+                  </View>
+                  {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                    <React.Fragment key={day}>
+                      {renderDayShift(shift.days, day)}
+                    </React.Fragment>
+                  ))}
+                </View>
+              ))}
+            </View>
+
             <Text style={[
               styles.shiftStatus,
               shift.status === 'ACCEPTED' && styles.statusAccepted,
@@ -213,39 +283,87 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    padding: 20,
+    padding: 10,
   },
-  shiftCard: {
+  weekCard: {
     backgroundColor: 'white',
     padding: 15,
-    borderRadius: 5,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  shiftDate: {
+  weekHeader: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 5,
   },
-  shiftTime: {
+  roleText: {
+    fontSize: 14,
     color: '#666',
-    marginTop: 5,
+    marginBottom: 10,
   },
-  shiftRole: {
-    marginTop: 5,
-    fontWeight: '500',
+  weekTable: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    marginTop: 10,
+    marginBottom: 10,
   },
-  shiftInspector: {
-    marginTop: 2,
-    color: '#444',
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
-  shiftBackup: {
-    marginTop: 2,
-    color: '#666',
-    fontStyle: 'italic',
+  headerCell: {
+    backgroundColor: '#f8f9fa',
+    padding: 8,
+  },
+  headerText: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  inspectorCell: {
+    flex: 2,
+    padding: 8,
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#ddd',
+  },
+  inspectorName: {
+    fontSize: 12,
+  },
+  dayCell: {
+    flex: 1,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#ddd',
+  },
+  shiftTypeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  noShift: {
+    backgroundColor: '#ffffff',
+  },
+  morningShift: {
+    backgroundColor: '#e3f2fd',
+  },
+  afternoonShift: {
+    backgroundColor: '#fff3e0',
+  },
+  nightShift: {
+    backgroundColor: '#f3e5f5',
   },
   shiftStatus: {
-    marginTop: 5,
+    marginTop: 10,
+    fontSize: 14,
     fontWeight: '500',
   },
   statusAccepted: {
@@ -321,5 +439,34 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#ef4444',
+  },
+  shiftCard: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 5,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  shiftDate: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  shiftTime: {
+    color: '#666',
+    marginTop: 5,
+  },
+  shiftRole: {
+    marginTop: 5,
+    fontWeight: '500',
+  },
+  shiftInspector: {
+    marginTop: 2,
+    color: '#444',
+  },
+  shiftBackup: {
+    marginTop: 2,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
