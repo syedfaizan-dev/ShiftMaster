@@ -36,6 +36,7 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
           .select({
             id: shifts.id,
             roleId: shifts.roleId,
+            buildingId: shifts.buildingId,
             week: shifts.week,
             groupName: shifts.groupName,
             status: shifts.status,
