@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "@db";
-import { shifts, users, roles, shiftTypes, buildings } from "@db/schema";
+import { shifts, users, roles, shiftTypes, buildings, shiftInspectors } from "@db/schema";
 import { NotificationService } from "server/services/notification";
 
 export async function getShifts(req: Request, res: Response) {
@@ -103,20 +103,34 @@ export async function createShift(req: Request, res: Response) {
       return res.status(400).json({ message: "Invalid inspector ID" });
     }
 
-    // Create shift with PENDING status
+    // Create shift
     const [shift] = await db
       .insert(shifts)
       .values({
-        inspectorId,
         roleId,
         shiftTypeId,
         buildingId,
         week,
-        backupId,
         status: 'PENDING',
         createdBy: req.user.id,
       })
       .returning();
+
+    // Add primary inspector
+    await db.insert(shiftInspectors).values({
+      shiftId: shift.id,
+      inspectorId: parseInt(inspectorId),
+      isPrimary: true,
+    });
+
+    // Add backup inspector if provided
+    if (backupId && backupId !== "none") {
+      await db.insert(shiftInspectors).values({
+        shiftId: shift.id,
+        inspectorId: parseInt(backupId),
+        isPrimary: false,
+      });
+    }
 
     // Get role details for notification
     const [role] = await db
@@ -134,11 +148,11 @@ export async function createShift(req: Request, res: Response) {
     });
 
     // If there's a backup inspector, notify them too
-    if (shift.backupId) {
+    if (backupId && backupId !== "none") {
       const [backup] = await db
         .select()
         .from(users)
-        .where(eq(users.id, shift.backupId))
+        .where(eq(users.id, parseInt(backupId)))
         .limit(1);
 
       if (backup) {
@@ -151,7 +165,24 @@ export async function createShift(req: Request, res: Response) {
       }
     }
 
-    res.json(shift);
+    // Return the created shift with inspector details
+    const shiftWithInspectors = {
+      ...shift,
+      inspectors: await db
+        .select({
+          inspector: {
+            id: users.id,
+            fullName: users.fullName,
+            username: users.username,
+          },
+          isPrimary: shiftInspectors.isPrimary,
+        })
+        .from(shiftInspectors)
+        .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+        .where(eq(shiftInspectors.shiftId, shift.id)),
+    };
+
+    res.json(shiftWithInspectors);
   } catch (error) {
     console.error('Error creating shift:', error);
     res.status(500).json({ message: "Error creating shift" });
@@ -276,7 +307,7 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
   try {
     // Get the shift type ID and week from query params
     const shiftTypeId = req.query.shiftTypeId ? parseInt(req.query.shiftTypeId as string) : null;
-    const week = req.query.week ? parseInt(req.query.week as string) : null;
+    const week = req.query.week as string;
 
     if (!shiftTypeId || !week) {
       return res.status(400).json({ message: "Both shift type ID and week are required" });
@@ -295,13 +326,17 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
     // For each inspector, check if they have any conflicting shifts in the given week
     const inspectorsWithAvailability = await Promise.all(
       inspectors.map(async (inspector) => {
-        // Check for existing shifts in the same week
+        // Find shifts for this inspector in the given week
         const existingShifts = await db
-          .select()
+          .select({
+            shiftId: shifts.id,
+            shiftTypeId: shifts.shiftTypeId,
+          })
           .from(shifts)
+          .innerJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
           .where(
             and(
-              eq(shifts.inspectorId, inspector.id),
+              eq(shiftInspectors.inspectorId, inspector.id),
               eq(shifts.week, week),
               eq(shifts.status, 'ACCEPTED')
             )
@@ -312,17 +347,14 @@ export async function getInspectorsByShiftType(req: Request, res: Response) {
           shift => shift.shiftTypeId === shiftTypeId
         );
 
-        // If they have a conflicting shift, they're unavailable
-        const availability = {
-          isAvailable: !hasConflictingShift,
-          reason: hasConflictingShift
-            ? `Already assigned to ${existingShifts.length} shift(s) in week ${week}`
-            : undefined
-        };
-
         return {
           ...inspector,
-          availability
+          availability: {
+            isAvailable: !hasConflictingShift,
+            reason: hasConflictingShift
+              ? `Already assigned to a shift in week ${week}`
+              : undefined
+          }
         };
       })
     );
@@ -366,7 +398,6 @@ export async function getInspectorsByShiftTypeForTask(req: Request, res: Respons
   }
 }
 
-// Export all route handlers
 export default {
   getShifts,
   createShift,
