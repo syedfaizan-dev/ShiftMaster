@@ -1622,6 +1622,43 @@ export function registerRoutes(app: Express): Server {
       }
     }
   );
+  app.get("/api/shifts/:week/available-inspectors", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { week } = req.params;
+
+    // Get all inspectors
+    const allInspectors = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        fullName: users.fullName,
+      })
+      .from(users)
+      .where(eq(users.isInspector, true));
+
+    // Get inspectors already assigned to shifts in this week
+    const assignedInspectors = await db
+      .select({
+        inspectorId: shiftInspectors.inspectorId,
+      })
+      .from(shiftInspectors)
+      .innerJoin(shifts, eq(shifts.id, shiftInspectors.shiftId))
+      .where(eq(shifts.week, week));
+
+    // Create a Set of assigned inspector IDs for efficient lookup
+    const assignedInspectorIds = new Set(assignedInspectors.map(i => i.inspectorId));
+
+    // Filter out assigned inspectors
+    const availableInspectors = allInspectors.filter(
+      inspector => !assignedInspectorIds.has(inspector.id)
+    );
+
+    res.json(availableInspectors);
+  } catch (error) {
+    console.error("Error fetching available inspectors:", error);
+    res.status(500).json({ message: "Error fetching available inspectors" });
+  }
+});
 
   const server = createServer(app);
   return server;

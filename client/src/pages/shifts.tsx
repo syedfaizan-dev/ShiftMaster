@@ -154,19 +154,29 @@ export default function Shifts() {
     },
   });
 
-  const { data: inspectors, isLoading: isLoadingInspectors } = useQuery<
-    Inspector[]
-  >({
-    queryKey: ["/api/inspectors"],
+  const getAvailableInspectors = async (week: string) => {
+    const response = await fetch(`/api/shifts/${week}/available-inspectors`, {
+      credentials: "include"
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch available inspectors");
+    }
+    return response.json();
+  };
+
+  const { data: inspectors, isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
+    queryKey: [editingInspectors ? `/api/shifts/${buildings
+      .flatMap(b => b.shifts)
+      .find(s => s.id === editingInspectors)?.week}/available-inspectors` : null],
     queryFn: async () => {
-      const response = await fetch("/api/inspectors", {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch inspectors");
-      }
-      return response.json();
+      const shift = buildings
+        .flatMap(b => b.shifts)
+        .find(s => s.id === editingInspectors);
+
+      if (!shift) return [];
+      return getAvailableInspectors(shift.week);
     },
+    enabled: !!editingInspectors,
   });
 
   const updateShiftDay = useMutation({
@@ -268,16 +278,6 @@ export default function Shifts() {
     });
   };
 
-  // Function to check if inspector is assigned in the same week
-  const isInspectorAssignedInWeek = (inspectorId: number, currentShiftId: number, week: string) => {
-    return buildings.some(building =>
-      building.shifts.some(shift =>
-        shift.id !== currentShiftId &&
-        shift.week === week &&
-        shift.shiftInspectors.some(si => si.inspector.id === inspectorId)
-      )
-    );
-  };
 
   return (
     <Navbar>
@@ -528,7 +528,7 @@ export default function Shifts() {
             <DialogHeader>
               <DialogTitle>Edit Inspector Group</DialogTitle>
               <DialogDescription>
-                Select inspectors for this shift. Inspectors already assigned to other shifts this week are not available.
+                Select inspectors for this shift.
               </DialogDescription>
             </DialogHeader>
             <Form {...inspectorGroupForm}>
@@ -564,29 +564,14 @@ export default function Shifts() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {inspectors.map((inspector) => {
-                                const currentShift = buildings
-                                  .flatMap((b) => b.shifts)
-                                  .find((s) => s.id === editingInspectors);
-
-                                const isAssigned = currentShift && 
-                                  isInspectorAssignedInWeek(
-                                    inspector.id,
-                                    currentShift.id,
-                                    currentShift.week
-                                  );
-
-                                if (isAssigned) return null;
-
-                                return (
-                                  <SelectItem
-                                    key={inspector.id}
-                                    value={inspector.id.toString()}
-                                  >
-                                    {inspector.fullName}
-                                  </SelectItem>
-                                );
-                              })}
+                              {inspectors.map((inspector) => (
+                                <SelectItem
+                                  key={inspector.id}
+                                  value={inspector.id.toString()}
+                                >
+                                  {inspector.fullName}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <div className="mt-2 space-y-2">
@@ -620,7 +605,7 @@ export default function Shifts() {
                           </div>
                         </>
                       ) : (
-                        <p>No inspectors found</p>
+                        <p>No inspectors available for this shift</p>
                       )}
                       <FormMessage />
                     </FormItem>
