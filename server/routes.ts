@@ -1077,8 +1077,7 @@ export function registerRoutes(app: Express): Server {
             id: users.id,
             username: users.username,
             fullName: users.fullName,
-          })
-          .from(users)
+          })          .from(users)
           .where(
             and(
               eq(users.isAdmin, false),
@@ -1604,6 +1603,76 @@ export function registerRoutes(app: Express): Server {
         res.status(500).json({
           message: "Error updating shift inspectors",
           error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+  );
+
+  // Add inspector to shift
+  app.post(
+    "/api/admin/shifts/:id/inspectors",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id: shiftId } = req.params;
+        const { inspectorId } = req.body;
+
+        // Validate that the shift exists
+        const [existingShift] = await db
+          .select()
+          .from(shifts)
+          .where(eq(shifts.id, parseInt(shiftId)))
+          .limit(1);
+
+        if (!existingShift) {
+          return res.status(404).json({ message: "Shift not found" });
+        }
+
+        // Validate that the inspector exists and is actually an inspector
+        const [inspector] = await db
+          .select()
+          .from(users)
+          .where(and(eq(users.id, inspectorId), eq(users.isInspector, true)))
+          .limit(1);
+
+        if (!inspector) {
+          return res.status(400).json({ message: "Invalid inspector" });
+        }
+
+        // Check if inspector is already assigned to this shift
+        const [existingAssignment] = await db
+          .select()
+          .from(shiftInspectors)
+          .where(
+            and(
+              eq(shiftInspectors.shiftId, parseInt(shiftId)),
+              eq(shiftInspectors.inspectorId, inspectorId)
+            )
+          )
+          .limit(1);
+
+        if (existingAssignment) {
+          return res.status(400).json({ message: "Inspector already assigned to this shift" });
+        }
+
+        // Create the shift inspector assignment
+        const [newAssignment] = await db
+          .insert(shiftInspectors)
+          .values({
+            shiftId: parseInt(shiftId),
+            inspectorId,
+            status: "PENDING",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        res.status(201).json(newAssignment);
+      } catch (error) {
+        console.error("Error assigning inspector to shift:", error);
+        res.status(500).json({
+          message: "Error assigning inspector to shift",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
