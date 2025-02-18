@@ -290,6 +290,7 @@ export default function Shifts() {
           shiftTypeId: shiftTypeId === "none" ? null : parseInt(shiftTypeId),
         }),
       });
+
       if (!response.ok) {
         throw new Error("Failed to update shift type");
       }
@@ -316,18 +317,12 @@ export default function Shifts() {
   const getAvailableShiftTypes = (group: InspectorGroup, currentDayOfWeek: number) => {
     if (!shiftTypes) return [];
 
-    const assignedShiftTypeIds = new Set(
-      group.days
-        .filter(day => day.dayOfWeek !== currentDayOfWeek && day.shiftType)
-        .map(day => day.shiftType!.id)
-    );
+    // Find the shift type assigned to the current day
+    const currentDay = group.days.find(d => d.dayOfWeek === currentDayOfWeek);
+    const currentDayShiftTypeId = currentDay?.shiftType?.id;
 
-    const currentDay = group.days.find(day => day.dayOfWeek === currentDayOfWeek);
-    const currentShiftTypeId = currentDay?.shiftType?.id;
-
-    return shiftTypes.filter(type => 
-      !assignedShiftTypeIds.has(type.id) || type.id === currentShiftTypeId
-    );
+    // Filter out the shift type assigned to the current day
+    return shiftTypes.filter(type => type.id !== currentDayShiftTypeId);
   };
 
   const buildings = buildingsData?.buildings || [];
@@ -595,6 +590,7 @@ export default function Shifts() {
                                                 size="sm"
                                                 onClick={() => {
                                                   setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                                  setSelectedGroupForShiftTypes(group);
                                                   singleDayShiftTypeForm.reset({
                                                     shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
                                                   });
@@ -652,7 +648,7 @@ export default function Shifts() {
                                                           </FormControl>
                                                           <SelectContent>
                                                             <SelectItem value="none">No shift</SelectItem>
-                                                            {getAvailableShiftTypes(group, dayIndex).map((type) => (
+                                                            {getAvailableShiftTypes(group,dayIndex).map((type) => (
                                                               <SelectItem
                                                                 key={type.id}
                                                                 value={type.id.toString()}
