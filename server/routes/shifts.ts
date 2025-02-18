@@ -578,6 +578,89 @@ export async function handleShiftInspectorResponse(req: Request, res: Response) 
   }
 }
 
+export async function getInspectorShiftAssignments(req: Request, res: Response) {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Get all shift assignments where the user is an inspector
+    const assignments = await db
+      .select({
+        id: shifts.id,
+        week: shifts.week,
+        status: shifts.status,
+        rejectionReason: shifts.rejectionReason,
+        role: {
+          id: roles.id,
+          name: roles.name,
+        },
+        building: {
+          id: buildings.id,
+          name: buildings.name,
+          code: buildings.code,
+          area: buildings.area,
+        },
+      })
+      .from(shifts)
+      .leftJoin(roles, eq(shifts.roleId, roles.id))
+      .leftJoin(buildings, eq(shifts.buildingId, buildings.id))
+      .innerJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
+      .where(eq(shiftInspectors.inspectorId, req.user.id));
+
+    // Get additional details for each shift
+    const shiftsWithDetails = await Promise.all(
+      assignments.map(async (shift) => {
+        // Get all inspectors for this shift
+        const shiftInspectorsData = await db
+          .select({
+            inspector: {
+              id: users.id,
+              fullName: users.fullName,
+              username: users.username,
+            },
+            isPrimary: shiftInspectors.isPrimary,
+            status: shiftInspectors.status,
+            rejectionReason: shiftInspectors.rejectionReason,
+          })
+          .from(shiftInspectors)
+          .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+          .where(eq(shiftInspectors.shiftId, shift.id));
+
+        // Get daily assignments
+        const dailyAssignments = await db
+          .select({
+            id: shiftDays.id,
+            dayOfWeek: shiftDays.dayOfWeek,
+            shiftType: {
+              id: shiftTypes.id,
+              name: shiftTypes.name,
+              startTime: shiftTypes.startTime,
+              endTime: shiftTypes.endTime,
+            },
+          })
+          .from(shiftDays)
+          .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
+          .where(eq(shiftDays.shiftId, shift.id));
+
+        return {
+          ...shift,
+          shiftInspectors: shiftInspectorsData,
+          days: dailyAssignments,
+        };
+      })
+    );
+
+    res.json(shiftsWithDetails);
+  } catch (error) {
+    console.error("Error fetching inspector shift assignments:", error);
+    res.status(500).json({ 
+      message: "Error fetching inspector shift assignments",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+}
+
 export default {
   getShifts,
   createShift,
@@ -588,4 +671,5 @@ export default {
   updateShiftInspectors,
   updateShiftDay,
   handleShiftInspectorResponse,
+  getInspectorShiftAssignments,
 };

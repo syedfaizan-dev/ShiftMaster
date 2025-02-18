@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { TablePagination } from "@/components/table-pagination";
 import {
   Dialog,
   DialogContent,
@@ -54,12 +53,16 @@ type ShiftAssignment = {
 export default function Shifts() {
   const { user } = useUser();
 
+  // Use different endpoints based on user role
   const { data: shifts, isLoading } = useQuery<ShiftAssignment[]>({
-    queryKey: ["/api/shifts"],
+    queryKey: [user?.isInspector ? "/api/inspector/shifts" : "/api/shifts"],
     queryFn: async () => {
-      const response = await fetch("/api/shifts", {
-        credentials: "include",
-      });
+      const response = await fetch(
+        user?.isInspector ? "/api/inspector/shifts" : "/api/shifts",
+        {
+          credentials: "include",
+        }
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch shifts");
       }

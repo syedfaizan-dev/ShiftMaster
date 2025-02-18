@@ -27,6 +27,7 @@ import {
   getInspectorsByShiftTypeForTask,
   updateShiftDay,
   handleShiftInspectorResponse,
+  getInspectorShiftAssignments,
 } from "./routes/shifts";
 import { getBuildingsWithShifts } from "./routes/buildingRoutes";
 import { getInspectors } from "./routes/inspectors";
@@ -1079,13 +1080,15 @@ export function registerRoutes(app: Express): Server {
           })
           .from(users)
           .where(
-            and(              eq(users.isAdmin, false),
+            and(
+              eq(users.isAdmin, false),
               eq(users.isManager, false),
               eq(users.isInspector, false),
             ),
           );
 
-        res.json(employees);      } catch (error) {
+        res.json(employees);
+      } catch (error) {
         console.error("Error fetching employees:", error);
         res.status(500).json({ message: "Error fetching employees" });
       }
@@ -1155,7 +1158,7 @@ export function registerRoutes(app: Express): Server {
         .from(buildings)
         .leftJoin(users, eq(buildings.supervisorId, users.id));
 
-      console.log("Retrieved buildings:", buildingsData); 
+      console.log("Retrieved buildings:", buildingsData);
       res.json(buildingsData);
     } catch (error) {
       console.error("Error fetching buildings:", error);
@@ -1549,8 +1552,8 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/inspectors", requireAuth, getInspectors);
 
   app.put(
-    "/api/shifts/:id/inspectors", 
-    requireAuth, 
+    "/api/shifts/:id/inspectors",
+    requireAuth,
     async (req: Request, res: Response) => {
       try {
         const { id } = req.params;
@@ -1598,9 +1601,9 @@ export function registerRoutes(app: Express): Server {
         res.json(result);
       } catch (error) {
         console.error("Error updating shift inspectors:", error);
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Error updating shift inspectors",
-          error: error instanceof Error ? error.message : "Unknown error" 
+          error: error instanceof Error ? error.message : "Unknown error"
         });
       }
     }
@@ -1615,50 +1618,50 @@ export function registerRoutes(app: Express): Server {
         await updateShiftDay(req, res);
       } catch (error) {
         console.error("Error in shift day update route:", error);
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Error updating shift day",
-          error: error instanceof Error ? error.message : "Unknown error" 
+          error: error instanceof Error ? error.message : "Unknown error"
         });
       }
     }
   );
   app.get("/api/shifts/:week/available-inspectors", requireAuth, async (req: Request, res: Response) => {
-  try {
-    const { week } = req.params;
+    try {
+      const { week } = req.params;
 
-    // Get all inspectors
-    const allInspectors = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        fullName: users.fullName,
-      })
-      .from(users)
-      .where(eq(users.isInspector, true));
+      // Get all inspectors
+      const allInspectors = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+        })
+        .from(users)
+        .where(eq(users.isInspector, true));
 
-    // Get inspectors already assigned to shifts in this week
-    const assignedInspectors = await db
-      .select({
-        inspectorId: shiftInspectors.inspectorId,
-      })
-      .from(shiftInspectors)
-      .innerJoin(shifts, eq(shifts.id, shiftInspectors.shiftId))
-      .where(eq(shifts.week, week));
+      // Get inspectors already assigned to shifts in this week
+      const assignedInspectors = await db
+        .select({
+          inspectorId: shiftInspectors.inspectorId,
+        })
+        .from(shiftInspectors)
+        .innerJoin(shifts, eq(shifts.id, shiftInspectors.shiftId))
+        .where(eq(shifts.week, week));
 
-    // Create a Set of assigned inspector IDs for efficient lookup
-    const assignedInspectorIds = new Set(assignedInspectors.map(i => i.inspectorId));
+      // Create a Set of assigned inspector IDs for efficient lookup
+      const assignedInspectorIds = new Set(assignedInspectors.map(i => i.inspectorId));
 
-    // Filter out assigned inspectors
-    const availableInspectors = allInspectors.filter(
-      inspector => !assignedInspectorIds.has(inspector.id)
-    );
+      // Filter out assigned inspectors
+      const availableInspectors = allInspectors.filter(
+        inspector => !assignedInspectorIds.has(inspector.id)
+      );
 
-    res.json(availableInspectors);
-  } catch (error) {
-    console.error("Error fetching available inspectors:", error);
-    res.status(500).json({ message: "Error fetching available inspectors" });
-  }
-});
+      res.json(availableInspectors);
+    } catch (error) {
+      console.error("Error fetching available inspectors:", error);
+      res.status(500).json({ message: "Error fetching available inspectors" });
+    }
+  });
 
   // Handle shift inspector response (accept/reject)
   app.post(
@@ -1666,6 +1669,9 @@ export function registerRoutes(app: Express): Server {
     requireAuth,
     handleShiftInspectorResponse
   );
+
+  // Add the new route for inspector shift assignments
+  app.get("/api/inspector/shifts", requireAuth, getInspectorShiftAssignments);
 
   const server = createServer(app);
   return server;
