@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 export async function getBuildingsWithShifts(req: Request, res: Response) {
   try {
     // Get buildings for the current user based on their role
-    const buildingsQuery = db
+    const buildingsData = await db
       .select({
         id: buildings.id,
         name: buildings.name,
@@ -19,45 +19,39 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
         },
       })
       .from(buildings)
-      .leftJoin(users, eq(buildings.supervisorId, users.id));
-
-    // If user is not an admin, only show buildings they supervise
-    if (!req.user?.isAdmin) {
-      buildingsQuery.where(eq(buildings.supervisorId, req.user!.id));
-    }
-
-    const buildingsData = await buildingsQuery;
+      .leftJoin(users, eq(buildings.supervisorId, users.id))
+      .where(req.user?.isAdmin ? undefined : eq(buildings.supervisorId, req.user!.id));
 
     // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
       buildingsData.map(async (building) => {
-        // Get shifts for this building
+        // Get shifts for this building with basic info
         const buildingShifts = await db
           .select({
             id: shifts.id,
+            week: shifts.week,
+            status: shifts.status,
+            rejectionReason: shifts.rejectionReason,
             roleId: shifts.roleId,
             buildingId: shifts.buildingId,
-            week: shifts.week,
             groupName: shifts.groupName,
-            status: shifts.status,
-            responseAt: shifts.responseAt,
-            rejectionReason: shifts.rejectionReason,
           })
           .from(shifts)
           .where(eq(shifts.buildingId, building.id));
 
-        // For each shift, get all inspectors and related data
+        // For each shift, get inspectors, role, and daily assignments
         const shiftsWithDetails = await Promise.all(
           buildingShifts.map(async (shift) => {
             // Get all inspectors for this shift
-            const shiftInspectorsData = await db
+            const inspectors = await db
               .select({
                 inspector: {
                   id: users.id,
                   fullName: users.fullName,
                   username: users.username,
                 },
-                isPrimary: shiftInspectors.isPrimary,
+                status: shiftInspectors.status,
+                rejectionReason: shiftInspectors.rejectionReason,
               })
               .from(shiftInspectors)
               .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
@@ -70,11 +64,10 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                 name: roles.name,
               })
               .from(roles)
-              .where(eq(roles.id, shift.roleId))
-              .limit(1);
+              .where(eq(roles.id, shift.roleId));
 
             // Get daily assignments with shift types
-            const dayShifts = await db
+            const days = await db
               .select({
                 id: shiftDays.id,
                 dayOfWeek: shiftDays.dayOfWeek,
@@ -91,15 +84,9 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
 
             return {
               ...shift,
-              shiftInspectors: shiftInspectorsData,
+              shiftInspectors: inspectors,
               role,
-              days: dayShifts,
-              building: {
-                id: building.id,
-                name: building.name,
-                code: building.code,
-                area: building.area,
-              },
+              days,
             };
           }),
         );
@@ -111,9 +98,13 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
       }),
     );
 
+    // Send the complete response
     res.json({ buildings: buildingsWithShifts });
   } catch (error) {
     console.error("Error fetching buildings with shifts:", error);
-    res.status(500).json({ message: "Error fetching buildings data" });
+    res.status(500).json({ 
+      message: "Error fetching buildings data",
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 }
