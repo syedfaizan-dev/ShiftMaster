@@ -13,6 +13,7 @@ import {
   buildings,
   utilities,
   shiftInspectors,
+  inspectorGroups,
 } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import {
@@ -1749,12 +1750,12 @@ export function registerRoutes(app: Express): Server {
     async (req: Request, res: Response) => {
       try {
         const { id } = req.params;
-        const { name, days } = req.body;
+        const { name } = req.body;
 
         // Validate request body
-        if (!name || !days || !Array.isArray(days)) {
+        if (!name) {
           return res.status(400).json({
-            message: "Invalid request body. Name and days array are required.",
+            message: "Invalid request body. Group name is required.",
           });
         }
 
@@ -1769,13 +1770,12 @@ export function registerRoutes(app: Express): Server {
           return res.status(404).json({ message: "Shift not found" });
         }
 
-        // Create inspector group with initial empty days
+        // Create inspector group
         const [inspectorGroup] = await db
-          .insert(shiftInspectors)
+          .insert(inspectorGroups)
           .values({
-            shiftId: parseInt(id),
             name,
-            createdBy: req.user!.id,
+            shiftId: parseInt(id),
           })
           .returning();
 
@@ -1787,7 +1787,7 @@ export function registerRoutes(app: Express): Server {
           error: error instanceof Error ? error.message : "Unknown error",
         });
       }
-    },
+    }
   );
 
   const server = createServer(app);
