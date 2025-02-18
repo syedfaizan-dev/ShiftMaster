@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "@db";
-import { buildings, shifts, users, roles, shiftTypes, shiftInspectors, shiftDays } from "@db/schema";
+import { buildings, shifts, users, roles, shiftTypes, shiftInspectors, shiftDays, inspectorGroups } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function getBuildingsWithShifts(req: Request, res: Response) {
@@ -39,23 +39,59 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
           .from(shifts)
           .where(eq(shifts.buildingId, building.id));
 
-        // For each shift, get inspectors, role, and daily assignments
+        // For each shift, get inspector groups, role, and daily assignments
         const shiftsWithDetails = await Promise.all(
           buildingShifts.map(async (shift) => {
-            // Get all inspectors for this shift
-            const inspectors = await db
+            // Get all inspector groups for this shift
+            const groups = await db
               .select({
-                inspector: {
-                  id: users.id,
-                  fullName: users.fullName,
-                  username: users.username,
-                },
-                status: shiftInspectors.status,
-                rejectionReason: shiftInspectors.rejectionReason,
+                id: inspectorGroups.id,
+                name: inspectorGroups.name,
               })
-              .from(shiftInspectors)
-              .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-              .where(eq(shiftInspectors.shiftId, shift.id));
+              .from(inspectorGroups)
+              .where(eq(inspectorGroups.shiftId, shift.id));
+
+            // For each group, get inspectors and daily assignments
+            const groupsWithDetails = await Promise.all(
+              groups.map(async (group) => {
+                // Get all inspectors for this group
+                const inspectors = await db
+                  .select({
+                    inspector: {
+                      id: users.id,
+                      fullName: users.fullName,
+                      username: users.username,
+                    },
+                    status: shiftInspectors.status,
+                    rejectionReason: shiftInspectors.rejectionReason,
+                  })
+                  .from(shiftInspectors)
+                  .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+                  .where(eq(shiftInspectors.inspectorGroupId, group.id));
+
+                // Get daily assignments for this group
+                const days = await db
+                  .select({
+                    id: shiftDays.id,
+                    dayOfWeek: shiftDays.dayOfWeek,
+                    shiftType: {
+                      id: shiftTypes.id,
+                      name: shiftTypes.name,
+                      startTime: shiftTypes.startTime,
+                      endTime: shiftTypes.endTime,
+                    },
+                  })
+                  .from(shiftDays)
+                  .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
+                  .where(eq(shiftDays.inspectorGroupId, group.id));
+
+                return {
+                  ...group,
+                  inspectors,
+                  days,
+                };
+              })
+            );
 
             // Get role details
             const [role] = await db
@@ -66,36 +102,19 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
               .from(roles)
               .where(eq(roles.id, shift.roleId));
 
-            // Get daily assignments with shift types
-            const days = await db
-              .select({
-                id: shiftDays.id,
-                dayOfWeek: shiftDays.dayOfWeek,
-                shiftType: {
-                  id: shiftTypes.id,
-                  name: shiftTypes.name,
-                  startTime: shiftTypes.startTime,
-                  endTime: shiftTypes.endTime,
-                },
-              })
-              .from(shiftDays)
-              .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
-              .where(eq(shiftDays.shiftId, shift.id));
-
             return {
               ...shift,
-              shiftInspectors: inspectors,
               role,
-              days,
+              inspectorGroups: groupsWithDetails,
             };
-          }),
+          })
         );
 
         return {
           ...building,
           shifts: shiftsWithDetails,
         };
-      }),
+      })
     );
 
     // Send the complete response

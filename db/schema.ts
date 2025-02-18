@@ -46,7 +46,7 @@ export const shiftTypes = pgTable("shift_types", {
 
 export const shiftInspectors = pgTable("shift_inspectors", {
   id: serial("id").primaryKey(),
-  shiftId: integer("shift_id").references(() => shifts.id).notNull(),
+  inspectorGroupId: integer("inspector_group_id").references(() => inspectorGroups.id).notNull(),
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
   status: text("status").default('PENDING').notNull(), // PENDING, ACCEPTED, REJECTED
   responseAt: timestamp("response_at"),
@@ -87,7 +87,7 @@ export const requests = pgTable("requests", {
 
 export const shiftDays = pgTable("shift_days", {
   id: serial("id").primaryKey(),
-  shiftId: integer("shift_id").references(() => shifts.id).notNull(),
+  inspectorGroupId: integer("inspector_group_id").references(() => inspectorGroups.id).notNull(),
   dayOfWeek: integer("day_of_week").notNull(), // 0 = Sunday, 1 = Monday, etc.
   shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -126,7 +126,7 @@ export const buildingsRelations = relations(buildings, ({ one, many }) => ({
 }));
 
 export const shiftsRelations = relations(shifts, ({ one, many }) => ({
-  inspectors: many(shiftInspectors),
+  inspectorGroups: many(inspectorGroups),
   days: many(shiftDays),
   role: one(roles, {
     fields: [shifts.roleId],
@@ -139,9 +139,9 @@ export const shiftsRelations = relations(shifts, ({ one, many }) => ({
 }));
 
 export const shiftInspectorsRelations = relations(shiftInspectors, ({ one }) => ({
-  shift: one(shifts, {
-    fields: [shiftInspectors.shiftId],
-    references: [shifts.id],
+  inspectorGroup: one(inspectorGroups, {
+    fields: [shiftInspectors.inspectorGroupId],
+    references: [inspectorGroups.id],
   }),
   inspector: one(users, {
     fields: [shiftInspectors.inspectorId],
@@ -297,12 +297,8 @@ export type UtilityWithRelations = Utility & {
 };
 
 export type ShiftWithRelations = Shift & {
-  inspectors?: Array<{
-    inspector: User;
-    isPrimary: boolean;
-  }>;
+  inspectorGroups?: InspectorGroupWithRelations[];
   role?: Role;
-  shiftType?: typeof shiftTypes.$inferSelect;
   building?: Building;
 };
 
@@ -314,13 +310,13 @@ export type InsertShiftInspector = typeof shiftInspectors.$inferInsert;
 
 export type ShiftInspectorWithRelations = ShiftInspector & {
   inspector: User;
-  shift: Shift;
+  inspectorGroup: InspectorGroup;
 };
 
 export const shiftDaysRelations = relations(shiftDays, ({ one }) => ({
-  shift: one(shifts, {
-    fields: [shiftDays.shiftId],
-    references: [shifts.id],
+  inspectorGroup: one(inspectorGroups, {
+    fields: [shiftDays.inspectorGroupId],
+    references: [inspectorGroups.id],
   }),
   shiftType: one(shiftTypes, {
     fields: [shiftDays.shiftTypeId],
@@ -333,10 +329,40 @@ export type InsertShiftDay = typeof shiftDays.$inferInsert;
 
 export type ShiftWithDays = Shift & {
   days?: ShiftDay[];
-  inspectors?: Array<{
-    inspector: User;
-    isPrimary: boolean;
-  }>;
+  inspectorGroups?: InspectorGroupWithRelations[];
   role?: Role;
   building?: Building;
 };
+
+export const inspectorGroups = pgTable("inspector_groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  shiftId: integer("shift_id").references(() => shifts.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const inspectorGroupsRelations = relations(inspectorGroups, ({ one, many }) => ({
+  shift: one(shifts, {
+    fields: [inspectorGroups.shiftId],
+    references: [shifts.id],
+  }),
+  inspectors: many(shiftInspectors),
+  days: many(shiftDays),
+}));
+
+export type InspectorGroup = typeof inspectorGroups.$inferSelect;
+export type InsertInspectorGroup = typeof inspectorGroups.$inferInsert;
+
+export type InspectorGroupWithRelations = InspectorGroup & {
+  inspectors?: Array<{
+    inspector: User;
+    status: string;
+    rejectionReason?: string | null;
+  }>;
+  days?: ShiftDay[];
+  shift?: Shift;
+};
+
+export const insertInspectorGroupSchema = createInsertSchema(inspectorGroups);
+export const selectInspectorGroupSchema = createSelectSchema(inspectorGroups);
