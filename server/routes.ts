@@ -1742,6 +1742,54 @@ export function registerRoutes(app: Express): Server {
   // Add the new route for inspector shift assignments
   app.get("/api/inspector/shifts", requireAuth, getInspectorShiftAssignments);
 
+  // Add inspector group endpoint
+  app.post(
+    "/api/admin/shifts/:id/inspector-groups",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { name, days } = req.body;
+
+        // Validate request body
+        if (!name || !days || !Array.isArray(days)) {
+          return res.status(400).json({
+            message: "Invalid request body. Name and days array are required.",
+          });
+        }
+
+        // Check if shift exists
+        const [shift] = await db
+          .select()
+          .from(shifts)
+          .where(eq(shifts.id, parseInt(id)))
+          .limit(1);
+
+        if (!shift) {
+          return res.status(404).json({ message: "Shift not found" });
+        }
+
+        // Create inspector group with initial empty days
+        const [inspectorGroup] = await db
+          .insert(shiftInspectors)
+          .values({
+            shiftId: parseInt(id),
+            name,
+            createdBy: req.user!.id,
+          })
+          .returning();
+
+        res.status(201).json(inspectorGroup);
+      } catch (error) {
+        console.error("Error creating inspector group:", error);
+        res.status(500).json({
+          message: "Error creating inspector group",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+  );
+
   const server = createServer(app);
   return server;
 }
