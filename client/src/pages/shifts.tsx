@@ -169,6 +169,58 @@ export default function Shifts() {
     },
   });
 
+  const { data: shiftTypes } = useQuery({
+    queryKey: ["/api/shift-types"],
+    queryFn: async () => {
+      const response = await fetch("/api/shift-types", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch shift types");
+      }
+      return response.json();
+    },
+  });
+
+  const updateShiftDayMutation = useMutation({
+    mutationFn: async ({
+      shiftId,
+      dayOfWeek,
+      shiftTypeId,
+    }: {
+      shiftId: number;
+      dayOfWeek: number;
+      shiftTypeId: string | null;
+    }) => {
+      const response = await fetch(`/api/shifts/${shiftId}/days/${dayOfWeek}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ shiftTypeId: shiftTypeId ? parseInt(shiftTypeId) : null }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update shift day");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
+      toast({
+        title: "Success",
+        description: "Shift schedule updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update shift schedule",
+        variant: "destructive",
+      });
+    },
+  });
+
   const buildings = buildingsData?.buildings || [];
   const isLoading = isLoadingInspectorShifts || isLoadingBuildings;
 
@@ -185,6 +237,42 @@ export default function Shifts() {
     const assignedInspectorIds = new Set(shift.shiftInspectors.map((si) => si.inspector.id));
     return availableInspectors.filter((inspector) => !assignedInspectorIds.has(inspector.id));
   };
+
+  // Mobile card view component for shift schedule
+  const ShiftScheduleCard = ({ shift, dayShift, dayIndex }: { shift: ShiftAssignment; dayShift: ShiftDay | undefined; dayIndex: number }) => (
+    <div className="p-4 bg-card border rounded-lg space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="font-medium">{DAYS[dayIndex]}</span>
+        <Select
+          value={dayShift?.shiftType?.id?.toString() || ""}
+          onValueChange={(value) => {
+            updateShiftDayMutation.mutate({
+              shiftId: shift.id,
+              dayOfWeek: dayIndex,
+              shiftTypeId: value || null,
+            });
+          }}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Select shift" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">No shift</SelectItem>
+            {shiftTypes?.map((type: ShiftType) => (
+              <SelectItem key={type.id} value={type.id.toString()}>
+                {type.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {dayShift?.shiftType && (
+        <div className="text-sm text-muted-foreground">
+          {dayShift.shiftType.startTime} - {dayShift.shiftType.endTime}
+        </div>
+      )}
+    </div>
+  );
 
   if (!user?.isInspector && !user?.isAdmin) {
     return (
@@ -448,7 +536,7 @@ export default function Shifts() {
                                 </div>
 
                                 <div className="rounded-lg border bg-card">
-                                  <div className="overflow-x-auto">
+                                  <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full">
                                       <thead>
                                         <tr className="border-b bg-muted/50">
@@ -492,12 +580,32 @@ export default function Shifts() {
                                             const dayShift = shift.days?.find((d) => d.dayOfWeek === dayIndex);
                                             return (
                                               <td key={dayIndex} className="p-3 text-center">
-                                                {dayShift?.shiftType?.name ? (
-                                                  <Badge variant="secondary">
-                                                    {dayShift.shiftType.name}
-                                                  </Badge>
-                                                ) : (
-                                                  <span className="text-muted-foreground">-</span>
+                                                <Select
+                                                  value={dayShift?.shiftType?.id?.toString() || ""}
+                                                  onValueChange={(value) => {
+                                                    updateShiftDayMutation.mutate({
+                                                      shiftId: shift.id,
+                                                      dayOfWeek: dayIndex,
+                                                      shiftTypeId: value || null,
+                                                    });
+                                                  }}
+                                                >
+                                                  <SelectTrigger className="w-[140px]">
+                                                    <SelectValue placeholder="Select shift" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="">No shift</SelectItem>
+                                                    {shiftTypes?.map((type: ShiftType) => (
+                                                      <SelectItem key={type.id} value={type.id.toString()}>
+                                                        {type.name}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                                {dayShift?.shiftType && (
+                                                  <div className="text-xs text-muted-foreground mt-1">
+                                                    {dayShift.shiftType.startTime} - {dayShift.shiftType.endTime}
+                                                  </div>
                                                 )}
                                               </td>
                                             );
@@ -505,6 +613,49 @@ export default function Shifts() {
                                         </tr>
                                       </tbody>
                                     </table>
+                                  </div>
+
+                                  {/* Mobile view */}
+                                  <div className="md:hidden">
+                                    <div className="p-3 border-b bg-muted/50">
+                                      <h4 className="font-medium">
+                                        Accepted Inspectors ({groupedInspectors.accepted.length})
+                                      </h4>
+                                    </div>
+                                    <div className="p-3 space-y-3">
+                                      {groupedInspectors.accepted.map((si) => (
+                                        <div
+                                          key={si.inspector.id}
+                                          className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-lg"
+                                        >
+                                          <span className="font-medium">{si.inspector.fullName}</span>
+                                          <Badge variant="success">ACCEPTED</Badge>
+                                        </div>
+                                      ))}
+                                      {groupedInspectors.accepted.length === 0 && (
+                                        <div className="text-center py-4 text-muted-foreground">
+                                          <p>No accepted inspectors</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="border-t">
+                                      <div className="p-3 border-b bg-muted/50">
+                                        <h4 className="font-medium">Weekly Schedule</h4>
+                                      </div>
+                                      <div className="p-3 grid gap-3">
+                                        {DAYS.map((_, dayIndex) => {
+                                          const dayShift = shift.days?.find((d) => d.dayOfWeek === dayIndex);
+                                          return (
+                                            <ShiftScheduleCard
+                                              key={dayIndex}
+                                              shift={shift}
+                                              dayShift={dayShift}
+                                              dayIndex={dayIndex}
+                                            />
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
