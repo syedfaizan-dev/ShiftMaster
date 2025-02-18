@@ -1790,6 +1790,61 @@ export function registerRoutes(app: Express): Server {
     }
   );
 
+  // Add inspector group shift types update endpoint
+  app.put(
+    "/api/admin/inspector-groups/:id/shift-types",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { days } = req.body;
+
+        // Validate request body
+        if (!days || !Array.isArray(days)) {
+          return res.status(400).json({
+            message: "Invalid request body. Days array is required.",
+          });
+        }
+
+        // Check if inspector group exists
+        const [group] = await db
+          .select()
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.id, parseInt(id)))
+          .limit(1);
+
+        if (!group) {
+          return res.status(404).json({ message: "Inspector group not found" });
+        }
+
+        // Delete existing shift days for this group
+        await db
+          .delete(shiftDays)
+          .where(eq(shiftDays.inspectorGroupId, parseInt(id)));
+
+        // Create new shift days
+        const shiftDaysData = days.map((day: { dayOfWeek: number; shiftTypeId: number | null }) => ({
+          inspectorGroupId: parseInt(id),
+          dayOfWeek: day.dayOfWeek,
+          shiftTypeId: day.shiftTypeId,
+        }));
+
+        const updatedDays = await db
+          .insert(shiftDays)
+          .values(shiftDaysData)
+          .returning();
+
+        res.json(updatedDays);
+      } catch (error) {
+        console.error("Error updating shift types:", error);
+        res.status(500).json({
+          message: "Error updating shift types",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  );
+
   const server = createServer(app);
   return server;
 }
