@@ -42,12 +42,14 @@ type ShiftType = {
   endTime: string;
 };
 
+type Inspector = {
+  id: number;
+  fullName: string;
+  username: string;
+};
+
 type ShiftInspector = {
-  inspector: {
-    id: number;
-    fullName: string;
-    username: string;
-  };
+  inspector: Inspector;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
   rejectionReason: string | null;
 };
@@ -58,6 +60,13 @@ type ShiftDay = {
   shiftType?: ShiftType;
 };
 
+type InspectorGroup = {
+  id: number;
+  name: string;
+  inspectors: ShiftInspector[];
+  days: ShiftDay[];
+};
+
 type ShiftAssignment = {
   id: number;
   week: string;
@@ -65,8 +74,7 @@ type ShiftAssignment = {
   rejectionReason: string | null;
   role: { id: number; name: string };
   building: { id: number; name: string; code: string; area: string };
-  shiftInspectors: ShiftInspector[];
-  days: ShiftDay[];
+  inspectorGroups: InspectorGroup[];
 };
 
 type BuildingWithShifts = {
@@ -81,17 +89,12 @@ type BuildingsResponse = {
   buildings: BuildingWithShifts[];
 };
 
-type Inspector = {
-  id: number;
-  fullName: string;
-  // other inspector properties
-};
-
 export default function Shifts() {
   const { user } = useUser();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   const { data: inspectorShifts, isLoading: isLoadingInspectorShifts } = useQuery<ShiftAssignment[]>({
@@ -137,8 +140,8 @@ export default function Shifts() {
   });
 
   const assignInspectorMutation = useMutation({
-    mutationFn: async ({ shiftId, inspectorId }: { shiftId: number; inspectorId: number }) => {
-      const response = await fetch(`/api/admin/shifts/${shiftId}/inspectors`, {
+    mutationFn: async ({ groupId, inspectorId }: { groupId: number; inspectorId: number }) => {
+      const response = await fetch(`/api/admin/inspector-groups/${groupId}/inspectors`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -179,9 +182,9 @@ export default function Shifts() {
     };
   };
 
-  const getAvailableInspectorsForShift = (shift: ShiftAssignment) => {
+  const getAvailableInspectorsForGroup = (group: InspectorGroup) => {
     if (!availableInspectors) return [];
-    const assignedInspectorIds = new Set(shift.shiftInspectors.map((si) => si.inspector.id));
+    const assignedInspectorIds = new Set(group.inspectors.map((si) => si.inspector.id));
     return availableInspectors.filter((inspector) => !assignedInspectorIds.has(inspector.id));
   };
 
@@ -250,191 +253,222 @@ export default function Shifts() {
                       <div className="space-y-6">
                         {building.shifts
                           .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                          .map((shift) => {
-                            const groupedInspectors = groupInspectorsByStatus(shift.shiftInspectors || []);
-                            const availableInspectorsForShift = getAvailableInspectorsForShift(shift);
+                          .map((shift) => (
+                            <div key={shift.id} className="space-y-4">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h3 className="text-lg font-semibold">
+                                    Week {shift.week} - {shift.role?.name}
+                                  </h3>
+                                </div>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      <Plus className="h-4 w-4 mr-2" />
+                                      Add Inspector Group
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Create Inspector Group</DialogTitle>
+                                      <DialogDescription>
+                                        Create a new group of inspectors for this shift.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    {/* Add group creation form here */}
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
 
-                            return (
-                              <div key={shift.id} className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                  <div>
-                                    <h3 className="text-lg font-semibold">
-                                      Week {shift.week} - {shift.role?.name}
-                                    </h3>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                          <Plus className="h-4 w-4 mr-2" />
-                                          Add Inspector
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>Add Inspector to Shift</DialogTitle>
-                                          <DialogDescription>
-                                            Select an inspector to add to this shift.
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                          <Select
-                                            value={selectedInspector || undefined}
-                                            onValueChange={setSelectedInspector}
-                                          >
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Select an inspector" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {availableInspectorsForShift.map((inspector) => (
-                                                <SelectItem key={inspector.id} value={inspector.id.toString()}>
-                                                  {inspector.fullName}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                        <DialogFooter>
-                                          <Button
-                                            onClick={() => {
-                                              if (selectedInspector) {
-                                                assignInspectorMutation.mutate({
-                                                  shiftId: shift.id,
-                                                  inspectorId: parseInt(selectedInspector),
-                                                });
-                                              }
-                                            }}
-                                            disabled={!selectedInspector || assignInspectorMutation.isPending}
-                                          >
-                                            {assignInspectorMutation.isPending && (
-                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            )}
+                              {shift.inspectorGroups.map((group) => (
+                                <div key={group.id} className="space-y-4 border rounded-lg p-4">
+                                  <div className="flex justify-between items-center">
+                                    <h4 className="font-medium">{group.name}</h4>
+                                    <div className="flex items-center gap-2">
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <Button variant="outline" size="sm">
+                                            <Plus className="h-4 w-4 mr-2" />
                                             Add Inspector
                                           </Button>
-                                        </DialogFooter>
-                                      </DialogContent>
-                                    </Dialog>
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                          <Users className="h-4 w-4 mr-2" />
-                                          View All Inspectors
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent className="max-w-2xl">
-                                        <DialogHeader>
-                                          <DialogTitle>Inspector Assignments</DialogTitle>
-                                          <DialogDescription>
-                                            Week {shift.week} - {shift.role?.name}
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="space-y-4">
-                                          <div>
-                                            <h4 className="font-medium mb-2">
-                                              Accepted ({groupedInspectors.accepted.length})
-                                            </h4>
-                                            <div className="space-y-2">
-                                              {groupedInspectors.accepted.map((si) => (
-                                                <div
-                                                  key={si.inspector.id}
-                                                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                >
-                                                  <span>{si.inspector.fullName}</span>
-                                                  <Badge variant="success">ACCEPTED</Badge>
-                                                </div>
-                                              ))}
-                                            </div>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                          <DialogHeader>
+                                            <DialogTitle>Add Inspector to Group</DialogTitle>
+                                            <DialogDescription>
+                                              Select an inspector to add to this group.
+                                            </DialogDescription>
+                                          </DialogHeader>
+                                          <div className="space-y-4 py-4">
+                                            <Select
+                                              value={selectedInspector || undefined}
+                                              onValueChange={setSelectedInspector}
+                                            >
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select an inspector" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {getAvailableInspectorsForGroup(group).map((inspector) => (
+                                                  <SelectItem
+                                                    key={inspector.id}
+                                                    value={inspector.id.toString()}
+                                                  >
+                                                    {inspector.fullName}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
                                           </div>
-                                          <div>
-                                            <h4 className="font-medium mb-2">
-                                              Pending ({groupedInspectors.pending.length})
-                                            </h4>
-                                            <div className="space-y-2">
-                                              {groupedInspectors.pending.map((si) => (
-                                                <div
-                                                  key={si.inspector.id}
-                                                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                >
-                                                  <span>{si.inspector.fullName}</span>
-                                                  <Badge>PENDING</Badge>
+                                          <DialogFooter>
+                                            <Button
+                                              onClick={() => {
+                                                if (selectedInspector) {
+                                                  assignInspectorMutation.mutate({
+                                                    groupId: group.id,
+                                                    inspectorId: parseInt(selectedInspector),
+                                                  });
+                                                }
+                                              }}
+                                              disabled={!selectedInspector || assignInspectorMutation.isPending}
+                                            >
+                                              {assignInspectorMutation.isPending && (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                              )}
+                                              Add Inspector
+                                            </Button>
+                                          </DialogFooter>
+                                        </DialogContent>
+                                      </Dialog>
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <Button variant="outline" size="sm">
+                                            <Users className="h-4 w-4 mr-2" />
+                                            View All Inspectors
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-2xl">
+                                          <DialogHeader>
+                                            <DialogTitle>Group Inspectors</DialogTitle>
+                                            <DialogDescription>
+                                              Week {shift.week} - {group.name}
+                                            </DialogDescription>
+                                          </DialogHeader>
+                                          {(() => {
+                                            const groupedInspectors = groupInspectorsByStatus(group.inspectors);
+                                            return (
+                                              <div className="space-y-4">
+                                                <div>
+                                                  <h4 className="font-medium mb-2">
+                                                    Accepted ({groupedInspectors.accepted.length})
+                                                  </h4>
+                                                  <div className="space-y-2">
+                                                    {groupedInspectors.accepted.map((si) => (
+                                                      <div
+                                                        key={si.inspector.id}
+                                                        className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                      >
+                                                        <span>{si.inspector.fullName}</span>
+                                                        <Badge variant="success">ACCEPTED</Badge>
+                                                      </div>
+                                                    ))}
+                                                  </div>
                                                 </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                          <div>
-                                            <h4 className="font-medium mb-2">
-                                              Rejected ({groupedInspectors.rejected.length})
-                                            </h4>
+                                                <div>
+                                                  <h4 className="font-medium mb-2">
+                                                    Pending ({groupedInspectors.pending.length})
+                                                  </h4>
+                                                  <div className="space-y-2">
+                                                    {groupedInspectors.pending.map((si) => (
+                                                      <div
+                                                        key={si.inspector.id}
+                                                        className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                      >
+                                                        <span>{si.inspector.fullName}</span>
+                                                        <Badge>PENDING</Badge>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                                <div>
+                                                  <h4 className="font-medium mb-2">
+                                                    Rejected ({groupedInspectors.rejected.length})
+                                                  </h4>
+                                                  <div className="space-y-2">
+                                                    {groupedInspectors.rejected.map((si) => (
+                                                      <div key={si.inspector.id} className="space-y-1">
+                                                        <div className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
+                                                          <span>{si.inspector.fullName}</span>
+                                                          <Badge variant="destructive">REJECTED</Badge>
+                                                        </div>
+                                                        {si.rejectionReason && (
+                                                          <p className="text-sm text-muted-foreground ml-2">
+                                                            Reason: {si.rejectionReason}
+                                                          </p>
+                                                        )}
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })()}
+                                        </DialogContent>
+                                      </Dialog>
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-md border">
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr className="border-b bg-muted/50">
+                                          <th className="p-2 text-left font-medium w-1/3">
+                                            Accepted Inspectors ({
+                                              groupInspectorsByStatus(group.inspectors).accepted.length
+                                            })
+                                          </th>
+                                          {DAYS.map((day) => (
+                                            <th key={day} className="p-2 text-center font-medium">
+                                              <div className="flex flex-col items-center">
+                                                <span>{day}</span>
+                                              </div>
+                                            </th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr>
+                                          <td className="p-2 align-top">
                                             <div className="space-y-2">
-                                              {groupedInspectors.rejected.map((si) => (
-                                                <div key={si.inspector.id} className="space-y-1">
+                                              {groupInspectorsByStatus(group.inspectors)
+                                                .accepted.map((si) => (
                                                   <div
-                                                    className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                    key={si.inspector.id}
+                                                    className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
                                                   >
                                                     <span>{si.inspector.fullName}</span>
-                                                    <Badge variant="destructive">REJECTED</Badge>
+                                                    <Badge variant="success">ACCEPTED</Badge>
                                                   </div>
-                                                  {si.rejectionReason && (
-                                                    <p className="text-sm text-muted-foreground ml-2">
-                                                      Reason: {si.rejectionReason}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                              ))}
+                                                ))}
                                             </div>
-                                          </div>
-                                        </div>
-                                      </DialogContent>
-                                    </Dialog>
+                                          </td>
+                                          {DAYS.map((_, dayIndex) => {
+                                            const dayShift = group.days?.find(
+                                              (d) => d.dayOfWeek === dayIndex
+                                            );
+                                            return (
+                                              <td key={dayIndex} className="p-2 text-center">
+                                                {dayShift?.shiftType?.name || "-"}
+                                              </td>
+                                            );
+                                          })}
+                                        </tr>
+                                      </tbody>
+                                    </table>
                                   </div>
                                 </div>
-
-                                <div className="rounded-md border">
-                                  <table className="w-full">
-                                    <thead>
-                                      <tr className="border-b bg-muted/50">
-                                        <th className="p-2 text-left font-medium w-1/3">
-                                          Accepted Inspectors ({groupedInspectors.accepted.length})
-                                        </th>
-                                        {DAYS.map((day) => (
-                                          <th key={day} className="p-2 text-center font-medium">
-                                            <div className="flex flex-col items-center">
-                                              <span>{day}</span>
-                                            </div>
-                                          </th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      <tr>
-                                        <td className="p-2 align-top">
-                                          <div className="space-y-2">
-                                            {groupedInspectors.accepted.map((si) => (
-                                              <div
-                                                key={si.inspector.id}
-                                                className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
-                                              >
-                                                <span>{si.inspector.fullName}</span>
-                                                <Badge variant="success">ACCEPTED</Badge>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </td>
-                                        {DAYS.map((_, dayIndex) => {
-                                          const dayShift = shift.days?.find((d) => d.dayOfWeek === dayIndex);
-                                          return (
-                                            <td key={dayIndex} className="p-2 text-center">
-                                              {dayShift?.shiftType?.name || "-"}
-                                            </td>
-                                          );
-                                        })}
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            );
-                          })}
+                              ))}
+                            </div>
+                          ))}
                         <TablePagination
                           currentPage={currentPage}
                           totalItems={building.shifts.length}
