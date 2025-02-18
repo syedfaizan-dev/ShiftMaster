@@ -41,6 +41,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { ShiftAssignmentList } from "@/components/shift-assignment-list";
 
 type Inspector = {
   id: number;
@@ -362,20 +364,51 @@ export default function Shifts() {
     });
   };
 
+  const { data: shifts = [], isLoading } = useQuery({
+    queryKey: ["/api/shifts"],
+  });
+
+  if (!user?.isInspector && !user?.isAdmin) {
+    return (
+      <Navbar>
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You don't have permission to access this page.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Navbar>
+    );
+  }
+
   return (
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Shifts by Building</h1>
+          <h1 className="text-3xl font-bold">
+            {user?.isAdmin ? "Shifts by Building" : "My Shift Assignments"}
+          </h1>
         </div>
 
-        {isLoadingBuildings ? (
+        {isLoading ? (
           <div className="flex justify-center p-4">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : buildings.length === 0 ? (
-          <p className="text-center text-gray-500">No buildings found</p>
+        ) : shifts.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Shifts Found</AlertTitle>
+            <AlertDescription>
+              {user?.isAdmin
+                ? "No shifts have been created yet."
+                : "You don't have any shift assignments yet."}
+            </AlertDescription>
+          </Alert>
+        ) : user?.isInspector ? (
+          <ShiftAssignmentList shifts={shifts} userId={user.id} />
         ) : (
+          // Keep the existing admin view here
           <div className="grid gap-6">
             {buildings.map((building: BuildingWithShifts) => (
               <Card key={building.id}>
@@ -557,261 +590,6 @@ export default function Shifts() {
             ))}
           </div>
         )}
-
-        <Dialog
-          open={!!editingDay}
-          onOpenChange={(open) => !open && setEditingDay(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Shift Type</DialogTitle>
-              <DialogDescription>
-                Select a shift type for{" "}
-                {editingDay ? DAYS[editingDay.dayOfWeek] : ""}.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...shiftDayForm}>
-              <form
-                onSubmit={shiftDayForm.handleSubmit(handleShiftDaySubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={shiftDayForm.control}
-                  name="shiftTypeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Shift Type</FormLabel>
-                      <Select onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a shift type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {shiftTypes?.map((type) => (
-                            <SelectItem
-                              key={type.id}
-                              value={type.id.toString()}
-                            >
-                              {type.name} ({type.startTime} - {type.endTime})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setEditingDay(null)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={updateShiftDay.isPending}>
-                    {updateShiftDay.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={!!editingInspectors}
-          onOpenChange={(open) => {
-            if (!open) {
-              inspectorGroupForm.reset({ inspectors: [] });
-              setEditingInspectors(null);
-            }
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Inspector Group</DialogTitle>
-              <DialogDescription>
-                Select inspectors for this shift.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...inspectorGroupForm}>
-              <form
-                onSubmit={inspectorGroupForm.handleSubmit(
-                  handleInspectorGroupSubmit,
-                )}
-                className="space-y-4"
-              >
-                <FormField
-                  control={inspectorGroupForm.control}
-                  name="inspectors"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Inspectors</FormLabel>
-                      {isLoadingInspectors ? (
-                        <div className="flex items-center justify-center p-4">
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                        </div>
-                      ) : inspectors && inspectors.length > 0 ? (
-                        <>
-                          <Select
-                            onValueChange={(value) => {
-                              const currentValues = field.value || [];
-                              if (!currentValues.includes(value)) {
-                                field.onChange([...currentValues, value]);
-                              }
-                            }}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Add inspectors" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {inspectors.map((inspector) => (
-                                <SelectItem
-                                  key={inspector.id}
-                                  value={inspector.id.toString()}
-                                >
-                                  {inspector.fullName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <div className="mt-2 space-y-2">
-                            {field.value.map((inspectorId) => {
-                              const inspector = inspectors?.find(
-                                (i) => i.id.toString() === inspectorId
-                              );
-                              return (
-                                <div
-                                  key={inspectorId}
-                                  className="flex items-center justify-between bg-muted p-2 rounded-md"
-                                >
-                                  <span>{inspector?.fullName}</span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      field.onChange(
-                                        field.value.filter(
-                                          (id) => id !== inspectorId
-                                        )
-                                      );
-                                    }}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </>
-                      ) : (
-                        <p>No inspectors available for this shift</p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setEditingInspectors(null)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={updateInspectorGroup.isPending}
-                  >
-                    {updateInspectorGroup.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={!!rejectingShift}
-          onOpenChange={(open) => {
-            if (!open) {
-              setRejectingShift(null);
-              rejectShiftForm.reset();
-            }
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reject Shift Assignment</DialogTitle>
-              <DialogDescription>
-                Please provide a reason for rejecting this shift assignment.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...rejectShiftForm}>
-              <form
-                onSubmit={rejectShiftForm.handleSubmit(handleRejectShiftSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={rejectShiftForm.control}
-                  name="rejectionReason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reason</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter your reason for rejecting this shift"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setRejectingShift(null)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={handleShiftResponse.isPending}
-                  >
-                    {handleShiftResponse.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Rejecting...
-                      </>
-                    ) : (
-                      "Reject"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
       </div>
     </Navbar>
   );

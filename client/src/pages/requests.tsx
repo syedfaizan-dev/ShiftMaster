@@ -77,25 +77,27 @@ function RequestsPage() {
     resolver: zodResolver(assignManagerSchema),
   });
 
+  // Update query to show all requests for admin/manager, but only user's requests for inspectors
   const { data: requests = [], isLoading } = useQuery<RequestWithRelations[]>({
     queryKey: ["/api/requests"],
   });
-  console.log("Table Data:", requests);
 
   const { data: managers = [] } = useQuery<User[]>({
     queryKey: ["/api/admin/managers"],
     enabled: user?.isAdmin,
   });
 
+  // Get shifts for the current inspector
   const { data: shifts = [] } = useQuery<
     (Shift & {
       shiftType: { startTime: string; endTime: string; name: string };
     })[]
   >({
-    queryKey: [user?.isAdmin ? "/api/admin/shifts" : "/api/shifts"],
+    queryKey: ["/api/shifts"],
+    enabled: user?.isInspector || user?.isAdmin, // Only fetch if user is inspector or admin
   });
 
-  // Add new query for all shift types
+  // Get all shift types for target shift selection
   const { data: allShiftTypes = [] } = useQuery<ShiftType[]>({
     queryKey: ["/api/shift-types"],
   });
@@ -495,7 +497,8 @@ function RequestsPage() {
       <div className="p-4 md:p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <h1 className="text-2xl md:text-3xl font-bold">Requests</h1>
-          {!user?.isAdmin && !user?.isManager && (
+          {/* Show create request button for inspectors */}
+          {user?.isInspector && (
             <Button onClick={() => setIsDialogOpen(true)}>New Request</Button>
           )}
         </div>
@@ -510,6 +513,8 @@ function RequestsPage() {
             <AlertDescription>
               {user?.isAdmin
                 ? "There are no pending requests to review."
+                : user?.isInspector
+                ? "You haven't submitted any requests yet. Click 'New Request' to create one."
                 : "You haven't submitted any requests yet."}
             </AlertDescription>
           </Alert>
@@ -521,7 +526,6 @@ function RequestsPage() {
                 data={currentRequests}
               />
             </div>
-
             <div className="mt-4">
               <TablePagination
                 currentPage={currentPage}
@@ -534,7 +538,7 @@ function RequestsPage() {
           </div>
         )}
 
-        {/* New Request Dialog */}
+        {/* Request creation dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogTitle>Create New Request</DialogTitle>

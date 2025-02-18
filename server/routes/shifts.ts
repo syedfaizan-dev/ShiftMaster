@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { db } from "@db";
 import { 
   shifts, 
@@ -13,6 +13,20 @@ import {
 
 export async function getShifts(req: Request, res: Response) {
   try {
+    // Get all shifts where the user is assigned as an inspector
+    const userShifts = await db
+      .select()
+      .from(shiftInspectors)
+      .where(eq(shiftInspectors.inspectorId, req.user!.id));
+
+    const shiftIds = userShifts.map(s => s.shiftId);
+
+    // If no shifts found, return empty array
+    if (shiftIds.length === 0 && !req.user?.isAdmin) {
+      return res.json([]);
+    }
+
+    // Build the base query
     const query = db
       .select({
         id: shifts.id,
@@ -38,19 +52,10 @@ export async function getShifts(req: Request, res: Response) {
       .leftJoin(roles, eq(shifts.roleId, roles.id))
       .leftJoin(buildings, eq(shifts.buildingId, buildings.id));
 
-    // If not admin, only show user's shifts
+    // If not admin, only show shifts where the user is an inspector
     if (!req.user?.isAdmin) {
-      const userShifts = await db
-        .select({ shiftId: shiftInspectors.shiftId })
-        .from(shiftInspectors)
-        .where(eq(shiftInspectors.inspectorId, req.user!.id));
-
-      const shiftIds = userShifts.map(s => s.shiftId);
-      if (shiftIds.length > 0) {
-        query.where(and(shifts.id.in(shiftIds)));
-      } else {
-        return res.json([]); // Return empty if user has no shifts
-      }
+      const shiftIdsList = shiftIds.map(id => eq(shifts.id, id));
+      query.where(or(...shiftIdsList));
     }
 
     const shiftsData = await query;
@@ -67,6 +72,9 @@ export async function getShifts(req: Request, res: Response) {
               username: users.username,
             },
             isPrimary: shiftInspectors.isPrimary,
+            status: shiftInspectors.status,
+            rejectionReason: shiftInspectors.rejectionReason,
+            responseAt: shiftInspectors.responseAt,
           })
           .from(shiftInspectors)
           .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
