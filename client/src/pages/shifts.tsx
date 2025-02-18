@@ -233,7 +233,7 @@ export default function Shifts() {
           name: data.name,
           days: data.days.map(day => ({
             dayOfWeek: day.dayOfWeek,
-            shiftTypeId: day.shiftTypeId ? parseInt(day.shiftTypeId) : null,
+            shiftTypeId: day.shiftTypeId && day.shiftTypeId !== "none" ? parseInt(day.shiftTypeId) : null,
           })),
         }),
       });
@@ -420,7 +420,7 @@ export default function Shifts() {
                                                       </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                      <SelectItem value="">No shift</SelectItem>
+                                                      <SelectItem value="none">No shift</SelectItem>
                                                       {shiftTypes?.map((type) => (
                                                         <SelectItem
                                                           key={type.id}
