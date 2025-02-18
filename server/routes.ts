@@ -26,6 +26,7 @@ import {
   getInspectorsByShiftType,
   getInspectorsByShiftTypeForTask,
   updateShiftDay,
+  handleShiftInspectorResponse,
 } from "./routes/shifts";
 import { getBuildingsWithShifts } from "./routes/buildingRoutes";
 import { getInspectors } from "./routes/inspectors";
@@ -1078,8 +1079,7 @@ export function registerRoutes(app: Express): Server {
           })
           .from(users)
           .where(
-            and(
-              eq(users.isAdmin, false),
+            and(              eq(users.isAdmin, false),
               eq(users.isManager, false),
               eq(users.isInspector, false),
             ),
@@ -1659,6 +1659,13 @@ export function registerRoutes(app: Express): Server {
     res.status(500).json({ message: "Error fetching available inspectors" });
   }
 });
+
+  // Handle shift inspector response (accept/reject)
+  app.post(
+    "/api/shifts/:shiftId/inspectors/:inspectorId/response",
+    requireAuth,
+    handleShiftInspectorResponse
+  );
 
   const server = createServer(app);
   return server;

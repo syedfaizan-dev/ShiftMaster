@@ -506,6 +506,70 @@ export async function updateShiftDay(req: Request, res: Response) {
   }
 }
 
+export async function handleShiftInspectorResponse(req: Request, res: Response) {
+  try {
+    const { shiftId, inspectorId } = req.params;
+    const { action, rejectionReason } = req.body;
+
+    if (!['ACCEPT', 'REJECT'].includes(action)) {
+      return res.status(400).json({ message: "Invalid action. Must be ACCEPT or REJECT" });
+    }
+
+    // Verify the inspector making the request is the same as the one assigned
+    if (parseInt(inspectorId) !== req.user?.id) {
+      return res.status(403).json({ message: "Not authorized to respond to this shift" });
+    }
+
+    // Get the shift inspector record
+    const [shiftInspector] = await db
+      .select()
+      .from(shiftInspectors)
+      .where(
+        and(
+          eq(shiftInspectors.shiftId, parseInt(shiftId)),
+          eq(shiftInspectors.inspectorId, parseInt(inspectorId))
+        )
+      )
+      .limit(1);
+
+    if (!shiftInspector) {
+      return res.status(404).json({ message: "Shift assignment not found" });
+    }
+
+    if (shiftInspector.status !== 'PENDING') {
+      return res.status(400).json({ message: "Shift has already been processed" });
+    }
+
+    if (action === 'REJECT' && !rejectionReason) {
+      return res.status(400).json({ message: "Rejection reason is required" });
+    }
+
+    // Update the shift inspector status
+    const [updatedShiftInspector] = await db
+      .update(shiftInspectors)
+      .set({
+        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
+        responseAt: new Date(),
+        rejectionReason: action === 'REJECT' ? rejectionReason : null,
+      })
+      .where(
+        and(
+          eq(shiftInspectors.shiftId, parseInt(shiftId)),
+          eq(shiftInspectors.inspectorId, parseInt(inspectorId))
+        )
+      )
+      .returning();
+
+    res.json(updatedShiftInspector);
+  } catch (error) {
+    console.error("Error processing shift inspector response:", error);
+    res.status(500).json({ 
+      message: "Error processing shift inspector response",
+      error: error instanceof Error ? error.message : "Unknown error" 
+    });
+  }
+}
+
 export default {
   getShifts,
   createShift,
@@ -515,4 +579,5 @@ export default {
   getInspectorsByShiftTypeForTask,
   updateShiftInspectors,
   updateShiftDay,
+  handleShiftInspectorResponse,
 };

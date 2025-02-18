@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, X, UserPlus, Clock } from "lucide-react";
+import { Loader2, Plus, X, UserPlus, Clock, Check, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -40,6 +40,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 
 type Inspector = {
   id: number;
@@ -50,6 +51,7 @@ type Inspector = {
 type ShiftInspector = {
   inspector: Inspector;
   isPrimary: boolean;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
 };
 
 type ShiftType = {
@@ -101,6 +103,14 @@ type EditInspectorGroupFormData = {
   inspectors: string[];
 };
 
+type RejectShiftFormData = {
+  rejectionReason: string;
+};
+
+const rejectShiftSchema = z.object({
+  rejectionReason: z.string().min(1, "Rejection reason is required"),
+});
+
 export default function Shifts() {
   const { user } = useUser();
   const { toast } = useToast();
@@ -115,10 +125,21 @@ export default function Shifts() {
     shiftId: number;
     week: string;
   } | null>(null);
+  const [rejectingShift, setRejectingShift] = useState<{
+    shiftId: number;
+    inspectorId: number;
+  } | null>(null);
 
   const shiftDayForm = useForm<EditShiftDayFormData>({
     defaultValues: {
       shiftTypeId: "",
+    },
+  });
+
+  const rejectShiftForm = useForm<RejectShiftFormData>({
+    resolver: zodResolver(rejectShiftSchema),
+    defaultValues: {
+      rejectionReason: "",
     },
   });
 
@@ -156,7 +177,6 @@ export default function Shifts() {
     },
   });
 
-  // Updated inspectors query with better cache handling
   const { data: inspectors, isLoading: isLoadingInspectors } = useQuery<Inspector[]>({
     queryKey: ["available-inspectors", editingInspectors?.shiftId, editingInspectors?.week],
     queryFn: async () => {
@@ -175,10 +195,7 @@ export default function Shifts() {
       }
     },
     enabled: !!editingInspectors,
-    // Force refetch when switching shifts
     refetchOnMount: true,
-    // Don't cache the results
-    cacheTime: 0,
   });
 
   const updateShiftDay = useMutation({
@@ -242,7 +259,6 @@ export default function Shifts() {
         description: "Inspector group updated successfully",
       });
       setEditingInspectors(null);
-      // Invalidate both buildings and available inspectors queries
       queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
       queryClient.invalidateQueries({ queryKey: ["available-inspectors"] });
     },
@@ -255,15 +271,50 @@ export default function Shifts() {
     },
   });
 
+  const handleShiftResponse = useMutation({
+    mutationFn: async ({
+      shiftId,
+      inspectorId,
+      action,
+      rejectionReason,
+    }: {
+      shiftId: number;
+      inspectorId: number;
+      action: "ACCEPT" | "REJECT";
+      rejectionReason?: string;
+    }) => {
+      const res = await fetch(`/api/shifts/${shiftId}/inspectors/${inspectorId}/response`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, rejectionReason }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Shift response updated successfully",
+      });
+      setRejectingShift(null);
+      queryClient.invalidateQueries({
+        queryKey: ["/api/buildings/with-shifts"],
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    },
+  });
+
+
   const handleEditInspectors = (shiftId: number, week: string) => {
-    // Reset form and clear previous selection
     inspectorGroupForm.reset({ inspectors: [] });
-
-    // Update editing state
     setEditingInspectors({ shiftId, week });
-
-    // Pre-populate form with current inspectors after a short delay
-    // This ensures the state update has completed
     setTimeout(() => {
       const shift = buildings
         .flatMap((b) => b.shifts)
@@ -271,9 +322,7 @@ export default function Shifts() {
 
       if (shift) {
         inspectorGroupForm.reset({
-          inspectors: shift.shiftInspectors.map((si) =>
-            si.inspector.id.toString()
-          ),
+          inspectors: shift.shiftInspectors.map((si) => si.inspector.id.toString()),
         });
       }
     }, 0);
@@ -300,6 +349,16 @@ export default function Shifts() {
     updateInspectorGroup.mutate({
       shiftId: editingInspectors.shiftId,
       inspectors: inspectorList,
+    });
+  };
+
+  const handleRejectShiftSubmit = (data: RejectShiftFormData) => {
+    if (!rejectingShift) return;
+    handleShiftResponse.mutate({
+      shiftId: rejectingShift.shiftId,
+      inspectorId: rejectingShift.inspectorId,
+      action: "REJECT",
+      rejectionReason: data.rejectionReason,
     });
   };
 
@@ -409,18 +468,60 @@ export default function Shifts() {
                                   <tr>
                                     <td className="p-2 align-top">
                                       <div className="space-y-1">
-                                        {shift.shiftInspectors?.map(
-                                          (si, index) => (
-                                            <div
-                                              key={`${si.inspector.id}-${index}`}
-                                              className="flex items-center gap-2"
-                                            >
-                                              <span>
-                                                {si.inspector.fullName}
-                                              </span>
+                                        {shift.shiftInspectors?.map((si, index) => (
+                                          <div
+                                            key={`${si.inspector.id}-${index}`}
+                                            className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
+                                          >
+                                            <span>{si.inspector.fullName}</span>
+                                            <div className="flex items-center gap-2">
+                                              {si.status === "PENDING" && user?.id === si.inspector.id && (
+                                                <>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                      handleShiftResponse.mutate({
+                                                        shiftId: shift.id,
+                                                        inspectorId: si.inspector.id,
+                                                        action: "ACCEPT",
+                                                      })
+                                                    }
+                                                  >
+                                                    <Check className="w-4 h-4 mr-1" />
+                                                    Accept
+                                                  </Button>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                      setRejectingShift({
+                                                        shiftId: shift.id,
+                                                        inspectorId: si.inspector.id,
+                                                      })
+                                                    }
+                                                  >
+                                                    <XCircle className="w-4 h-4 mr-1" />
+                                                    Reject
+                                                  </Button>
+                                                </>
+                                              )}
+                                              {si.status !== "PENDING" && (
+                                                <Badge
+                                                  variant={
+                                                    si.status === "ACCEPTED"
+                                                      ? "success"
+                                                      : si.status === "REJECTED"
+                                                        ? "destructive"
+                                                        : "default"
+                                                  }
+                                                >
+                                                  {si.status}
+                                                </Badge>
+                                              )}
                                             </div>
-                                          ),
-                                        )}
+                                          </div>
+                                        ))}
                                       </div>
                                     </td>
                                     {DAYS.map((_, dayIndex) => {
@@ -457,7 +558,6 @@ export default function Shifts() {
           </div>
         )}
 
-        {/* Edit Shift Day Dialog */}
         <Dialog
           open={!!editingDay}
           onOpenChange={(open) => !open && setEditingDay(null)}
@@ -526,12 +626,10 @@ export default function Shifts() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Inspector Group Dialog */}
         <Dialog
           open={!!editingInspectors}
           onOpenChange={(open) => {
             if (!open) {
-              // Clear form and editing state when closing
               inspectorGroupForm.reset({ inspectors: [] });
               setEditingInspectors(null);
             }
@@ -643,6 +741,70 @@ export default function Shifts() {
                       </>
                     ) : (
                       "Save"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={!!rejectingShift}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRejectingShift(null);
+              rejectShiftForm.reset();
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reject Shift Assignment</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for rejecting this shift assignment.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...rejectShiftForm}>
+              <form
+                onSubmit={rejectShiftForm.handleSubmit(handleRejectShiftSubmit)}
+                className="space-y-4"
+              >
+                <FormField
+                  control={rejectShiftForm.control}
+                  name="rejectionReason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Enter your reason for rejecting this shift"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setRejectingShift(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={handleShiftResponse.isPending}
+                  >
+                    {handleShiftResponse.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Rejecting...
+                      </>
+                    ) : (
+                      "Reject"
                     )}
                   </Button>
                 </DialogFooter>

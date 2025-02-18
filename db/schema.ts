@@ -49,6 +49,9 @@ export const shiftInspectors = pgTable("shift_inspectors", {
   shiftId: integer("shift_id").references(() => shifts.id).notNull(),
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
   isPrimary: boolean("is_primary").default(false).notNull(),
+  status: text("status").default('PENDING').notNull(), // Added: PENDING, ACCEPTED, REJECTED
+  responseAt: timestamp("response_at"),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -309,6 +312,11 @@ export const selectShiftInspectorSchema = createSelectSchema(shiftInspectors);
 
 export type ShiftInspector = typeof shiftInspectors.$inferSelect;
 export type InsertShiftInspector = typeof shiftInspectors.$inferInsert;
+
+export type ShiftInspectorWithRelations = ShiftInspector & {
+  inspector: User;
+  shift: Shift;
+};
 
 export const shiftDaysRelations = relations(shiftDays, ({ one }) => ({
   shift: one(shifts, {
