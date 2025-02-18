@@ -40,7 +40,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, Users } from "lucide-react";
+import { Loader2, Plus, Users, Clock } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 
@@ -102,10 +102,6 @@ type BuildingsResponse = {
 
 const inspectorGroupSchema = z.object({
   name: z.string().min(1, "Group name is required"),
-  days: z.array(z.object({
-    dayOfWeek: z.number(),
-    shiftTypeId: z.string().optional(),
-  })).length(7, "Must specify shifts for all days"),
 });
 
 type InspectorGroupFormData = z.infer<typeof inspectorGroupSchema>;
@@ -214,10 +210,6 @@ export default function Shifts() {
     resolver: zodResolver(inspectorGroupSchema),
     defaultValues: {
       name: "",
-      days: DAYS.map((_, index) => ({
-        dayOfWeek: index,
-        shiftTypeId: undefined,
-      })),
     },
   });
 
@@ -231,9 +223,9 @@ export default function Shifts() {
         credentials: "include",
         body: JSON.stringify({
           name: data.name,
-          days: data.days.map(day => ({
-            dayOfWeek: day.dayOfWeek,
-            shiftTypeId: day.shiftTypeId && day.shiftTypeId !== "none" ? parseInt(day.shiftTypeId) : null,
+          days: DAYS.map((_, index) => ({
+            dayOfWeek: index,
+            shiftTypeId: null,
           })),
         }),
       });
@@ -371,7 +363,7 @@ export default function Shifts() {
                                     <DialogHeader>
                                       <DialogTitle>Create Inspector Group</DialogTitle>
                                       <DialogDescription>
-                                        Create a new group of inspectors for this shift.
+                                        Create a new group of inspectors for this shift. You can add shift types and inspectors after creating the group.
                                       </DialogDescription>
                                     </DialogHeader>
                                     <Form {...createGroupForm}>
@@ -399,44 +391,6 @@ export default function Shifts() {
                                             </FormItem>
                                           )}
                                         />
-
-                                        <div className="space-y-4">
-                                          <h4 className="font-medium">Shift Type Assignments</h4>
-                                          {DAYS.map((day, index) => (
-                                            <FormField
-                                              key={day}
-                                              control={createGroupForm.control}
-                                              name={`days.${index}.shiftTypeId`}
-                                              render={({ field }) => (
-                                                <FormItem>
-                                                  <FormLabel>{day}</FormLabel>
-                                                  <Select
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
-                                                  >
-                                                    <FormControl>
-                                                      <SelectTrigger>
-                                                        <SelectValue placeholder="Select shift type" />
-                                                      </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                      <SelectItem value="none">No shift</SelectItem>
-                                                      {shiftTypes?.map((type) => (
-                                                        <SelectItem
-                                                          key={type.id}
-                                                          value={type.id.toString()}
-                                                        >
-                                                          {type.name} ({type.startTime} - {type.endTime})
-                                                        </SelectItem>
-                                                      ))}
-                                                    </SelectContent>
-                                                  </Select>
-                                                  <FormMessage />
-                                                </FormItem>
-                                              )}
-                                            />
-                                          ))}
-                                        </div>
 
                                         <DialogFooter>
                                           <Button
@@ -471,6 +425,15 @@ export default function Shifts() {
                                   <div className="flex justify-between items-center">
                                     <h4 className="font-medium">{group.name}</h4>
                                     <div className="flex items-center gap-2">
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <Button variant="outline" size="sm">
+                                            <Clock className="h-4 w-4 mr-2" />
+                                            Edit Shift Types
+                                          </Button>
+                                        </DialogTrigger>
+                                        {/* Add shift type editing dialog content here when requested */}
+                                      </Dialog>
                                       <Dialog>
                                         <DialogTrigger asChild>
                                           <Button variant="outline" size="sm">
