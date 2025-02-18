@@ -88,14 +88,14 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
               role,
               days,
             };
-          }),
+          })
         );
 
         return {
           ...building,
           shifts: shiftsWithDetails,
         };
-      }),
+      })
     );
 
     // Send the complete response
