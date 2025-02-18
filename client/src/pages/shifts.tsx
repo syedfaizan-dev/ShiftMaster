@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
+import { TablePagination } from "@/components/table-pagination";
 import {
   Dialog,
   DialogContent,
@@ -9,12 +10,21 @@ import {
   DialogHeader,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2, Clock } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ShiftAssignmentList } from "@/components/shift-assignment-list";
 import Navbar from "@/components/navbar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type ShiftType = {
   id: number;
@@ -50,25 +60,54 @@ type ShiftAssignment = {
   days: ShiftDay[];
 };
 
+type BuildingWithShifts = {
+  id: number;
+  name: string;
+  code: string;
+  area: string;
+  shifts: ShiftAssignment[];
+};
+
+type BuildingsResponse = {
+  buildings: BuildingWithShifts[];
+};
+
 export default function Shifts() {
   const { user } = useUser();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   // Use different endpoints based on user role
-  const { data: shifts, isLoading } = useQuery<ShiftAssignment[]>({
-    queryKey: [user?.isInspector ? "/api/inspector/shifts" : "/api/shifts"],
+  const { data: inspectorShifts, isLoading: isLoadingInspectorShifts } = useQuery<ShiftAssignment[]>({
+    queryKey: ["/api/inspector/shifts"],
     queryFn: async () => {
-      const response = await fetch(
-        user?.isInspector ? "/api/inspector/shifts" : "/api/shifts",
-        {
-          credentials: "include",
-        }
-      );
+      const response = await fetch("/api/inspector/shifts", {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch shifts");
       }
       return response.json();
     },
+    enabled: !!user?.isInspector,
   });
+
+  const { data: buildingsData, isLoading: isLoadingBuildings } = useQuery<BuildingsResponse>({
+    queryKey: ["/api/buildings/with-shifts"],
+    queryFn: async () => {
+      const response = await fetch("/api/buildings/with-shifts", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch buildings with shifts");
+      }
+      return response.json();
+    },
+    enabled: !!user?.isAdmin,
+  });
+
+  const buildings = buildingsData?.buildings || [];
+  const isLoading = isLoadingInspectorShifts || isLoadingBuildings;
 
   if (!user?.isInspector && !user?.isAdmin) {
     return (
@@ -98,18 +137,151 @@ export default function Shifts() {
           <div className="flex justify-center p-4">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : !shifts || shifts.length === 0 ? (
-          <Alert>
-            <AlertTitle>No Shifts Found</AlertTitle>
-            <AlertDescription>
-              {user?.isAdmin
-                ? "No shifts have been created yet."
-                : "You don't have any shift assignments yet."}
-            </AlertDescription>
-          </Alert>
         ) : user?.isInspector ? (
-          <ShiftAssignmentList shifts={shifts} userId={user.id} />
-        ) : null}
+          !inspectorShifts || inspectorShifts.length === 0 ? (
+            <Alert>
+              <AlertTitle>No Shifts Found</AlertTitle>
+              <AlertDescription>
+                You don't have any shift assignments yet.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <ShiftAssignmentList shifts={inspectorShifts} userId={user.id} />
+          )
+        ) : (
+          // Admin view - Buildings with shifts
+          <div className="grid gap-6">
+            {buildings.length === 0 ? (
+              <Alert>
+                <AlertTitle>No Buildings Found</AlertTitle>
+                <AlertDescription>
+                  No buildings with shifts have been created yet.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              buildings.map((building) => (
+                <Card key={building.id}>
+                  <CardHeader>
+                    <CardTitle>{building.name}</CardTitle>
+                    <CardDescription>
+                      Code: {building.code} | Area: {building.area}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {building.shifts.length === 0 ? (
+                      <p className="text-center text-muted-foreground">
+                        No shifts assigned
+                      </p>
+                    ) : (
+                      <div className="space-y-6">
+                        {building.shifts
+                          .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                          .map((shift) => (
+                            <div key={shift.id} className="space-y-4">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h3 className="text-lg font-semibold">
+                                    Week {shift.week} - {shift.role?.name}
+                                  </h3>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge
+                                      variant={
+                                        shift.status === "ACCEPTED"
+                                          ? "success"
+                                          : shift.status === "REJECTED"
+                                            ? "destructive"
+                                            : "default"
+                                      }
+                                    >
+                                      {shift.status}
+                                    </Badge>
+                                    {shift.rejectionReason && (
+                                      <span className="text-sm text-muted-foreground">
+                                        Reason: {shift.rejectionReason}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="rounded-md border">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b bg-muted/50">
+                                      <th className="p-2 text-left font-medium w-1/4">
+                                        Inspectors
+                                      </th>
+                                      {DAYS.map((day) => (
+                                        <th
+                                          key={day}
+                                          className="p-2 text-center font-medium"
+                                        >
+                                          <div className="flex flex-col items-center">
+                                            <span>{day}</span>
+                                          </div>
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td className="p-2 align-top">
+                                        <div className="space-y-1">
+                                          {shift.shiftInspectors?.map((si) => (
+                                            <div
+                                              key={si.inspector.id}
+                                              className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
+                                            >
+                                              <span>{si.inspector.fullName}</span>
+                                              <Badge
+                                                variant={
+                                                  si.status === "ACCEPTED"
+                                                    ? "success"
+                                                    : si.status === "REJECTED"
+                                                      ? "destructive"
+                                                      : "default"
+                                                }
+                                              >
+                                                {si.status}
+                                              </Badge>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </td>
+                                      {DAYS.map((_, dayIndex) => {
+                                        const dayShift = shift.days?.find(
+                                          (d) => d.dayOfWeek === dayIndex
+                                        );
+                                        return (
+                                          <td
+                                            key={dayIndex}
+                                            className="p-2 text-center"
+                                          >
+                                            {dayShift?.shiftType?.name || "-"}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ))}
+                        <TablePagination
+                          currentPage={currentPage}
+                          totalItems={building.shifts.length}
+                          pageSize={pageSize}
+                          onPageChange={setCurrentPage}
+                          onPageSizeChange={setPageSize}
+                        />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </Navbar>
   );
