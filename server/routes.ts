@@ -1899,6 +1899,75 @@ export function registerRoutes(app: Express): Server {
     }
   );
 
+  // Add inspector to group endpoint
+  app.post(
+    "/api/admin/inspector-groups/:id/inspectors",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { inspectorId } = req.body;
+
+        // Validate inspector group exists
+        const [group] = await db
+          .select()
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.id, parseInt(id)))
+          .limit(1);
+
+        if (!group) {
+          return res.status(404).json({ message: "Inspector group not found" });
+        }
+
+        // Validate inspector exists
+        const [inspector] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, inspectorId))
+          .limit(1);
+
+        if (!inspector) {
+          return res.status(404).json({ message: "Inspector not found" });
+        }
+
+        // Check if inspector is already in the group
+        const [existingAssignment] = await db
+          .select()
+          .from(shiftInspectors)
+          .where(
+            and(
+              eq(shiftInspectors.inspectorGroupId, parseInt(id)),
+              eq(shiftInspectors.inspectorId, inspectorId)
+            )
+          )
+          .limit(1);
+
+        if (existingAssignment) {
+          return res.status(400).json({ message: "Inspector already in group" });
+        }
+
+        // Add inspector to group
+        const [assignment] = await db
+          .insert(shiftInspectors)
+          .values({
+            inspectorGroupId: parseInt(id),
+            inspectorId,
+            status: "PENDING",
+            createdBy: req.user!.id,
+          })
+          .returning();
+
+        res.json(assignment);
+      } catch (error) {
+        console.error("Error adding inspector to group:", error);
+        res.status(500).json({
+          message: "Error adding inspector to group",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  );
+
   const server = createServer(app);
   return server;
 }
