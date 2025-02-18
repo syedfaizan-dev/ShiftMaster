@@ -1549,13 +1549,6 @@ export function registerRoutes(app: Express): Server {
       try {
         const buildings = await db.query.buildings.findMany({
           with: {
-            supervisor: {
-              columns: {
-                id: true,
-                username: true,
-                fullName: true,
-              },
-            },
             shifts: {
               with: {
                 role: true,
@@ -1563,23 +1556,12 @@ export function registerRoutes(app: Express): Server {
                   with: {
                     inspectors: {
                       with: {
-                        inspector: {
-                          columns: {
-                            id: true,
-                            username: true,
-                            fullName: true,
-                          },
-                        },
+                        inspector: true,
                       },
                     },
                     days: {
                       with: {
                         shiftType: true,
-                      },
-                    },
-                    tasks: {
-                      with: {
-                        taskType: true,
                       },
                     },
                   },
@@ -1589,7 +1571,7 @@ export function registerRoutes(app: Express): Server {
           },
         });
 
-        res.json({ buildings });
+        res.json(buildings);
       } catch (error) {
         console.error("Error fetching buildings with shifts:", error);
         res.status(500).json({ message: "Error fetching buildings with shifts" });

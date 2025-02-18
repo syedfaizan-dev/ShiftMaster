@@ -219,6 +219,7 @@ export const taskTypes = pgTable("task_types", {
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
+  inspectorGroupId: integer("inspector_group_id").references(() => inspectorGroups.id).notNull(),
   shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   taskTypeId: integer("task_type_id").references(() => taskTypes.id).notNull(),
   status: text("status").default("PENDING").notNull(),
@@ -349,6 +350,10 @@ export const inspectorGroupsRelations = relations(inspectorGroups, ({ one, many 
   }),
   inspectors: many(shiftInspectors),
   days: many(shiftDays),
+  tasks: many(tasks, {
+    fields: [inspectorGroups.id],
+    references: [tasks.inspectorGroupId],
+  }),
 }));
 
 export type InspectorGroup = typeof inspectorGroups.$inferSelect;
