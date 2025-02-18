@@ -32,6 +32,13 @@ const rejectShiftSchema = z.object({
 
 type RejectShiftFormData = z.infer<typeof rejectShiftSchema>;
 
+type ShiftType = {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+};
+
 type ShiftInspector = {
   inspector: {
     id: number;
@@ -45,12 +52,7 @@ type ShiftInspector = {
 type ShiftDay = {
   id: number;
   dayOfWeek: number;
-  shiftType?: {
-    id: number;
-    name: string;
-    startTime: string;
-    endTime: string;
-  };
+  shiftType?: ShiftType;
 };
 
 type ShiftAssignment = {
@@ -194,7 +196,7 @@ export function ShiftAssignmentList({ shifts, userId }: Props) {
                 </table>
               </div>
 
-              {shift.shiftInspectors
+              {(shift.shiftInspectors || [])
                 .filter((si) => si.inspector.id === userId)
                 .map((si) => (
                   <div key={`${shift.id}-${si.inspector.id}`} className="flex justify-end gap-2">
