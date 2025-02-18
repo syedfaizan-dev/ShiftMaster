@@ -71,23 +71,11 @@ type ShiftDay = {
   shiftType?: ShiftType;
 };
 
-type Task = {
-  id: number;
-  status: string;
-  date: string;
-  inspectorId: number;
-  taskType: {
-    id: number;
-    name: string;
-  };
-};
-
 type InspectorGroup = {
   id: number;
   name: string;
   inspectors: ShiftInspector[];
   days: ShiftDay[];
-  tasks?: Task[];
 };
 
 type ShiftAssignment = {
@@ -137,7 +125,6 @@ export default function Shifts() {
   const [selectedGroupForShiftTypes, setSelectedGroupForShiftTypes] = useState<InspectorGroup | null>(null);
   const [isEditShiftTypesOpen, setIsEditShiftTypesOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
-  const [selectedWeeks, setSelectedWeeks] = useState<Record<number, string>>({});
 
   const { data: inspectorShifts, isLoading: isLoadingInspectorShifts } = useQuery<ShiftAssignment[]>({
     queryKey: ["/api/inspector/shifts"],
@@ -343,11 +330,6 @@ export default function Shifts() {
     return availableInspectors.filter((inspector) => !assignedInspectorIds.has(inspector.id));
   };
 
-  // Helper function to get unique weeks from building shifts
-  const getUniqueWeeks = (shifts: ShiftAssignment[]) => {
-    return [...new Set(shifts.map(shift => shift.week))].sort();
-  };
-
   if (!user?.isInspector && !user?.isAdmin) {
     return (
       <Navbar>
@@ -397,54 +379,27 @@ export default function Shifts() {
                 </AlertDescription>
               </Alert>
             ) : (
-              buildings.map((building) => {
-                const uniqueWeeks = getUniqueWeeks(building.shifts);
-                const selectedWeek = selectedWeeks[building.id] || uniqueWeeks[0];
-                const filteredShifts = building.shifts.filter(shift => shift.week === selectedWeek);
-
-                return (
-                  <Card key={building.id}>
-                    <CardHeader>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <CardTitle>{building.name}</CardTitle>
-                          <CardDescription>
-                            Code: {building.code} | Area: {building.area}
-                          </CardDescription>
-                        </div>
-                        <Select
-                          value={selectedWeek}
-                          onValueChange={(week) => 
-                            setSelectedWeeks(prev => ({
-                              ...prev,
-                              [building.id]: week
-                            }))
-                          }
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select week" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {uniqueWeeks.map((week) => (
-                              <SelectItem key={week} value={week}>
-                                Week {week}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {filteredShifts.length === 0 ? (
-                        <p className="text-center text-muted-foreground">No shifts assigned for this week</p>
-                      ) : (
-                        <div className="space-y-6">
-                          {filteredShifts.map((shift) => (
+              buildings.map((building) => (
+                <Card key={building.id}>
+                  <CardHeader>
+                    <CardTitle>{building.name}</CardTitle>
+                    <CardDescription>
+                      Code: {building.code} | Area: {building.area}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {building.shifts.length === 0 ? (
+                      <p className="text-center text-muted-foreground">No shifts assigned</p>
+                    ) : (
+                      <div className="space-y-6">
+                        {building.shifts
+                          .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                          .map((shift) => (
                             <div key={shift.id} className="space-y-4">
                               <div className="flex justify-between items-center">
                                 <div>
                                   <h3 className="text-lg font-semibold">
-                                    {shift.role?.name}
+                                    Week {shift.week} - {shift.role?.name}
                                   </h3>
                                 </div>
                                 <Dialog 
@@ -725,135 +680,99 @@ export default function Shifts() {
                                   </div>
 
                                   <div className="mt-4">
-                                    <div className="flex gap-2">
-                                      <Dialog>
-                                        <DialogTrigger asChild>
-                                          <Button variant="outline" size="sm">
-                                            <Users className="h-4 w-4 mr-2" />
-                                            View Inspectors
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-2xl">
-                                          <DialogHeader>
-                                            <DialogTitle>Group Inspectors</DialogTitle>
-                                            <DialogDescription>
-                                              Week {selectedShift?.week} - {group.name}
-                                            </DialogDescription>
-                                          </DialogHeader>
-                                          {(() => {
-                                            const groupedInspectors = groupInspectorsByStatus(group.inspectors);
-                                            return (
-                                              <div className="space-y-4">
-                                                <div>
-                                                  <h4 className="font-medium mb-2">
-                                                    Accepted ({groupedInspectors.accepted.length})
-                                                  </h4>
-                                                  <div className="space-y-2">
-                                                    {groupedInspectors.accepted.map((si) => (
-                                                      <div
-                                                        key={si.inspector.id}
-                                                        className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                      >
-                                                        <span>{si.inspector.fullName}</span>
-                                                        <Badge variant="success">ACCEPTED</Badge>
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                </div>
-                                                <div>
-                                                  <h4 className="font-medium mb-2">
-                                                    Pending ({groupedInspectors.pending.length})
-                                                  </h4>
-                                                  <div className="space-y-2">
-                                                    {groupedInspectors.pending.map((si) => (
-                                                      <div
-                                                        key={si.inspector.id}
-                                                        className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                      >
-                                                        <span>{si.inspector.fullName}</span>
-                                                        <Badge>PENDING</Badge>
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                </div>
-                                                <div>
-                                                  <h4 className="font-medium mb-2">
-                                                    Rejected ({groupedInspectors.rejected.length})
-                                                  </h4>
-                                                  <div className="space-y-2">
-                                                    {groupedInspectors.rejected.map((si) => (
-                                                      <div key={si.inspector.id} className="space-y-1">
-                                                        <div className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
-                                                          <span>{si.inspector.fullName}</span>
-                                                          <Badge variant="destructive">REJECTED</Badge>
-                                                        </div>
-                                                        {si.rejectionReason && (
-                                                          <p className="text-sm text-muted-foreground ml-2">
-                                                            Reason: {si.rejectionReason}
-                                                          </p>
-                                                        )}
-                                                      </div>
-                                                    ))}
-                                                  </div>
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Users className="h-4 w-4 mr-2" />
+                                          View Inspectors
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="max-w-2xl">
+                                        <DialogHeader>
+                                          <DialogTitle>Group Inspectors</DialogTitle>
+                                          <DialogDescription>
+                                            Week {selectedShift?.week} - {group.name}
+                                          </DialogDescription>
+                                        </DialogHeader>
+                                        {(() => {
+                                          const groupedInspectors = groupInspectorsByStatus(group.inspectors);
+                                          return (
+                                            <div className="space-y-4">
+                                              <div>
+                                                <h4 className="font-medium mb-2">
+                                                  Accepted ({groupedInspectors.accepted.length})
+                                                </h4>
+                                                <div className="space-y-2">
+                                                  {groupedInspectors.accepted.map((si) => (
+                                                    <div
+                                                      key={si.inspector.id}
+                                                      className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                    >
+                                                      <span>{si.inspector.fullName}</span>
+                                                      <Badge variant="success">ACCEPTED</Badge>
+                                                    </div>
+                                                  ))}
                                                 </div>
                                               </div>
-                                            );
-                                          })()}
-                                        </DialogContent>
-                                      </Dialog>
-                                      {group.tasks && group.tasks.length > 0 && (
-                                        <Dialog>
-                                          <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm">
-                                              <Clock className="h-4 w-4 mr-2" />
-                                              View Tasks
-                                            </Button>
-                                          </DialogTrigger>
-                                          <DialogContent>
-                                            <DialogHeader>
-                                              <DialogTitle>Group Tasks</DialogTitle>
-                                              <DialogDescription>
-                                                Tasks assigned to this inspector group
-                                              </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="space-y-4">
-                                              {group.tasks.map((task) => (
-                                                <div
-                                                  key={task.id}
-                                                  className="flex items-center justify-between p-3 bg-secondary/10 rounded-md"
-                                                >
-                                                  <div>
-                                                    <p className="font-medium">{task.taskType.name}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                      Date: {new Date(task.date).toLocaleDateString()}
-                                                    </p>
-                                                  </div>
-                                                  <Badge>{task.status}</Badge>
+                                              <div>
+                                                <h4 className="font-medium mb-2">
+                                                  Pending ({groupedInspectors.pending.length})
+                                                </h4>
+                                                <div className="space-y-2">
+                                                  {groupedInspectors.pending.map((si) => (
+                                                    <div
+                                                      key={si.inspector.id}
+                                                      className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                    >
+                                                      <span>{si.inspector.fullName}</span>
+                                                      <Badge>PENDING</Badge>
+                                                    </div>
+                                                  ))}
                                                 </div>
-                                              ))}
+                                              </div>
+                                              <div>
+                                                <h4 className="font-medium mb-2">
+                                                  Rejected ({groupedInspectors.rejected.length})
+                                                </h4>
+                                                <div className="space-y-2">
+                                                  {groupedInspectors.rejected.map((si) => (
+                                                    <div key={si.inspector.id} className="space-y-1">
+                                                      <div className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
+                                                        <span>{si.inspector.fullName}</span>
+                                                        <Badge variant="destructive">REJECTED</Badge>
+                                                      </div>
+                                                      {si.rejectionReason && (
+                                                        <p className="text-sm text-muted-foreground ml-2">
+                                                          Reason: {si.rejectionReason}
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
                                             </div>
-                                          </DialogContent>
-                                        </Dialog>
-                                      )}
-                                    </div>
+                                          );
+                                        })()}
+                                      </DialogContent>
+                                    </Dialog>
                                   </div>
+
                                 </div>
                               ))}
                             </div>
                           ))}
-                          <TablePagination
-                            currentPage={currentPage}
-                            totalItems={filteredShifts.length}
-                            pageSize={pageSize}
-                            onPageChange={setCurrentPage}
-                            onPageSizeChange={setPageSize}
-                          />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })
+                        <TablePagination
+                          currentPage={currentPage}
+                          totalItems={building.shifts.length}
+                          pageSize={pageSize}
+                          onPageChange={setCurrentPage}
+                          onPageSizeChange={setPageSize}
+                        />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
         )}
