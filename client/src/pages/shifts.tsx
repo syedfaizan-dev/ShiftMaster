@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { TablePagination } from "@/components/table-pagination";
 import {
   Dialog,
   DialogContent,
@@ -11,19 +10,14 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Clock, Users, Plus } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { ShiftAssignmentList } from "@/components/shift-assignment-list";
-import Navbar from "@/components/navbar";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -31,7 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { TablePagination } from "@/components/table-pagination";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { Loader2, Plus, Users } from "lucide-react";
+import Navbar from "@/components/navbar";
+import * as z from "zod";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -89,6 +93,16 @@ type BuildingsResponse = {
   buildings: BuildingWithShifts[];
 };
 
+const inspectorGroupSchema = z.object({
+  name: z.string().min(1, "Group name is required"),
+  days: z.array(z.object({
+    dayOfWeek: z.number(),
+    shiftTypeId: z.string().optional(),
+  })).length(7, "Must specify shifts for all days"),
+});
+
+type InspectorGroupFormData = z.infer<typeof inspectorGroupSchema>;
+
 export default function Shifts() {
   const { user } = useUser();
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,6 +110,9 @@ export default function Shifts() {
   const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
+  const [shiftTypes, setShiftTypes] = useState<ShiftType[] | null>(null);
 
   const { data: inspectorShifts, isLoading: isLoadingInspectorShifts } = useQuery<ShiftAssignment[]>({
     queryKey: ["/api/inspector/shifts"],
@@ -139,6 +156,21 @@ export default function Shifts() {
     enabled: !!user?.isAdmin,
   });
 
+  const { data: shiftTypesData, isLoading: isLoadingShiftTypes } = useQuery<ShiftType[]>({
+    queryKey: ["/api/shift-types"],
+    queryFn: async () => {
+      const response = await fetch("/api/shift-types", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch shift types");
+      }
+      return response.json();
+    },
+    enabled: !!user?.isAdmin,
+    onSuccess: (data) => setShiftTypes(data),
+  });
+
   const assignInspectorMutation = useMutation({
     mutationFn: async ({ groupId, inspectorId }: { groupId: number; inspectorId: number }) => {
       const response = await fetch(`/api/admin/inspector-groups/${groupId}/inspectors`, {
@@ -171,8 +203,59 @@ export default function Shifts() {
     },
   });
 
+  const createGroupForm = useForm<InspectorGroupFormData>({
+    resolver: zodResolver(inspectorGroupSchema),
+    defaultValues: {
+      name: "",
+      days: DAYS.map((_, index) => ({
+        dayOfWeek: index,
+        shiftTypeId: undefined,
+      })),
+    },
+  });
+
+  const createInspectorGroupMutation = useMutation({
+    mutationFn: async ({ shiftId, data }: { shiftId: number; data: InspectorGroupFormData }) => {
+      const response = await fetch(`/api/admin/shifts/${shiftId}/inspector-groups`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          name: data.name,
+          days: data.days.map(day => ({
+            dayOfWeek: day.dayOfWeek,
+            shiftTypeId: day.shiftTypeId ? parseInt(day.shiftTypeId) : null,
+          })),
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create inspector group");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
+      toast({
+        title: "Success",
+        description: "Inspector group created successfully",
+      });
+      setIsCreateGroupDialogOpen(false);
+      setSelectedShift(null);
+      createGroupForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create inspector group",
+        variant: "destructive",
+      });
+    },
+  });
+
   const buildings = buildingsData?.buildings || [];
-  const isLoading = isLoadingInspectorShifts || isLoadingBuildings;
+  const isLoading = isLoadingInspectorShifts || isLoadingBuildings || isLoadingShiftTypes;
 
   const groupInspectorsByStatus = (inspectors: ShiftInspector[]) => {
     return {
@@ -261,7 +344,16 @@ export default function Shifts() {
                                     Week {shift.week} - {shift.role?.name}
                                   </h3>
                                 </div>
-                                <Dialog>
+                                <Dialog open={isCreateGroupDialogOpen && selectedShift === shift} onOpenChange={() => {
+                                  if(selectedShift === shift) {
+                                    setIsCreateGroupDialogOpen(false);
+                                    setSelectedShift(null);
+                                    createGroupForm.reset();
+                                  } else {
+                                    setSelectedShift(shift);
+                                    setIsCreateGroupDialogOpen(true);
+                                  }
+                                }}>
                                   <DialogTrigger asChild>
                                     <Button variant="outline" size="sm">
                                       <Plus className="h-4 w-4 mr-2" />
@@ -275,7 +367,94 @@ export default function Shifts() {
                                         Create a new group of inspectors for this shift.
                                       </DialogDescription>
                                     </DialogHeader>
-                                    {/* Add group creation form here */}
+                                    <Form {...createGroupForm}>
+                                      <form
+                                        onSubmit={createGroupForm.handleSubmit((data) => {
+                                          if (selectedShift) {
+                                            createInspectorGroupMutation.mutate({
+                                              shiftId: selectedShift.id,
+                                              data,
+                                            });
+                                          }
+                                        })}
+                                        className="space-y-4"
+                                      >
+                                        <FormField
+                                          control={createGroupForm.control}
+                                          name="name"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel>Group Name</FormLabel>
+                                              <FormControl>
+                                                <Input placeholder="Enter group name" {...field} />
+                                              </FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+
+                                        <div className="space-y-4">
+                                          <h4 className="font-medium">Shift Type Assignments</h4>
+                                          {DAYS.map((day, index) => (
+                                            <FormField
+                                              key={day}
+                                              control={createGroupForm.control}
+                                              name={`days.${index}.shiftTypeId`}
+                                              render={({ field }) => (
+                                                <FormItem>
+                                                  <FormLabel>{day}</FormLabel>
+                                                  <Select
+                                                    onValueChange={field.onChange}
+                                                    value={field.value}
+                                                  >
+                                                    <FormControl>
+                                                      <SelectTrigger>
+                                                        <SelectValue placeholder="Select shift type" />
+                                                      </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                      <SelectItem value="">No shift</SelectItem>
+                                                      {shiftTypes?.map((type) => (
+                                                        <SelectItem
+                                                          key={type.id}
+                                                          value={type.id.toString()}
+                                                        >
+                                                          {type.name} ({type.startTime} - {type.endTime})
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                          ))}
+                                        </div>
+
+                                        <DialogFooter>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setIsCreateGroupDialogOpen(false);
+                                              setSelectedShift(null);
+                                              createGroupForm.reset();
+                                            }}
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            type="submit"
+                                            disabled={createInspectorGroupMutation.isPending}
+                                          >
+                                            {createInspectorGroupMutation.isPending && (
+                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            )}
+                                            Create Group
+                                          </Button>
+                                        </DialogFooter>
+                                      </form>
+                                    </Form>
                                   </DialogContent>
                                 </Dialog>
                               </div>
