@@ -48,8 +48,7 @@ export const shiftInspectors = pgTable("shift_inspectors", {
   id: serial("id").primaryKey(),
   shiftId: integer("shift_id").references(() => shifts.id).notNull(),
   inspectorId: integer("inspector_id").references(() => users.id).notNull(),
-  isPrimary: boolean("is_primary").default(false).notNull(),
-  status: text("status").default('PENDING').notNull(), // Added: PENDING, ACCEPTED, REJECTED
+  status: text("status").default('PENDING').notNull(), // PENDING, ACCEPTED, REJECTED
   responseAt: timestamp("response_at"),
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow(),

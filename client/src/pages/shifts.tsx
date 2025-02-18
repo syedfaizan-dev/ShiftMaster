@@ -39,8 +39,8 @@ type ShiftInspector = {
     fullName: string;
     username: string;
   };
-  isPrimary: boolean;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
+  rejectionReason: string | null;
 };
 
 type ShiftDay = {
@@ -183,24 +183,6 @@ export default function Shifts() {
                                   <h3 className="text-lg font-semibold">
                                     Week {shift.week} - {shift.role?.name}
                                   </h3>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Badge
-                                      variant={
-                                        shift.status === "ACCEPTED"
-                                          ? "success"
-                                          : shift.status === "REJECTED"
-                                            ? "destructive"
-                                            : "default"
-                                      }
-                                    >
-                                      {shift.status}
-                                    </Badge>
-                                    {shift.rejectionReason && (
-                                      <span className="text-sm text-muted-foreground">
-                                        Reason: {shift.rejectionReason}
-                                      </span>
-                                    )}
-                                  </div>
                                 </div>
                               </div>
 
@@ -208,8 +190,8 @@ export default function Shifts() {
                                 <table className="w-full">
                                   <thead>
                                     <tr className="border-b bg-muted/50">
-                                      <th className="p-2 text-left font-medium w-1/4">
-                                        Inspectors
+                                      <th className="p-2 text-left font-medium w-1/3">
+                                        Inspectors & Status
                                       </th>
                                       {DAYS.map((day) => (
                                         <th
@@ -226,24 +208,31 @@ export default function Shifts() {
                                   <tbody>
                                     <tr>
                                       <td className="p-2 align-top">
-                                        <div className="space-y-1">
+                                        <div className="space-y-2">
                                           {shift.shiftInspectors?.map((si) => (
                                             <div
                                               key={si.inspector.id}
-                                              className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
+                                              className="space-y-1"
                                             >
-                                              <span>{si.inspector.fullName}</span>
-                                              <Badge
-                                                variant={
-                                                  si.status === "ACCEPTED"
-                                                    ? "success"
-                                                    : si.status === "REJECTED"
+                                              <div className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md">
+                                                <span>{si.inspector.fullName}</span>
+                                                <Badge
+                                                  variant={
+                                                    si.status === "ACCEPTED"
+                                                      ? "success"
+                                                      : si.status === "REJECTED"
                                                       ? "destructive"
                                                       : "default"
-                                                }
-                                              >
-                                                {si.status}
-                                              </Badge>
+                                                  }
+                                                >
+                                                  {si.status}
+                                                </Badge>
+                                              </div>
+                                              {si.status === "REJECTED" && si.rejectionReason && (
+                                                <div className="text-sm text-muted-foreground ml-2">
+                                                  Rejection reason: {si.rejectionReason}
+                                                </div>
+                                              )}
                                             </div>
                                           ))}
                                         </div>
