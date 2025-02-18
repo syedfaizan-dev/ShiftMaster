@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Users, Plus, Edit2 } from "lucide-react";
+import { Loader2, Clock, Users, Plus } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ShiftAssignmentList } from "@/components/shift-assignment-list";
 import Navbar from "@/components/navbar";
@@ -67,7 +67,6 @@ type ShiftAssignment = {
   building: { id: number; name: string; code: string; area: string };
   shiftInspectors: ShiftInspector[];
   days: ShiftDay[];
-  groupName: string;
 };
 
 type BuildingWithShifts = {
@@ -85,6 +84,7 @@ type BuildingsResponse = {
 type Inspector = {
   id: number;
   fullName: string;
+  // other inspector properties
 };
 
 export default function Shifts() {
@@ -185,19 +185,6 @@ export default function Shifts() {
     return availableInspectors.filter((inspector) => !assignedInspectorIds.has(inspector.id));
   };
 
-  // Group shifts by groupName
-  const groupShiftsByName = (shifts: ShiftAssignment[]) => {
-    const groups = new Map<string, ShiftAssignment[]>();
-    shifts.forEach((shift) => {
-      const groupName = shift.groupName || 'Default Group';
-      if (!groups.has(groupName)) {
-        groups.set(groupName, []);
-      }
-      groups.get(groupName)!.push(shift);
-    });
-    return Array.from(groups.entries());
-  };
-
   if (!user?.isInspector && !user?.isAdmin) {
     return (
       <Navbar>
@@ -220,12 +207,6 @@ export default function Shifts() {
           <h1 className="text-3xl font-bold">
             {user?.isAdmin ? "Shifts by Building" : "My Shift Assignments"}
           </h1>
-          {user?.isAdmin && (
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Inspector Group
-            </Button>
-          )}
         </div>
 
         {isLoading ? (
@@ -244,6 +225,7 @@ export default function Shifts() {
             <ShiftAssignmentList shifts={inspectorShifts} userId={user.id} />
           )
         ) : (
+          // Admin view - Buildings with shifts
           <div className="grid gap-6">
             {buildings.length === 0 ? (
               <Alert>
@@ -266,23 +248,18 @@ export default function Shifts() {
                       <p className="text-center text-muted-foreground">No shifts assigned</p>
                     ) : (
                       <div className="space-y-6">
-                        {groupShiftsByName(building.shifts)
+                        {building.shifts
                           .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                          .map(([groupName, groupShifts]) => {
-                            const acceptedInspectorsCount = groupShifts.reduce(
-                              (total, shift) => total + groupInspectorsByStatus(shift.shiftInspectors).accepted.length,
-                              0
-                            );
+                          .map((shift) => {
+                            const groupedInspectors = groupInspectorsByStatus(shift.shiftInspectors || []);
+                            const availableInspectorsForShift = getAvailableInspectorsForShift(shift);
 
                             return (
-                              <div key={groupName} className="space-y-4">
+                              <div key={shift.id} className="space-y-4">
                                 <div className="flex justify-between items-center">
                                   <div>
                                     <h3 className="text-lg font-semibold">
-                                      {groupName}
-                                      <span className="ml-2 text-sm text-muted-foreground">
-                                        ({acceptedInspectorsCount} inspectors)
-                                      </span>
+                                      Week {shift.week} - {shift.role?.name}
                                     </h3>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -309,7 +286,7 @@ export default function Shifts() {
                                               <SelectValue placeholder="Select an inspector" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                              {getAvailableInspectorsForShift(groupShifts[0]).map((inspector) => (
+                                              {availableInspectorsForShift.map((inspector) => (
                                                 <SelectItem key={inspector.id} value={inspector.id.toString()}>
                                                   {inspector.fullName}
                                                 </SelectItem>
@@ -322,7 +299,7 @@ export default function Shifts() {
                                             onClick={() => {
                                               if (selectedInspector) {
                                                 assignInspectorMutation.mutate({
-                                                  shiftId: groupShifts[0].id,
+                                                  shiftId: shift.id,
                                                   inspectorId: parseInt(selectedInspector),
                                                 });
                                               }
@@ -340,17 +317,6 @@ export default function Shifts() {
                                     <Dialog>
                                       <DialogTrigger asChild>
                                         <Button variant="outline" size="sm">
-                                          <Edit2 className="h-4 w-4 mr-2" />
-                                          Edit Group
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        {/* Edit Group Dialog Content */}
-                                      </DialogContent>
-                                    </Dialog>
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
                                           <Users className="h-4 w-4 mr-2" />
                                           View All Inspectors
                                         </Button>
@@ -359,71 +325,64 @@ export default function Shifts() {
                                         <DialogHeader>
                                           <DialogTitle>Inspector Assignments</DialogTitle>
                                           <DialogDescription>
-                                            {groupName}
+                                            Week {shift.week} - {shift.role?.name}
                                           </DialogDescription>
                                         </DialogHeader>
                                         <div className="space-y-4">
-                                          {groupShifts.map((shift) => {
-                                            const groupedInspectors = groupInspectorsByStatus(shift.shiftInspectors);
-                                            return (
-                                              <>
-                                                <div>
-                                                  <h4 className="font-medium mb-2">
-                                                    Accepted ({groupedInspectors.accepted.length})
-                                                  </h4>
-                                                  <div className="space-y-2">
-                                                    {groupedInspectors.accepted.map((si) => (
-                                                      <div
-                                                        key={si.inspector.id}
-                                                        className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                      >
-                                                        <span>{si.inspector.fullName}</span>
-                                                        <Badge variant="success">ACCEPTED</Badge>
-                                                      </div>
-                                                    ))}
-                                                  </div>
+                                          <div>
+                                            <h4 className="font-medium mb-2">
+                                              Accepted ({groupedInspectors.accepted.length})
+                                            </h4>
+                                            <div className="space-y-2">
+                                              {groupedInspectors.accepted.map((si) => (
+                                                <div
+                                                  key={si.inspector.id}
+                                                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                >
+                                                  <span>{si.inspector.fullName}</span>
+                                                  <Badge variant="success">ACCEPTED</Badge>
                                                 </div>
-                                                <div>
-                                                  <h4 className="font-medium mb-2">
-                                                    Pending ({groupedInspectors.pending.length})
-                                                  </h4>
-                                                  <div className="space-y-2">
-                                                    {groupedInspectors.pending.map((si) => (
-                                                      <div
-                                                        key={si.inspector.id}
-                                                        className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                      >
-                                                        <span>{si.inspector.fullName}</span>
-                                                        <Badge>PENDING</Badge>
-                                                      </div>
-                                                    ))}
-                                                  </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <h4 className="font-medium mb-2">
+                                              Pending ({groupedInspectors.pending.length})
+                                            </h4>
+                                            <div className="space-y-2">
+                                              {groupedInspectors.pending.map((si) => (
+                                                <div
+                                                  key={si.inspector.id}
+                                                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                >
+                                                  <span>{si.inspector.fullName}</span>
+                                                  <Badge>PENDING</Badge>
                                                 </div>
-                                                <div>
-                                                  <h4 className="font-medium mb-2">
-                                                    Rejected ({groupedInspectors.rejected.length})
-                                                  </h4>
-                                                  <div className="space-y-2">
-                                                    {groupedInspectors.rejected.map((si) => (
-                                                      <div key={si.inspector.id} className="space-y-1">
-                                                        <div
-                                                          className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                        >
-                                                          <span>{si.inspector.fullName}</span>
-                                                          <Badge variant="destructive">REJECTED</Badge>
-                                                        </div>
-                                                        {si.rejectionReason && (
-                                                          <p className="text-sm text-muted-foreground ml-2">
-                                                            Reason: {si.rejectionReason}
-                                                          </p>
-                                                        )}
-                                                      </div>
-                                                    ))}
+                                              ))}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <h4 className="font-medium mb-2">
+                                              Rejected ({groupedInspectors.rejected.length})
+                                            </h4>
+                                            <div className="space-y-2">
+                                              {groupedInspectors.rejected.map((si) => (
+                                                <div key={si.inspector.id} className="space-y-1">
+                                                  <div
+                                                    className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                  >
+                                                    <span>{si.inspector.fullName}</span>
+                                                    <Badge variant="destructive">REJECTED</Badge>
                                                   </div>
+                                                  {si.rejectionReason && (
+                                                    <p className="text-sm text-muted-foreground ml-2">
+                                                      Reason: {si.rejectionReason}
+                                                    </p>
+                                                  )}
                                                 </div>
-                                              </>
-                                            );
-                                          })}
+                                              ))}
+                                            </div>
+                                          </div>
                                         </div>
                                       </DialogContent>
                                     </Dialog>
@@ -435,7 +394,7 @@ export default function Shifts() {
                                     <thead>
                                       <tr className="border-b bg-muted/50">
                                         <th className="p-2 text-left font-medium w-1/3">
-                                          Accepted Inspectors ({acceptedInspectorsCount})
+                                          Accepted Inspectors ({groupedInspectors.accepted.length})
                                         </th>
                                         {DAYS.map((day) => (
                                           <th key={day} className="p-2 text-center font-medium">
@@ -447,34 +406,29 @@ export default function Shifts() {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {groupShifts.map((shift) => {
-                                        const acceptedInspectors = groupInspectorsByStatus(shift.shiftInspectors).accepted;
-                                        return (
-                                          <tr key={shift.id}>
-                                            <td className="p-2 align-top">
-                                              <div className="space-y-2">
-                                                {acceptedInspectors.map((si) => (
-                                                  <div
-                                                    key={si.inspector.id}
-                                                    className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
-                                                  >
-                                                    <span>{si.inspector.fullName}</span>
-                                                    <Badge variant="success">ACCEPTED</Badge>
-                                                  </div>
-                                                ))}
+                                      <tr>
+                                        <td className="p-2 align-top">
+                                          <div className="space-y-2">
+                                            {groupedInspectors.accepted.map((si) => (
+                                              <div
+                                                key={si.inspector.id}
+                                                className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
+                                              >
+                                                <span>{si.inspector.fullName}</span>
+                                                <Badge variant="success">ACCEPTED</Badge>
                                               </div>
+                                            ))}
+                                          </div>
+                                        </td>
+                                        {DAYS.map((_, dayIndex) => {
+                                          const dayShift = shift.days?.find((d) => d.dayOfWeek === dayIndex);
+                                          return (
+                                            <td key={dayIndex} className="p-2 text-center">
+                                              {dayShift?.shiftType?.name || "-"}
                                             </td>
-                                            {DAYS.map((_, dayIndex) => {
-                                              const dayShift = shift.days?.find((d) => d.dayOfWeek === dayIndex);
-                                              return (
-                                                <td key={dayIndex} className="p-2 text-center">
-                                                  {dayShift?.shiftType?.name || "-"}
-                                                </td>
-                                              );
-                                            })}
-                                          </tr>
-                                        );
-                                      })}
+                                          );
+                                        })}
+                                      </tr>
                                     </tbody>
                                   </table>
                                 </div>
@@ -483,7 +437,7 @@ export default function Shifts() {
                           })}
                         <TablePagination
                           currentPage={currentPage}
-                          totalItems={groupShiftsByName(building.shifts).length}
+                          totalItems={building.shifts.length}
                           pageSize={pageSize}
                           onPageChange={setCurrentPage}
                           onPageSizeChange={setPageSize}
