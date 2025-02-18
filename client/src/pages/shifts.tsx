@@ -678,11 +678,13 @@ export default function Shifts() {
                                       );
                                     })}
                                   </div>
-                                  <Dialog>
+
+                                  <div className="mt-4">
+                                    <Dialog>
                                       <DialogTrigger asChild>
                                         <Button variant="outline" size="sm">
                                           <Users className="h-4 w-4 mr-2" />
-                                          View All Inspectors
+                                          View Inspectors
                                         </Button>
                                       </DialogTrigger>
                                       <DialogContent className="max-w-2xl">
@@ -753,54 +755,8 @@ export default function Shifts() {
                                         })()}
                                       </DialogContent>
                                     </Dialog>
-                                  <div className="rounded-md border">
-                                    <table className="w-full">
-                                      <thead>
-                                        <tr className="border-b bg-muted/50">
-                                          <th className="p-2 text-left font-medium w-1/3">
-                                            Accepted Inspectors ({
-                                              groupInspectorsByStatus(group.inspectors).accepted.length
-                                            })
-                                          </th>
-                                          {DAYS.map((day) => (
-                                            <th key={day} className="p-2 text-center font-medium">
-                                              <div className="flex flex-col items-center">
-                                                <span>{day}</span>
-                                              </div>
-                                            </th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        <tr>
-                                          <td className="p-2 align-top">
-                                            <div className="space-y-2">
-                                              {groupInspectorsByStatus(group.inspectors)
-                                                .accepted.map((si) => (
-                                                  <div
-                                                    key={si.inspector.id}
-                                                    className="flex items-center justify-between gap-2 p-2 bg-secondary/10 rounded-md"
-                                                  >
-                                                    <span>{si.inspector.fullName}</span>
-                                                    <Badge variant="success">ACCEPTED</Badge>
-                                                  </div>
-                                                ))}
-                                            </div>
-                                          </td>
-                                          {DAYS.map((_, dayIndex) => {
-                                            const dayShift = group.days?.find(
-                                              (d) => d.dayOfWeek === dayIndex
-                                            );
-                                            return (
-                                              <td key={dayIndex} className="p-2 text-center">
-                                                {dayShift?.shiftType?.name || "-"}
-                                              </td>
-                                            );
-                                          })}
-                                        </tr>
-                                      </tbody>
-                                    </table>
                                   </div>
+
                                 </div>
                               ))}
                             </div>
