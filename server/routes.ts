@@ -1545,7 +1545,56 @@ export function registerRoutes(app: Express): Server {
   app.get(
     "/api/buildings/with-shifts",
     requireAuth,
-    getBuildingsWithShifts
+    async (req: Request, res: Response) => {
+      try {
+        const buildings = await db.query.buildings.findMany({
+          with: {
+            supervisor: {
+              columns: {
+                id: true,
+                username: true,
+                fullName: true,
+              },
+            },
+            shifts: {
+              with: {
+                role: true,
+                inspectorGroups: {
+                  with: {
+                    inspectors: {
+                      with: {
+                        inspector: {
+                          columns: {
+                            id: true,
+                            username: true,
+                            fullName: true,
+                          },
+                        },
+                      },
+                    },
+                    days: {
+                      with: {
+                        shiftType: true,
+                      },
+                    },
+                    tasks: {
+                      with: {
+                        taskType: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        res.json({ buildings });
+      } catch (error) {
+        console.error("Error fetching buildings with shifts:", error);
+        res.status(500).json({ message: "Error fetching buildings with shifts" });
+      }
+    }
   );
 
   // Get inspectors route
