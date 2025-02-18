@@ -121,7 +121,6 @@ export default function Shifts() {
   const queryClient = useQueryClient();
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
-  const [shiftTypes, setShiftTypes] = useState<ShiftType[] | null>(null);
   const [selectedGroupForShiftTypes, setSelectedGroupForShiftTypes] = useState<InspectorGroup | null>(null);
   const [isEditShiftTypesOpen, setIsEditShiftTypesOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
@@ -180,7 +179,6 @@ export default function Shifts() {
       return response.json();
     },
     enabled: !!user?.isAdmin,
-    onSuccess: (data) => setShiftTypes(data),
   });
 
   const assignInspectorMutation = useMutation({
@@ -314,15 +312,26 @@ export default function Shifts() {
     },
   });
 
-  const getAvailableShiftTypes = (group: InspectorGroup, currentDayOfWeek: number) => {
-    if (!shiftTypes) return [];
+  const getAvailableShiftTypes = (group: InspectorGroup, currentDayOfWeek: number, isEditing: boolean) => {
+    console.log("shiftTypesData", shiftTypesData);
+    if (!shiftTypesData) return [];
 
-    // Find the shift type assigned to the current day
+    // When adding new (not editing), return all shift types
+    if (!isEditing) {
+      return shiftTypesData;
+    }
+
+    // When editing, find the current day's shift type
     const currentDay = group.days.find(d => d.dayOfWeek === currentDayOfWeek);
-    const currentDayShiftTypeId = currentDay?.shiftType?.id;
+    const currentShiftTypeId = currentDay?.shiftType?.id;
 
-    // Filter out the shift type assigned to the current day
-    return shiftTypes.filter(type => type.id !== currentDayShiftTypeId);
+    // Return all shift types when editing a day with no assigned shift type
+    if (!currentShiftTypeId) {
+      return shiftTypesData;
+    }
+
+    // When editing, return all types except the one currently assigned
+    return shiftTypesData.filter(type => type.id !== currentShiftTypeId);
   };
 
   const buildings = buildingsData?.buildings || [];
@@ -648,7 +657,11 @@ export default function Shifts() {
                                                           </FormControl>
                                                           <SelectContent>
                                                             <SelectItem value="none">No shift</SelectItem>
-                                                            {getAvailableShiftTypes(group,dayIndex).map((type) => (
+                                                            {getAvailableShiftTypes(
+                                                              group,
+                                                              dayIndex,
+                                                              existingDay?.shiftType !== undefined
+                                                            ).map((type) => (
                                                               <SelectItem
                                                                 key={type.id}
                                                                 value={type.id.toString()}
