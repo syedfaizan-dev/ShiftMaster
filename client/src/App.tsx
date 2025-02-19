@@ -9,6 +9,7 @@ import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Shifts from "@/pages/shifts";
 import BuildingWeeks from "@/pages/building-weeks";
+import WeekDetails from "@/pages/week-details";
 import Roles from "@/pages/roles";
 import Employees from "@/pages/employees";
 import Requests from "@/pages/requests";
@@ -44,6 +45,7 @@ function Router() {
       </Route>
       <Route path="/shifts" component={Shifts} />
       <Route path="/building/:buildingId/weeks" component={BuildingWeeks} />
+      <Route path="/building/:buildingId/week/:weekId" component={WeekDetails} />
       {user.isAdmin && (
         <>
           <Route path="/buildings" component={Buildings} />
