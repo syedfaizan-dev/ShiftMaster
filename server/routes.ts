@@ -14,6 +14,7 @@ import {
   utilities,
   shiftInspectors,
   inspectorGroups,
+  shiftDays,
 } from "@db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import {
@@ -1138,409 +1139,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/admin/buildings", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const buildingsData = await db
-        .select({
-          id: buildings.id,
-          name: buildings.name,
-          code: buildings.code,
-          area: buildings.area,
-          supervisorId: buildings.supervisorId,
-          createdAt: buildings.createdAt,
-          updatedAt: buildings.updatedAt,
-          supervisor: {
-            id: users.id,
-            username: users.username,
-            fullName: users.fullName,
-          },
-        })
-        .from(buildings)
-        .leftJoin(users, eq(buildings.supervisorId, users.id));
-
-      console.log("Retrieved buildings:", buildingsData);
-      res.json(buildingsData);
-    } catch (error) {
-      console.error("Error fetching buildings:", error);
-      res.status(500).json({
-        message: "Error fetching buildings",
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: JSON.stringify(error)
-      });
-    }
-  });
-
-  // Create building
-  app.post("/api/admin/buildings", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { name, code, area, supervisorId } = req.body;
-
-      if (!supervisorId) {
-        return res.status(400).json({
-          message: "Supervisor is required",
-          error: "Please select a supervisor for this building"
-        });
-      }
-
-      // Check if building code already exists
-      const [existingBuilding] = await db
-        .select()
-        .from(buildings)
-        .where(eq(buildings.code, code))
-        .limit(1);
-
-      if (existingBuilding) {
-        return res.status(400).json({
-          message: "Building code already exists",
-          error: `A building with code "${code}" already exists. Please use a different code.`
-        });
-      }
-
-      // Verify that the supervisor exists and is an admin
-      const [supervisor] = await db
-        .select()
-        .from(users)
-        .where(and(eq(users.id, supervisorId), eq(users.isAdmin, true)))
-        .limit(1);
-
-      if (!supervisor) {
-        return res.status(400).json({
-          message: "Invalid supervisor",
-          error: "The selected supervisor must be an admin user"
-        });
-      }
-
-      const [newBuilding] = await db
-        .insert(buildings)
-        .values({
-          name,
-          code,
-          area: area || '',
-          supervisorId,
-        })
-        .returning();
-
-      // Return the building with supervisor details
-      const buildingWithSupervisor = {
-        ...newBuilding,
-        supervisor: {
-          id: supervisor.id,
-          username: supervisor.username,
-          fullName: supervisor.fullName,
-        },
-      };
-
-      res.status(201).json(buildingWithSupervisor);
-    } catch (error) {
-      console.error("Error creating building:", error);
-      res.status(500).json({
-        message: "Error creating building",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-  // Admin: Update building
-  app.put("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { name, code, area, supervisorId } = req.body;
-
-      if (!supervisorId) {
-        return res.status(400).json({
-          message: "Supervisor is required",
-          error: "Please select a supervisor for this building"
-        });
-      }
-
-      // Check if building exists
-      const [existingBuilding] = await db
-        .select()
-        .from(buildings)
-        .where(eq(buildings.id, parseInt(id)))
-        .limit(1);
-
-      if (!existingBuilding) {
-        return res.status(404).json({
-          message: "Building not found",
-          error: "The requested building does not exist"
-        });
-      }
-
-      // Verify that the new supervisor exists and is an admin
-      const [supervisor] = await db
-        .select()
-        .from(users)
-        .where(and(eq(users.id, supervisorId), eq(users.isAdmin, true)))
-        .limit(1);
-
-      if (!supervisor) {
-        return res.status(400).json({
-          message: "Invalid supervisor",
-          error: "The selected supervisor must be an admin user"
-        });
-      }
-
-      // Check if code is being changed and if new code already exists
-      if (code !== existingBuilding.code) {
-        const [buildingWithCode] = await db
-          .select()
-          .from(buildings)
-          .where(eq(buildings.code, code))
-          .limit(1);
-
-        if (buildingWithCode) {
-          return res.status(400).json({
-            message: "Building code already exists",
-            error: `A building with code "${code}" already exists. Please use a different code.`
-          });
-        }
-      }
-
-      // Update the building
-      const [updatedBuilding] = await db
-        .update(buildings)
-        .set({
-          name,
-          code,
-          area: area || '',
-          supervisorId,
-          updatedAt: new Date(),
-        })
-        .where(eq(buildings.id, parseInt(id)))
-        .returning();
-
-      // Return the building with supervisor details
-      const buildingWithSupervisor = {
-        ...updatedBuilding,
-        supervisor: {
-          id: supervisor.id,
-          username: supervisor.username,
-          fullName: supervisor.fullName,
-        },
-      };
-
-      res.json(buildingWithSupervisor);
-    } catch (error) {
-      console.error("Error updating building:", error);
-      res.status(500).json({
-        message: "Error updating building",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Admin: Delete building
-  app.delete("/api/admin/buildings/:id", requireAdmin, async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-
-      // Check if building exists
-      const [existingBuilding] = await db
-        .select()
-        .from(buildings)
-        .where(eq(buildings.id, parseInt(id)))
-        .limit(1);
-
-      if (!existingBuilding) {
-        return res.status(404).json({
-          message: "Building not found",
-          error: "The requested building does not exist"
-        });
-      }
-
-      // Check if building has any associated shifts
-      const [shiftWithBuilding] = await db
-        .select()
-        .from(shifts)
-        .where(eq(shifts.buildingId, parseInt(id)))
-        .limit(1);
-
-      if (shiftWithBuilding) {
-        return res.status(400).json({
-          message: "Cannot delete building",
-          error: "This building has associated shifts. Please reassign or delete the shifts first."
-        });
-      }
-
-      // Delete the building
-      await db.delete(buildings).where(eq(buildings.id, parseInt(id)));
-
-      res.json({ message: "Building deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting building:", error);
-      res.status(500).json({
-        message: "Error deleting building",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-  // Add agency routes within the registerRoutes function
-  // Admin: Get all agencies
-  app.get(
-    "/api/admin/utilities",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const allUtilities = await db.select().from(utilities);
-        res.json(allUtilities);
-      } catch (error) {
-        console.error("Error fetching utilities:", error);
-        res.status(500).json({ message: "Error fetching utilities" });
-      }
-    },
-  );
-
-  // Admin: Create agency
-  app.post(
-    "/api/admin/utilities",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { name, description } = req.body;
-
-        const [existingUtility] = await db
-          .select()
-          .from(utilities)
-          .where(eq(utilities.name, name))
-          .limit(1);
-
-        if (existingUtility) {
-          return res.status(400).json({ message: "Utility with this name already exists" });
-        }
-
-        const [newUtility] = await db
-          .insert(utilities)
-          .values({
-            name,
-            description,
-            createdBy: req.user!.id,
-          })
-          .returning();
-
-        res.json(newUtility);
-      } catch (error) {
-        console.error("Error creating utility:", error);
-        res.status(500).json({ message: "Error creating utility" });
-      }
-    },
-  );
-
-  // Admin: Update agency
-  app.put(
-    "/api/admin/utilities/:id",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { id } = req.params;
-        const { name, description } = req.body;
-
-        const [existingUtility] = await db
-          .select()
-          .from(utilities)
-          .where(eq(utilities.id, parseInt(id)))
-          .limit(1);
-
-        if (!existingUtility) {
-          return res.status(404).json({ message: "Utility not found" });
-        }
-
-        const [updatedUtility] = await db
-          .update(utilities)
-          .set({
-            name,
-            description,
-          })
-          .where(eq(utilities.id, parseInt(id)))
-          .returning();
-
-        res.json(updatedUtility);
-      } catch (error) {
-        console.error("Error updating utility:", error);
-        res.status(500).json({ message: "Error updating utility" });
-      }
-    },
-  );
-
-  // Admin: Delete agency
-  app.delete(
-    "/api/admin/utilities/:id",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { id } = req.params;
-
-        const [existingUtility] = await db
-          .select()
-          .from(utilities)
-          .where(eq(utilities.id, parseInt(id)))
-          .limit(1);
-
-        if (!existingUtility) {
-          return res.status(404).json({ message: "Utility not found" });
-        }
-
-        // Check if utility is assigned to any tasks
-        const [assignedTask] = await db
-          .select()
-          .from(tasks)
-          .where(eq(tasks.assignedTo, parseInt(id)))
-          .limit(1);
-
-        if (assignedTask) {
-          return res.status(400).json({
-            message: "Cannot delete utility with assigned tasks. Please reassign the tasks first.",
-          });
-        }
-
-        // Delete the utility
-        await db.delete(utilities).where(eq(utilities.id, parseInt(id)));
-
-        res.json({ message: "Utility deleted successfully" });
-      } catch (error) {
-        console.error("Error deleting utility:", error);
-        res.status(500).json({ message: "Error deleting utility" });
-      }
-    },
-  );
-
-  // Get all shifts with status filter
-  app.get("/api/shifts", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { status } = req.query;
-      let query = db.select().from(shifts);
-
-      // Filter by status if provided
-      if (status) {
-        query = query.where(eq(shifts.status, status as string));
-      }
-
-      // For non-admin users, only show their own shifts
-      if (!req.user?.isAdmin) {
-        query = query.where(eq(shifts.inspectorId, req.user!.id));
-      }
-
-      const result = await query.orderBy(shifts.createdAt);
-      res.json(result);
-    } catch (error) {
-      console.error("Error fetching shifts:", error);
-      res.status(500).json({ message: "Error fetching shifts" });
-    }
-  });
-
-  // Accept or reject a shift
-  app.post(
-    "/api/shifts/:id/respond",
-    requireAuth,
-    handleShiftResponse
-  );
-
-  // Get inspectors by shift type
-  app.get(
-    "/api/admin/shifts/inspectors",
-    requireAdmin,
-    getInspectorsByShiftType
-  );
-
   // Add new buildings route
   app.get(
     "/api/buildings/with-shifts",
@@ -1679,22 +1277,57 @@ export function registerRoutes(app: Express): Server {
     }
   );
 
-  // Add the new route before the server creation
+  // Update shift type for a single day
   app.put(
-    "/api/shifts/:id/days/:dayOfWeek",
-    requireAuth,
+    "/api/admin/inspector-groups/:groupId/days/:dayOfWeek",
+    requireAdmin,
     async (req: Request, res: Response) => {
       try {
-        await updateShiftDay(req, res);
+        const { groupId, dayOfWeek } = req.params;
+        const { shiftTypeId } = req.body;
+
+        console.log("Updating shift day:", { groupId, dayOfWeek, shiftTypeId });
+
+        // Start a transaction
+        const result = await db.transaction(async (tx) => {
+          // Delete existing day assignment if any
+          await tx
+            .delete(shiftDays)
+            .where(
+              and(
+                eq(shiftDays.inspectorGroupId, parseInt(groupId)),
+                eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
+              )
+            );
+
+          // If shiftTypeId is not "none", insert new assignment
+          if (shiftTypeId !== "none") {
+            const [newDay] = await tx
+              .insert(shiftDays)
+              .values({
+                inspectorGroupId: parseInt(groupId),
+                dayOfWeek: parseInt(dayOfWeek),
+                shiftTypeId: parseInt(shiftTypeId),
+              })
+              .returning();
+
+            return newDay;
+          }
+
+          return null;
+        });
+
+        res.json(result || { message: "Shift type removed successfully" });
       } catch (error) {
-        console.error("Error in shift day update route:", error);
+        console.error("Error updating shift day:", error);
         res.status(500).json({
           message: "Error updating shift day",
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
   );
+
   app.get("/api/shifts/:week/available-inspectors", requireAuth, async (req: Request, res: Response) => {
     try {
       const { week } = req.params;
@@ -1845,59 +1478,6 @@ export function registerRoutes(app: Express): Server {
     }
   );
 
-  // Update shift type for a single day
-  app.put(
-    "/api/admin/inspector-groups/:groupId/days/:dayOfWeek",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const { groupId, dayOfWeek } = req.params;
-        const { shiftTypeId } = req.body;
-
-        // Check if inspector group exists
-        const [group] = await db
-          .select()
-          .from(inspectorGroups)
-          .where(eq(inspectorGroups.id, parseInt(groupId)))
-          .limit(1);
-
-        if (!group) {
-          return res.status(404).json({ message: "Inspector group not found" });
-        }
-
-        // Delete existing day if it exists
-        await db
-          .delete(shiftDays)
-          .where(
-            and(
-              eq(shiftDays.inspectorGroupId, parseInt(groupId)),
-              eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
-            )
-          );
-
-        // Insert new day if shiftTypeId is provided
-        let updatedDay = null;
-        if (shiftTypeId !== null) {
-          [updatedDay] = await db
-            .insert(shiftDays)
-            .values({
-              inspectorGroupId: parseInt(groupId),
-              dayOfWeek: parseInt(dayOfWeek),
-              shiftTypeId,
-            })
-            .returning();
-        }
-
-        res.json(updatedDay || { message: "Shift type removed" });
-      } catch (error) {
-        console.error("Error updating shift day:", error);
-        res.status(500).json({
-          message: "Error updating shift day",
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    }
-  );
 
   // Add inspector to group endpoint
   app.post(
@@ -1968,6 +1548,21 @@ export function registerRoutes(app: Express): Server {
     }
   );
 
+  app.put(
+    "/api/shifts/:id/days/:dayOfWeek",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        await updateShiftDay(req, res);
+      } catch (error) {
+        console.error("Error in shift day update route:", error);
+        res.status(500).json({
+          message: "Error updating shift day",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+  );
   const server = createServer(app);
   return server;
 }
