@@ -121,11 +121,17 @@ export default function WeekDetails() {
           {shiftData && (
             <div>
               <h1 className="text-3xl font-bold">
-                Week {shiftData.week} - {shiftData.building.name}
+                Week {shiftData.week}
               </h1>
-              <p className="text-muted-foreground">
-                {shiftData.role.name}
-              </p>
+              <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                <span>{building?.name}</span>
+                {shiftData.role && (
+                  <>
+                    <span>•</span>
+                    <span>{shiftData.role.name}</span>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -171,10 +177,12 @@ export default function WeekDetails() {
                                   <p className="font-medium text-sm">
                                     {shiftDay.shiftType.name}
                                   </p>
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
-                                    {shiftDay.shiftType.startTime} - {shiftDay.shiftType.endTime}
-                                  </p>
+                                    <span>
+                                      {shiftDay.shiftType.startTime} - {shiftDay.shiftType.endTime}
+                                    </span>
+                                  </div>
                                 </div>
                               ) : (
                                 <p className="text-sm text-muted-foreground">No shift assigned</p>

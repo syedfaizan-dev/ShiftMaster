@@ -128,21 +128,23 @@ export default function BuildingWeeks() {
                 <Card className="cursor-pointer transition-all duration-200 hover:shadow-lg">
                   <CardHeader>
                     <CardTitle>Week {shift.week}</CardTitle>
-                    <CardDescription className="flex items-center gap-2">
-                      <span>{shift.role.name}</span>
-                      <Badge variant={
-                        shift.status === "ACCEPTED" ? "default" :
-                        shift.status === "REJECTED" ? "destructive" : "secondary"
-                      }>
-                        {shift.status}
-                      </Badge>
+                    <CardDescription>
+                      <div className="flex items-center gap-2">
+                        <span>{shift.role.name}</span>
+                        <Badge variant={
+                          shift.status === "ACCEPTED" ? "default" :
+                          shift.status === "REJECTED" ? "destructive" : "secondary"
+                        }>
+                          {shift.status}
+                        </Badge>
+                      </div>
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-center">
-                      <p className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground">
                         {shift.inspectorGroups.length} Inspector Groups
-                      </p>
+                      </div>
                       <Button variant="ghost" size="sm">
                         View Details <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>

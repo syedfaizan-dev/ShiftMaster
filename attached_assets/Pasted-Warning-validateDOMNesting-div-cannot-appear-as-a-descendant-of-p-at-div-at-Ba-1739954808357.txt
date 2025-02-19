@@ -1,0 +1,43 @@
+Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.
+    at div
+    at Badge (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/badge.tsx:56:18)
+    at p
+    at _c7 (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/card.tsx:86:12)
+    at div
+    at _c3 (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/card.tsx:43:12)
+    at div
+    at _c (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/card.tsx:20:11)
+    at a
+    at https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:337:18
+    at div
+    at div
+    at main
+    at div
+    at div
+    at Navbar (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/navbar.tsx:38:34)
+    at BuildingWeeks (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/pages/building-weeks.tsx:35:20)
+    at Route (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:323:16)
+    at Switch (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:379:17)
+    at Router (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/App.tsx?v=ljrcyNDubCWxiwqOYBse5:44:31)
+    at QueryClientProvider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=fcb683da:2805:3)
+    at App
+
+week-details.tsx:124 Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at WeekDetails (week-details.tsx:124:61)
+week-details.tsx:124 Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at WeekDetails (week-details.tsx:124:61)
+chunk-RPCDYKBN.js?v=fcb683da:14032 The above error occurred in the <WeekDetails> component:
+
+    at WeekDetails (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/pages/week-details.tsx:36:20)
+    at Route (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:323:16)
+    at Switch (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:379:17)
+    at Router (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/App.tsx?v=ljrcyNDubCWxiwqOYBse5:44:31)
+    at QueryClientProvider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=fcb683da:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=fcb683da:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at WeekDetails (week-details.tsx:124:61)
+﻿
+
