@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "@db";
-import { buildings, shifts, users, roles, shiftTypes, shiftInspectors, shiftDays, inspectorGroups, taskAssignments } from "@db/schema";
+import { buildings, shifts, users, roles, shiftTypes, shiftInspectors, shiftDays, inspectorGroups } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function getBuildingsWithShifts(req: Request, res: Response) {
@@ -25,40 +25,38 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
     // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
       buildingsData.map(async (building) => {
-        // Get shifts for this building with task assignments
+        // Get shifts for this building
         const buildingShifts = await db
           .select({
             id: shifts.id,
             week: shifts.week,
             buildingId: shifts.buildingId,
+            role: {
+              id: roles.id,
+              name: roles.name,
+            },
+            groupName: shifts.groupName,
+            status: shifts.status,
           })
           .from(shifts)
+          .leftJoin(roles, eq(shifts.roleId, roles.id))
           .where(eq(shifts.buildingId, building.id));
 
-        // For each shift, get task assignments with their related data
+        // For each shift, get inspector groups and their details
         const shiftsWithDetails = await Promise.all(
           buildingShifts.map(async (shift) => {
-            // Get all task assignments for this shift
-            const tasks = await db
+            // Get all inspector groups for this shift
+            const inspectorGroupsData = await db
               .select({
-                id: taskAssignments.id,
-                role: {
-                  id: roles.id,
-                  name: roles.name,
-                },
-                inspectorGroup: {
-                  id: inspectorGroups.id,
-                  name: inspectorGroups.name,
-                },
+                id: inspectorGroups.id,
+                name: inspectorGroups.name,
               })
-              .from(taskAssignments)
-              .leftJoin(roles, eq(taskAssignments.roleId, roles.id))
-              .leftJoin(inspectorGroups, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
-              .where(eq(taskAssignments.shiftId, shift.id));
+              .from(inspectorGroups)
+              .where(eq(inspectorGroups.shiftId, shift.id));
 
-            // For each task assignment, get inspectors and daily assignments
-            const tasksWithDetails = await Promise.all(
-              tasks.map(async (task) => {
+            // For each inspector group, get inspectors and daily assignments
+            const inspectorGroupsWithDetails = await Promise.all(
+              inspectorGroupsData.map(async (group) => {
                 // Get all inspectors for this group
                 const inspectors = await db
                   .select({
@@ -72,7 +70,7 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                   })
                   .from(shiftInspectors)
                   .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-                  .where(eq(shiftInspectors.inspectorGroupId, task.inspectorGroup.id));
+                  .where(eq(shiftInspectors.inspectorGroupId, group.id));
 
                 // Get daily assignments for this group
                 const days = await db
@@ -88,22 +86,19 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                   })
                   .from(shiftDays)
                   .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
-                  .where(eq(shiftDays.inspectorGroupId, task.inspectorGroup.id));
+                  .where(eq(shiftDays.inspectorGroupId, group.id));
 
                 return {
-                  ...task,
-                  inspectorGroup: {
-                    ...task.inspectorGroup,
-                    inspectors,
-                    days,
-                  },
+                  ...group,
+                  inspectors,
+                  days,
                 };
               })
             );
 
             return {
               ...shift,
-              taskAssignments: tasksWithDetails,
+              inspectorGroups: inspectorGroupsWithDetails,
             };
           })
         );

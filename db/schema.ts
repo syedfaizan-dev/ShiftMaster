@@ -1,7 +1,6 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, time, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, time } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
-import { type InferSelectModel } from "drizzle-orm";
 
 export const buildings = pgTable("buildings", {
   id: serial("id").primaryKey(),
@@ -12,9 +11,6 @@ export const buildings = pgTable("buildings", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
-
-export type ShiftType = typeof shiftTypes.$inferSelect;
-export type InsertShiftType = typeof shiftTypes.$inferInsert;
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -47,23 +43,20 @@ export const shiftTypes = pgTable("shift_types", {
 export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
   buildingId: integer("building_id").references(() => buildings.id).notNull(),
+  roleId: integer("role_id").references(() => roles.id),
+  groupName: text("group_name"),
+  status: text("status").default('PENDING'),
+  rejectionReason: text("rejection_reason"),
+  responseAt: timestamp("response_at"),
   week: text("week").notNull(), // Format: YYYY-WW
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
 });
 
-export const taskAssignments = pgTable("task_assignments", {
-  id: serial("id").primaryKey(),
-  shiftId: integer("shift_id").references(() => shifts.id).notNull(),
-  roleId: integer("role_id").references(() => roles.id).notNull(),
-  inspectorGroupId: integer("inspector_group_id").references(() => inspectorGroups.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export const inspectorGroups = pgTable("inspector_groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  shiftId: integer("shift_id").references(() => shifts.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -88,6 +81,7 @@ export const shiftDays = pgTable("shift_days", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Relations
 export const buildingsRelations = relations(buildings, ({ one, many }) => ({
   shifts: many(shifts),
   supervisor: one(users, {
@@ -101,7 +95,20 @@ export const shiftsRelations = relations(shifts, ({ one, many }) => ({
     fields: [shifts.buildingId],
     references: [buildings.id],
   }),
-  taskAssignments: many(taskAssignments),
+  role: one(roles, {
+    fields: [shifts.roleId],
+    references: [roles.id],
+  }),
+  inspectorGroups: many(inspectorGroups),
+}));
+
+export const inspectorGroupsRelations = relations(inspectorGroups, ({ one, many }) => ({
+  shift: one(shifts, {
+    fields: [inspectorGroups.shiftId],
+    references: [shifts.id],
+  }),
+  inspectors: many(shiftInspectors),
+  days: many(shiftDays),
 }));
 
 export const shiftInspectorsRelations = relations(shiftInspectors, ({ one }) => ({
@@ -126,27 +133,6 @@ export const shiftDaysRelations = relations(shiftDays, ({ one }) => ({
   }),
 }));
 
-export const inspectorGroupsRelations = relations(inspectorGroups, ({ many }) => ({
-  taskAssignments: many(taskAssignments),
-  inspectors: many(shiftInspectors),
-  days: many(shiftDays),
-}));
-
-export const taskAssignmentsRelations = relations(taskAssignments, ({ one }) => ({
-  shift: one(shifts, {
-    fields: [taskAssignments.shiftId],
-    references: [shifts.id],
-  }),
-  role: one(roles, {
-    fields: [taskAssignments.roleId],
-    references: [roles.id],
-  }),
-  inspectorGroup: one(inspectorGroups, {
-    fields: [taskAssignments.inspectorGroupId],
-    references: [inspectorGroups.id],
-  }),
-}));
-
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -156,14 +142,14 @@ export type Role = typeof roles.$inferSelect;
 export type InsertRole = typeof roles.$inferInsert;
 export type Building = typeof buildings.$inferSelect;
 export type InsertBuilding = typeof buildings.$inferInsert;
-export type TaskAssignment = typeof taskAssignments.$inferSelect;
-export type InsertTaskAssignment = typeof taskAssignments.$inferInsert;
 export type InspectorGroup = typeof inspectorGroups.$inferSelect;
 export type InsertInspectorGroup = typeof inspectorGroups.$inferInsert;
 export type ShiftDay = typeof shiftDays.$inferSelect;
 export type InsertShiftDay = typeof shiftDays.$inferInsert;
 export type ShiftInspector = typeof shiftInspectors.$inferSelect;
 export type InsertShiftInspector = typeof shiftInspectors.$inferInsert;
+export type ShiftType = typeof shiftTypes.$inferSelect;
+export type InsertShiftType = typeof shiftTypes.$inferInsert;
 
 // Schemas
 export const insertUserSchema = createInsertSchema(users);
@@ -182,10 +168,8 @@ export const selectShiftInspectorSchema = createSelectSchema(shiftInspectors);
 // Types with relations
 export type ShiftWithRelations = Shift & {
   building?: Building;
-  taskAssignments?: Array<TaskAssignment & {
-    role?: Role;
-    inspectorGroup?: InspectorGroupWithRelations;
-  }>;
+  role?: Role;
+  inspectorGroups?: Array<InspectorGroupWithRelations>;
 };
 
 export type InspectorGroupWithRelations = InspectorGroup & {

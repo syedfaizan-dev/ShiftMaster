@@ -9,7 +9,6 @@ import {
   buildings, 
   shiftInspectors,
   shiftDays,
-  taskAssignments,
   inspectorGroups 
 } from "@db/schema";
 
@@ -18,11 +17,10 @@ export async function getShifts(req: Request, res: Response) {
     // Get all shifts where the user is assigned as an inspector
     const userShifts = await db
       .select({
-        shiftId: taskAssignments.shiftId,
+        shiftId: inspectorGroups.shiftId,
       })
       .from(shiftInspectors)
       .leftJoin(inspectorGroups, eq(shiftInspectors.inspectorGroupId, inspectorGroups.id))
-      .leftJoin(taskAssignments, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
       .where(eq(shiftInspectors.inspectorId, req.user!.id));
 
     const shiftIds = [...new Set(userShifts.map(s => s.shiftId))];
@@ -37,15 +35,22 @@ export async function getShifts(req: Request, res: Response) {
       .select({
         id: shifts.id,
         week: shifts.week,
+        groupName: shifts.groupName,
+        status: shifts.status,
         building: {
           id: buildings.id,
           name: buildings.name,
           code: buildings.code,
           area: buildings.area,
         },
+        role: {
+          id: roles.id,
+          name: roles.name,
+        },
       })
       .from(shifts)
-      .leftJoin(buildings, eq(shifts.buildingId, buildings.id));
+      .leftJoin(buildings, eq(shifts.buildingId, buildings.id))
+      .leftJoin(roles, eq(shifts.roleId, roles.id));
 
     // If not admin, only show shifts where the user is an inspector
     if (!req.user?.isAdmin) {
@@ -55,30 +60,19 @@ export async function getShifts(req: Request, res: Response) {
 
     const shiftsData = await query;
 
-    // Get task assignments and details for each shift
+    // Get inspector groups and details for each shift
     const shiftsWithDetails = await Promise.all(
       shiftsData.map(async (shift) => {
-        // Get all task assignments for this shift
-        const taskAssignmentsData = await db
+        const inspectorGroupsData = await db
           .select({
-            id: taskAssignments.id,
-            role: {
-              id: roles.id,
-              name: roles.name,
-            },
-            inspectorGroup: {
-              id: inspectorGroups.id,
-              name: inspectorGroups.name,
-            },
+            id: inspectorGroups.id,
+            name: inspectorGroups.name,
           })
-          .from(taskAssignments)
-          .leftJoin(roles, eq(taskAssignments.roleId, roles.id))
-          .leftJoin(inspectorGroups, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
-          .where(eq(taskAssignments.shiftId, shift.id));
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.shiftId, shift.id));
 
-        // For each task assignment, get inspectors and daily assignments
-        const taskAssignmentsWithDetails = await Promise.all(
-          taskAssignmentsData.map(async (task) => {
+        const inspectorGroupsWithDetails = await Promise.all(
+          inspectorGroupsData.map(async (group) => {
             // Get all inspectors for this group
             const inspectors = await db
               .select({
@@ -92,7 +86,7 @@ export async function getShifts(req: Request, res: Response) {
               })
               .from(shiftInspectors)
               .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-              .where(eq(shiftInspectors.inspectorGroupId, task.inspectorGroup.id));
+              .where(eq(shiftInspectors.inspectorGroupId, group.id));
 
             // Get daily assignments
             const days = await db
@@ -108,22 +102,19 @@ export async function getShifts(req: Request, res: Response) {
               })
               .from(shiftDays)
               .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
-              .where(eq(shiftDays.inspectorGroupId, task.inspectorGroup.id));
+              .where(eq(shiftDays.inspectorGroupId, group.id));
 
             return {
-              ...task,
-              inspectorGroup: {
-                ...task.inspectorGroup,
-                inspectors,
-                days,
-              },
+              ...group,
+              inspectors,
+              days,
             };
           })
         );
 
         return {
           ...shift,
-          taskAssignments: taskAssignmentsWithDetails,
+          inspectorGroups: inspectorGroupsWithDetails,
         };
       })
     );
@@ -141,9 +132,9 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
-    const { buildingId, week, tasks } = req.body;
+    const { buildingId, week, roleId, groupName, inspectorGroups: groups } = req.body;
 
-    if (!buildingId || !week || !tasks?.length) {
+    if (!buildingId || !week || !roleId || !groupName || !groups?.length) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -155,40 +146,34 @@ export async function createShift(req: Request, res: Response) {
         .values({
           buildingId,
           week,
+          roleId,
+          groupName,
+          status: 'PENDING',
           createdBy: req.user!.id,
         })
         .returning();
 
-      // Create task assignments and related data
+      // Create inspector groups and related data
       await Promise.all(
-        tasks.map(async (task: {
-          roleId: number;
-          inspectorGroup: {
-            name: string;
-            inspectorIds: number[];
-            days: Array<{ dayOfWeek: number; shiftTypeId: number }>;
-          };
+        groups.map(async (group: {
+          name: string;
+          inspectorIds: number[];
+          days: Array<{ dayOfWeek: number; shiftTypeId: number }>;
         }) => {
           // Create inspector group
-          const [group] = await tx
+          const [inspectorGroup] = await tx
             .insert(inspectorGroups)
             .values({
-              name: task.inspectorGroup.name,
+              name: group.name,
+              shiftId: shift.id,
             })
             .returning();
 
-          // Create task assignment
-          await tx.insert(taskAssignments).values({
-            shiftId: shift.id,
-            roleId: task.roleId,
-            inspectorGroupId: group.id,
-          });
-
           // Add inspectors to group
           await Promise.all(
-            task.inspectorGroup.inspectorIds.map(async (inspectorId) => {
+            group.inspectorIds.map(async (inspectorId) => {
               await tx.insert(shiftInspectors).values({
-                inspectorGroupId: group.id,
+                inspectorGroupId: inspectorGroup.id,
                 inspectorId,
                 status: 'PENDING',
               });
@@ -197,9 +182,9 @@ export async function createShift(req: Request, res: Response) {
 
           // Add daily assignments
           await Promise.all(
-            task.inspectorGroup.days.map(async (day) => {
+            group.days.map(async (day) => {
               await tx.insert(shiftDays).values({
-                inspectorGroupId: group.id,
+                inspectorGroupId: inspectorGroup.id,
                 dayOfWeek: day.dayOfWeek,
                 shiftTypeId: day.shiftTypeId,
               });
@@ -225,38 +210,36 @@ async function getShiftDetails(shiftId: number) {
     .select({
       id: shifts.id,
       week: shifts.week,
+      groupName: shifts.groupName,
+      status: shifts.status,
       building: {
         id: buildings.id,
         name: buildings.name,
         code: buildings.code,
         area: buildings.area,
       },
-    })
-    .from(shifts)
-    .leftJoin(buildings, eq(shifts.buildingId, buildings.id))
-    .where(eq(shifts.id, shiftId));
-
-  if (!shift) return null;
-
-  const taskAssignmentsData = await db
-    .select({
-      id: taskAssignments.id,
       role: {
         id: roles.id,
         name: roles.name,
       },
-      inspectorGroup: {
-        id: inspectorGroups.id,
-        name: inspectorGroups.name,
-      },
     })
-    .from(taskAssignments)
-    .leftJoin(roles, eq(taskAssignments.roleId, roles.id))
-    .leftJoin(inspectorGroups, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
-    .where(eq(taskAssignments.shiftId, shiftId));
+    .from(shifts)
+    .leftJoin(buildings, eq(shifts.buildingId, buildings.id))
+    .leftJoin(roles, eq(shifts.roleId, roles.id))
+    .where(eq(shifts.id, shiftId));
 
-  const taskAssignmentsWithDetails = await Promise.all(
-    taskAssignmentsData.map(async (task) => {
+  if (!shift) return null;
+
+  const inspectorGroupsData = await db
+    .select({
+      id: inspectorGroups.id,
+      name: inspectorGroups.name,
+    })
+    .from(inspectorGroups)
+    .where(eq(inspectorGroups.shiftId, shiftId));
+
+  const inspectorGroupsWithDetails = await Promise.all(
+    inspectorGroupsData.map(async (group) => {
       const inspectors = await db
         .select({
           inspector: {
@@ -269,7 +252,7 @@ async function getShiftDetails(shiftId: number) {
         })
         .from(shiftInspectors)
         .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-        .where(eq(shiftInspectors.inspectorGroupId, task.inspectorGroup.id));
+        .where(eq(shiftInspectors.inspectorGroupId, group.id));
 
       const days = await db
         .select({
@@ -284,22 +267,19 @@ async function getShiftDetails(shiftId: number) {
         })
         .from(shiftDays)
         .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
-        .where(eq(shiftDays.inspectorGroupId, task.inspectorGroup.id));
+        .where(eq(shiftDays.inspectorGroupId, group.id));
 
       return {
-        ...task,
-        inspectorGroup: {
-          ...task.inspectorGroup,
-          inspectors,
-          days,
-        },
+        ...group,
+        inspectors,
+        days,
       };
     })
   );
 
   return {
     ...shift,
-    taskAssignments: taskAssignmentsWithDetails,
+    inspectorGroups: inspectorGroupsWithDetails,
   };
 }
 
@@ -322,10 +302,9 @@ export async function handleShiftInspectorResponse(req: Request, res: Response) 
       .select()
       .from(shiftInspectors)
       .leftJoin(inspectorGroups, eq(shiftInspectors.inspectorGroupId, inspectorGroups.id))
-      .leftJoin(taskAssignments, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
       .where(
         and(
-          eq(taskAssignments.shiftId, parseInt(shiftId)),
+          eq(inspectorGroups.shiftId, parseInt(shiftId)),
           eq(shiftInspectors.inspectorId, parseInt(inspectorId))
         )
       )
