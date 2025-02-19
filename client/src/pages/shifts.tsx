@@ -8,7 +8,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogFooter,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -397,16 +396,18 @@ export default function BuildingShifts() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shifts Management</h1>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setIsCreateGroupDialogOpen(true);
-              setSelectedShift(selectedWeek);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Group
-          </Button>
+          {selectedWeek && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateGroupDialogOpen(true);
+                setSelectedShift(selectedWeek);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Group
+            </Button>
+          )}
         </div>
 
         {/* Filter Form */}
@@ -622,7 +623,15 @@ export default function BuildingShifts() {
         )}
 
         {/* Add Inspector Dialog */}
-        <Dialog open={isAddInspectorOpen} onOpenChange={setIsAddInspectorOpen}>
+        <Dialog 
+          open={isAddInspectorOpen} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsAddInspectorOpen(false);
+              setSelectedInspector(undefined);
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Inspector to Group</DialogTitle>
@@ -637,16 +646,17 @@ export default function BuildingShifts() {
                   <SelectValue placeholder="Select an inspector" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedGroup && getAvailableInspectorsForGroup(
-                    selectedWeek?.inspectorGroups.find(g => g.id === selectedGroup)!
-                  ).map((inspector) => (
-                    <SelectItem
-                      key={inspector.id}
-                      value={inspector.id.toString()}
-                    >
-                      {inspector.fullName}
-                    </SelectItem>
-                  ))}
+                  {selectedGroup && selectedWeek?.inspectorGroups
+                    .find(g => g.id === selectedGroup)
+                    ?.inspectors
+                    .map((inspector) => (
+                      <SelectItem
+                        key={inspector.inspector.id}
+                        value={inspector.inspector.id.toString()}
+                      >
+                        {inspector.inspector.fullName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <DialogFooter>
@@ -657,7 +667,6 @@ export default function BuildingShifts() {
                         groupId: selectedGroup,
                         inspectorId: parseInt(selectedInspector),
                       });
-                      setIsAddInspectorOpen(false);
                     }
                   }}
                   disabled={!selectedInspector || assignInspectorMutation.isPending}
