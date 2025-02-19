@@ -8,7 +8,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogFooter,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -28,9 +27,16 @@ import {
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -38,11 +44,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Users, Clock, Edit } from "lucide-react";
+import { Loader2, Plus, Users, Edit } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
-
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Type definitions
 type ShiftType = {
@@ -116,6 +120,8 @@ const singleDayShiftTypeSchema = z.object({
 type FilterFormData = z.infer<typeof filterFormSchema>;
 type InspectorGroupFormData = z.infer<typeof inspectorGroupSchema>;
 type SingleDayShiftTypeFormData = z.infer<typeof singleDayShiftTypeSchema>;
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function BuildingShifts() {
   const { user } = useUser();
@@ -481,85 +487,218 @@ export default function BuildingShifts() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {selectedWeek.inspectorGroups.map((group) => (
-                  <div key={group.id} className="space-y-4 border rounded-lg p-4 mb-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-medium">{group.name}</h4>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedGroup(group.id)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Inspector
-                      </Button>
-                    </div>
-
-                    {/* Days Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {DAYS.map((day, dayIndex) => {
-                        const existingDay = group.days.find(
-                          (d) => d.dayOfWeek === dayIndex
-                        );
-                        return (
-                          <div
-                            key={dayIndex}
-                            className="flex items-center justify-between p-3 bg-secondary/10 rounded-md"
-                          >
-                            <div>
-                              <p className="font-medium">{day}</p>
-                              {existingDay?.shiftType ? (
-                                <p className="text-sm text-muted-foreground">
-                                  {existingDay.shiftType.name}
-                                  <br />
-                                  {existingDay.shiftType.startTime} -{" "}
-                                  {existingDay.shiftType.endTime}
-                                </p>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  No shift assigned
-                                </p>
-                              )}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">Inspectors Info</TableHead>
+                        <TableHead className="w-[250px]">Inspectors Group</TableHead>
+                        <TableHead>Monday</TableHead>
+                        <TableHead>Tuesday</TableHead>
+                        <TableHead>Wednesday</TableHead>
+                        <TableHead>Thursday</TableHead>
+                        <TableHead>Friday</TableHead>
+                        <TableHead>Saturday</TableHead>
+                        <TableHead>Sunday</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedWeek.inspectorGroups.map((group) => (
+                        <TableRow key={group.id}>
+                          <TableCell className="font-medium">
+                            <div className="space-y-1">
+                              <div>{group.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {group.inspectors.length} inspector(s)
+                              </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                setSelectedGroupForShiftTypes(group);
-                                singleDayShiftTypeForm.reset({
-                                  shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
-                                });
-                              }}
-                            >
-                              {existingDay?.shiftType ? (
-                                <>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Add
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* View Inspectors Button */}
-                    <Button variant="outline" size="sm">
-                      <Users className="h-4 w-4 mr-2" />
-                      View Inspectors
-                    </Button>
-                  </div>
-                ))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <div className="text-sm space-y-1">
+                                {group.inspectors.map((si) => (
+                                  <div key={si.inspector.id} className="flex items-center gap-2">
+                                    <span>{si.inspector.fullName}</span>
+                                    <Badge
+                                      variant={
+                                        si.status === "ACCEPTED"
+                                          ? "success"
+                                          : si.status === "REJECTED"
+                                            ? "destructive"
+                                            : "default"
+                                      }
+                                    >
+                                      {si.status}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedGroup(group.id)}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Inspector
+                              </Button>
+                            </div>
+                          </TableCell>
+                          {/* Generate cells for each day */}
+                          {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => {
+                            const existingDay = group.days.find(
+                              (d) => d.dayOfWeek === dayIndex
+                            );
+                            return (
+                              <TableCell key={dayIndex}>
+                                <div className="space-y-2">
+                                  {existingDay?.shiftType ? (
+                                    <div className="text-sm">
+                                      <div className="font-medium">
+                                        {existingDay.shiftType.name}
+                                      </div>
+                                      <div className="text-muted-foreground">
+                                        {existingDay.shiftType.startTime} -{" "}
+                                        {existingDay.shiftType.endTime}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                      No shift assigned
+                                    </div>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                      setSelectedGroupForShiftTypes(group);
+                                      singleDayShiftTypeForm.reset({
+                                        shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
+                                      });
+                                    }}
+                                  >
+                                    {existingDay?.shiftType ? (
+                                      <>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>
         )}
+        {/* Dialogs */}
+        <Dialog open={isCreateGroupDialogOpen} onOpenChange={setIsCreateGroupDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Group
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Inspector Group</DialogTitle>
+              <DialogDescription>
+                Fill in the form below to create a new inspector group.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...createGroupForm}>
+              <form onSubmit={createGroupForm.handleSubmit((data) =>
+                createInspectorGroupMutation.mutate({ shiftId: selectedShift?.id!, data })
+              )}>
+                <FormField
+                  control={createGroupForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Group Name</FormLabel>
+                      <FormControl>
+                        <input type="text" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="submit" disabled={createInspectorGroupMutation.isLoading}>
+                    Create
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditShiftTypesOpen} onOpenChange={setIsEditShiftTypesOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Shift Types</DialogTitle>
+              <DialogDescription>Select the shift type for {DAYS[editingDay?.dayOfWeek!]}</DialogDescription>
+            </DialogHeader>
+            <Form {...singleDayShiftTypeForm}>
+              <form
+                onSubmit={singleDayShiftTypeForm.handleSubmit((data) =>
+                  updateSingleDayShiftTypeMutation.mutate({
+                    groupId: editingDay?.groupId!,
+                    dayOfWeek: editingDay?.dayOfWeek!,
+                    shiftTypeId: data.shiftTypeId,
+                  })
+                )}
+              >
+                <FormField
+                  control={singleDayShiftTypeForm.control}
+                  name="shiftTypeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Shift Type</FormLabel>
+                      <FormControl>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a shift type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getAvailableShiftTypes(
+                              selectedGroupForShiftTypes!,
+                              editingDay?.dayOfWeek!,
+                              true
+                            ).map((shiftType) => (
+                              <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
+                                {shiftType.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value={"none"}>No Shift</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button type="submit" disabled={updateSingleDayShiftTypeMutation.isLoading}>
+                    Save
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Navbar>
   );
