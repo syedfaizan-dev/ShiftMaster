@@ -703,20 +703,42 @@ export default function BuildingShifts() {
                   <TableBody>
                     {selectedWeek.inspectorGroups.map((group) => (
                       <TableRow key={group.id}>
-                        <TableCell className="font-medium">
-                          <div className="space-y-1">
-                            <div>{group.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {group.inspectors.length} inspector(s)
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
+                        {/* Inspector group information cell */}
+                        <TableCell className="font-medium p-2">
                           <div className="space-y-2">
-                            <div className="text-sm space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium">{group.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {group.inspectors.length} inspector(s)
+                                </div>
+                              </div>
+                              <div className="flex space-x-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    setSelectedGroup(group.id);
+                                    setIsAddInspectorOpen(true);
+                                  }}
+                                >
+                                  <Users className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setGroupToDelete(group.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="space-y-1">
                               {group.inspectors.map((si) => (
-                                <div key={si.inspector.id} className="flex items-center gap-2">
-                                  <span>{si.inspector.fullName}</span>
+                                <div key={si.inspector.id} className="flex items-center gap-1 text-sm">
+                                  <span className="truncate">{si.inspector.fullName}</span>
                                   <Badge
                                     variant={
                                       si.status === "ACCEPTED"
@@ -725,85 +747,66 @@ export default function BuildingShifts() {
                                           ? "destructive"
                                           : "default"
                                     }
+                                    className="text-xs"
                                   >
                                     {si.status}
                                   </Badge>
                                 </div>
                               ))}
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedGroup(group.id);
-                                  setIsAddInspectorOpen(true);
-                                }}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Inspector
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setGroupToDelete(group.id)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Group
-                              </Button>
-                            </div>
                           </div>
                         </TableCell>
+                        {/* Cell content for shift days */}
                         {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => {
                           const existingDay = group.days.find(
                             (d) => d.dayOfWeek === dayIndex
                           );
                           return (
-                            <TableCell key={dayIndex}>
-                              <div className="space-y-2">
+                            <TableCell key={dayIndex} className="p-2">
+                              <div className="min-w-[180px]">
                                 {existingDay?.shiftType ? (
-                                  <div className="text-sm">
-                                    <div className="font-medium">
-                                      {existingDay.shiftType.name}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium text-sm">
+                                        {existingDay.shiftType.name}
+                                      </span>
+                                      <div className="flex space-x-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => {
+                                            setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                            setSelectedGroupForShiftTypes(group);
+                                            setIsEditShiftTypesOpen(true);
+                                            singleDayShiftTypeForm.reset({
+                                              shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
+                                            });
+                                          }}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => setDayToDelete({ groupId: group.id, dayOfWeek: dayIndex })}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <div className="text-muted-foreground">
-                                      {existingDay.shiftType.startTime} -{" "}
-                                      {existingDay.shiftType.endTime}
-                                    </div>
-                                    <div className="flex gap-2 mt-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                          setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                          setSelectedGroupForShiftTypes(group);
-                                          setIsEditShiftTypesOpen(true);
-                                          singleDayShiftTypeForm.reset({
-                                            shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
-                                          });
-                                        }}
-                                      >
-                                        <Edit className="h-4 w-4 mr-2" />
-                                        Edit
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setDayToDelete({ groupId: group.id, dayOfWeek: dayIndex })}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                      </Button>
+                                    <div className="text-xs text-muted-foreground">
+                                      {existingDay.shiftType.startTime} - {existingDay.shiftType.endTime}
                                     </div>
                                   </div>
                                 ) : (
-                                  <div>
-                                    <div className="text-sm text-muted-foreground">
-                                      No shift assigned
-                                    </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm text-muted-foreground">No shift assigned</span>
                                     <Button
-                                      variant="outline"
-                                      size="sm"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
                                       onClick={() => {
                                         setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
                                         setSelectedGroupForShiftTypes(group);
@@ -813,8 +816,7 @@ export default function BuildingShifts() {
                                         });
                                       }}
                                     >
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      Add
+                                      <Plus className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 )}
@@ -1002,7 +1004,7 @@ export default function BuildingShifts() {
                     onClick={() => {
                       if (singleDayShiftTypeForm.formState.isValid) {
                         setIsEditShiftTypesOpen(false);
-                                            }
+                      }
                     }}
                   >
                     {updateSingleDayShiftTypeMutation.isPending ? (
