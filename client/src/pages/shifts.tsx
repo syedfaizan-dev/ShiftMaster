@@ -150,6 +150,7 @@ export default function BuildingShifts() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [groupToDelete, setGroupToDelete] = useState<number | null>(null);
+  const [dayToRemoveShift, setDayToRemoveShift] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
 
 
   const filterForm = useForm<FilterFormData>({
@@ -371,6 +372,39 @@ export default function BuildingShifts() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to delete inspector group",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeShiftTypeMutation = useMutation({
+    mutationFn: async ({ groupId, dayOfWeek }: { groupId: number; dayOfWeek: number }) => {
+      const response = await fetch(`/api/admin/inspector-groups/${groupId}/days/${dayOfWeek}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ shiftTypeId: null }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to remove shift type");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
+      toast({
+        title: "Success",
+        description: "Shift type removed successfully",
+      });
+      setDayToRemoveShift(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to remove shift type",
         variant: "destructive",
       });
     },
@@ -643,30 +677,40 @@ export default function BuildingShifts() {
                                     No shift assigned
                                   </div>
                                 )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                    setSelectedGroupForShiftTypes(group);
-                                    setIsEditShiftTypesOpen(true);
-                                    singleDayShiftTypeForm.reset({
-                                      shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
-                                    });
-                                  }}
-                                >
-                                  {existingDay?.shiftType ? (
-                                    <>
-                                      <Edit className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      Add
-                                    </>
-                                  )}
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                      setSelectedGroupForShiftTypes(group);
+                                      setIsEditShiftTypesOpen(true);
+                                      singleDayShiftTypeForm.reset({
+                                        shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
+                                      });
+                                    }}
+                                  >
+                                    {existingDay?.shiftType ? (
+                                      <>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDayToRemoveShift({ groupId: group.id, dayOfWeek: dayIndex })}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Remove
+                                  </Button>
+                                </div>
                               </div>
                             </TableCell>
                           );
@@ -895,6 +939,40 @@ export default function BuildingShifts() {
                   </>
                 ) : (
                   'Delete Group'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* New Alert Dialog for removing shift type */}
+        <AlertDialog
+          open={dayToRemoveShift !== null}
+          onOpenChange={(open) => !open && setDayToRemoveShift(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Shift Type</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove this shift type? This will clear the shift assignment for this day.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (dayToRemoveShift) {
+                    removeShiftTypeMutation.mutate(dayToRemoveShift);
+                  }
+                }}
+              >
+                {removeShiftTypeMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Removing...
+                  </>
+                ) : (
+                  'Remove Shift'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

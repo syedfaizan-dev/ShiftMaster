@@ -27,7 +27,6 @@ import {
   handleShiftResponse,
   getInspectorsByShiftType,
   getInspectorsByShiftTypeForTask,
-  updateShiftDay,
   handleShiftInspectorResponse,
   getInspectorShiftAssignments,
 } from "./routes/shifts";
@@ -1300,7 +1299,6 @@ export function registerRoutes(app: Express): Server {
                 eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
               )
             );
-
           // If shiftTypeId is not "none", insert new assignment
           if (shiftTypeId !== "none") {
             const [newDay] = await tx
@@ -1751,6 +1749,81 @@ export function registerRoutes(app: Express): Server {
       }
     },
   );
+
+  const updateShiftDay = async (req: Request, res: Response) => {
+    try {
+      const { groupId, dayOfWeek } = req.params;
+      const { shiftTypeId } = req.body;
+
+      console.log("Updating shift day:", { groupId, dayOfWeek, shiftTypeId });
+
+      // Check if the group exists
+      const [existingGroup] = await db
+        .select()
+        .from(inspectorGroups)
+        .where(eq(inspectorGroups.id, parseInt(groupId)))
+        .limit(1);
+
+      if (!existingGroup) {
+        return res.status(404).json({ message: "Inspector group not found" });
+      }
+
+      // Check if a day entry exists
+      const [existingDay] = await db
+        .select()
+        .from(shiftDays)
+        .where(
+          and(
+            eq(shiftDays.inspectorGroupId, parseInt(groupId)),
+            eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
+          )
+        )
+        .limit(1);
+
+      if (existingDay) {
+        // If shiftTypeId is null, we're removing the shift type
+        if (shiftTypeId === null) {
+          // Delete the shift day entry
+          await db
+            .delete(shiftDays)
+            .where(eq(shiftDays.id, existingDay.id));
+
+          return res.json({ message: "Shift type removed successfully" });
+        }
+
+        // Update existing day
+        const [updatedDay] = await db
+          .update(shiftDays)
+          .set({
+            shiftTypeId: parseInt(shiftTypeId),
+          })
+          .where(eq(shiftDays.id, existingDay.id))
+          .returning();
+
+        return res.json(updatedDay);
+      }
+
+      // If no day exists and we're trying to remove a shift type, just return success
+      if (shiftTypeId === null) {
+        return res.json({ message: "No shift type to remove" });
+      }
+
+      // Create new day entry
+      const [newDay] = await db
+        .insert(shiftDays)
+        .values({
+          inspectorGroupId: parseInt(groupId),
+          dayOfWeek: parseInt(dayOfWeek),
+          shiftTypeId: parseInt(shiftTypeId),
+        })
+        .returning();
+
+      res.json(newDay);
+    } catch (error) {
+      console.error("Error updating shift day:", error);
+      res.status(500).json({ message: "Error updating shift day" });
+    }
+  };
 
   const server = createServer(app);
   return server;
