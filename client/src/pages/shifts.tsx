@@ -25,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -38,13 +37,14 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Users, Clock, Edit } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// Type definitions
 type ShiftType = {
   id: number;
   name: string;
@@ -99,23 +99,60 @@ type BuildingsResponse = {
   buildings: BuildingWithShifts[];
 };
 
+// Form schemas
+const filterFormSchema = z.object({
+  buildingId: z.string().min(1, "Please select a building"),
+  weekId: z.string().optional(),
+});
+
 const inspectorGroupSchema = z.object({
   name: z.string().min(1, "Group name is required"),
 });
-
-type InspectorGroupFormData = z.infer<typeof inspectorGroupSchema>;
 
 const singleDayShiftTypeSchema = z.object({
   shiftTypeId: z.string(),
 });
 
+type FilterFormData = z.infer<typeof filterFormSchema>;
+type InspectorGroupFormData = z.infer<typeof inspectorGroupSchema>;
 type SingleDayShiftTypeFormData = z.infer<typeof singleDayShiftTypeSchema>;
 
 export default function BuildingShifts() {
   const { user } = useUser();
   const queryClient = useQueryClient();
-  const [selectedBuildingId, setSelectedBuildingId] = useState<string>("");
-  const [selectedWeekId, setSelectedWeekId] = useState<string>("");
+  const { toast } = useToast();
+
+  const [selectedInspector, setSelectedInspector] = useState<string | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
+  const [selectedGroupForShiftTypes, setSelectedGroupForShiftTypes] = useState<InspectorGroup | null>(null);
+  const [isEditShiftTypesOpen, setIsEditShiftTypesOpen] = useState(false);
+  const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
+
+  const filterForm = useForm<FilterFormData>({
+    resolver: zodResolver(filterFormSchema),
+    defaultValues: {
+      buildingId: "",
+      weekId: "",
+    },
+  });
+
+  const createGroupForm = useForm<InspectorGroupFormData>({
+    resolver: zodResolver(inspectorGroupSchema),
+    defaultValues: {
+      name: "",
+    },
+  });
+
+  const singleDayShiftTypeForm = useForm<SingleDayShiftTypeFormData>({
+    resolver: zodResolver(singleDayShiftTypeSchema),
+    defaultValues: {
+      shiftTypeId: "",
+    },
+  });
 
   const { data: buildingsData, isLoading: isLoadingBuildings } = useQuery<BuildingsResponse>({
     queryKey: ["/api/buildings/with-shifts"],
@@ -161,28 +198,13 @@ export default function BuildingShifts() {
 
   // Get the selected building's data
   const selectedBuilding = buildingsData?.buildings.find(
-    (b) => b.id.toString() === selectedBuildingId
+    (b) => b.id.toString() === filterForm.watch("buildingId")
   );
 
   // Get the selected week's data
   const selectedWeek = selectedBuilding?.shifts.find(
-    (s) => s.id.toString() === selectedWeekId
+    (s) => s.id.toString() === filterForm.watch("weekId")
   );
-
-  if (!user?.isAdmin) {
-    return (
-      <Navbar>
-        <div className="p-6">
-          <Alert variant="destructive">
-            <AlertTitle>Access Denied</AlertTitle>
-            <AlertDescription>
-              You don't have permission to access this page.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </Navbar>
-    );
-  }
 
   const assignInspectorMutation = useMutation({
     mutationFn: async ({ groupId, inspectorId }: { groupId: number; inspectorId: number }) => {
@@ -216,13 +238,6 @@ export default function BuildingShifts() {
     },
   });
 
-  const createGroupForm = useForm<InspectorGroupFormData>({
-    resolver: zodResolver(inspectorGroupSchema),
-    defaultValues: {
-      name: "",
-    },
-  });
-
   const createInspectorGroupMutation = useMutation({
     mutationFn: async ({ shiftId, data }: { shiftId: number; data: InspectorGroupFormData }) => {
       const response = await fetch(`/api/admin/shifts/${shiftId}/inspector-groups`, {
@@ -231,13 +246,7 @@ export default function BuildingShifts() {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          name: data.name,
-          days: DAYS.map((_, index) => ({
-            dayOfWeek: index,
-            shiftTypeId: null,
-          })),
-        }),
+        body: JSON.stringify(data),
       });
       if (!response.ok) {
         throw new Error("Failed to create inspector group");
@@ -260,14 +269,6 @@ export default function BuildingShifts() {
         description: error instanceof Error ? error.message : "Failed to create inspector group",
         variant: "destructive",
       });
-    },
-  });
-
-
-  const singleDayShiftTypeForm = useForm<SingleDayShiftTypeFormData>({
-    resolver: zodResolver(singleDayShiftTypeSchema),
-    defaultValues: {
-      shiftTypeId: "",
     },
   });
 
@@ -332,15 +333,6 @@ export default function BuildingShifts() {
     return shiftTypesData.filter(type => type.id !== currentShiftTypeId);
   };
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  const [selectedInspector, setSelectedInspector] = useState<string | undefined>(undefined);
-  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
-  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
-  const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
-  const [selectedGroupForShiftTypes, setSelectedGroupForShiftTypes] = useState<InspectorGroup | null>(null);
-  const [isEditShiftTypesOpen, setIsEditShiftTypesOpen] = useState(false);
-  const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
   const buildings = buildingsData?.buildings || [];
   const isLoading = isLoadingBuildings || isLoadingShiftTypes;
 
@@ -356,6 +348,11 @@ export default function BuildingShifts() {
     if (!availableInspectors) return [];
     const assignedInspectorIds = new Set(group.inspectors.map((si) => si.inspector.id));
     return availableInspectors.filter((inspector) => !assignedInspectorIds.has(inspector.id));
+  };
+
+  const onFilterSubmit = (data: FilterFormData) => {
+    // Handle form submission if needed
+    console.log("Filter form submitted:", data);
   };
 
   if (!user?.isAdmin) {
@@ -378,52 +375,74 @@ export default function BuildingShifts() {
       <div className="p-6">
         <h1 className="text-3xl font-bold mb-6">Shifts Management</h1>
 
-        <div className="grid gap-4 mb-6">
-          {/* Building Selection */}
-          <div>
-            <FormLabel>Select Building</FormLabel>
-            <Select
-              value={selectedBuildingId}
-              onValueChange={(value) => {
-                setSelectedBuildingId(value);
-                setSelectedWeekId(""); // Reset week selection when building changes
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a building" />
-              </SelectTrigger>
-              <SelectContent>
-                {buildingsData?.buildings.map((building) => (
-                  <SelectItem key={building.id} value={building.id.toString()}>
-                    {building.name} ({building.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <Form {...filterForm}>
+          <form onSubmit={filterForm.handleSubmit(onFilterSubmit)} className="space-y-4 mb-6">
+            <div className="grid gap-4">
+              {/* Building Selection */}
+              <FormField
+                control={filterForm.control}
+                name="buildingId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Building</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        filterForm.setValue("weekId", ""); // Reset week selection
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a building" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {buildingsData?.buildings.map((building) => (
+                          <SelectItem key={building.id} value={building.id.toString()}>
+                            {building.name} ({building.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Week Selection - Only show if building is selected */}
-          {selectedBuildingId && (
-            <div>
-              <FormLabel>Select Week</FormLabel>
-              <Select
-                value={selectedWeekId}
-                onValueChange={setSelectedWeekId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a week" />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectedBuilding?.shifts.map((shift) => (
-                    <SelectItem key={shift.id} value={shift.id.toString()}>
-                      Week {shift.week} - {shift.role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Week Selection - Only show if building is selected */}
+              {filterForm.watch("buildingId") && (
+                <FormField
+                  control={filterForm.control}
+                  name="weekId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Week</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a week" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {selectedBuilding?.shifts.map((shift) => (
+                            <SelectItem key={shift.id} value={shift.id.toString()}>
+                              Week {shift.week} - {shift.role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
-          )}
-        </div>
+          </form>
+        </Form>
 
         {/* Show loading state */}
         {isLoading && (
@@ -464,24 +483,37 @@ export default function BuildingShifts() {
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 py-4">
-                            <Select
-                              value={selectedInspector}
-                              onValueChange={setSelectedInspector}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select an inspector" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getAvailableInspectorsForGroup(group).map((inspector) => (
-                                  <SelectItem
-                                    key={inspector.id}
-                                    value={inspector.id.toString()}
-                                  >
-                                    {inspector.fullName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Form {...filterForm}>
+                              <FormField
+                                control={filterForm.control}
+                                name="inspectorId"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <Select
+                                      value={selectedInspector}
+                                      onValueChange={setSelectedInspector}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select an inspector" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {getAvailableInspectorsForGroup(group).map((inspector) => (
+                                          <SelectItem
+                                            key={inspector.id}
+                                            value={inspector.id.toString()}
+                                          >
+                                            {inspector.fullName}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </Form>
                             <DialogFooter>
                               <Button
                                 onClick={() => {
