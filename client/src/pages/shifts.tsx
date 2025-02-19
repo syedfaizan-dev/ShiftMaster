@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -39,6 +40,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -635,7 +637,7 @@ export default function BuildingShifts() {
                   )}
                 />
                 <DialogFooter>
-                  <Button type="submit" disabled={createInspectorGroupMutation.isLoading}>
+                  <Button type="submit" disabled={createInspectorGroupMutation.isPending}>
                     Create
                   </Button>
                 </DialogFooter>
@@ -691,7 +693,7 @@ export default function BuildingShifts() {
                 />
 
                 <DialogFooter>
-                  <Button type="submit" disabled={updateSingleDayShiftTypeMutation.isLoading}>
+                  <Button type="submit" disabled={updateSingleDayShiftTypeMutation.isPending}>
                     Save
                   </Button>
                 </DialogFooter>
