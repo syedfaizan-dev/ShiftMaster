@@ -702,14 +702,17 @@ export default function BuildingShifts() {
                                       </>
                                     )}
                                   </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setDayToRemoveShift({ groupId: group.id, dayOfWeek: dayIndex })}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Remove
-                                  </Button>
+                                  {/* Only show the remove button if there's an existing shift type */}
+                                  {existingDay?.shiftType && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setDayToRemoveShift({ groupId: group.id, dayOfWeek: dayIndex })}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Remove
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             </TableCell>

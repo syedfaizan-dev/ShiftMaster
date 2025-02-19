@@ -1079,7 +1079,7 @@ export function registerRoutes(app: Express): Server {
             username: users.username,
             fullName: users.fullName,
           })
-                    .from(users)
+          .from(users)
           .where(
             and(
               eq(users.isAdmin, false),
@@ -1312,7 +1312,6 @@ export function registerRoutes(app: Express): Server {
 
             return newDay;
           }
-
           return null;
         });
 
@@ -1757,6 +1756,15 @@ export function registerRoutes(app: Express): Server {
 
       console.log("Updating shift day:", { groupId, dayOfWeek, shiftTypeId });
 
+      // Validate the input parameters
+      if (!groupId || isNaN(parseInt(groupId))) {
+        return res.status(400).json({ message: "Invalid group ID" });
+      }
+
+      if (!dayOfWeek || isNaN(parseInt(dayOfWeek))) {
+        return res.status(400).json({ message: "Invalid day of week" });
+      }
+
       // Check if the group exists
       const [existingGroup] = await db
         .select()
@@ -1780,32 +1788,49 @@ export function registerRoutes(app: Express): Server {
         )
         .limit(1);
 
-      if (existingDay) {
-        // If shiftTypeId is null, we're removing the shift type
-        if (shiftTypeId === null) {
-          // Delete the shift day entry
-          await db
-            .delete(shiftDays)
-            .where(eq(shiftDays.id, existingDay.id));
+      // Handle shift type removal (when shiftTypeId is null)
+      if (shiftTypeId === null && existingDay) {
+        await db
+          .delete(shiftDays)
+          .where(eq(shiftDays.id, existingDay.id));
 
-          return res.json({ message: "Shift type removed successfully" });
+        return res.json({ message: "Shift type removed successfully" });
+      }
+
+      // If trying to remove a non-existent shift type, return success
+      if (shiftTypeId === null && !existingDay) {
+        return res.json({ message: "No shift type to remove" });
+      }
+
+      // For updates or new assignments, validate shiftTypeId
+      if (shiftTypeId !== null) {
+        if (isNaN(parseInt(shiftTypeId.toString()))) {
+          return res.status(400).json({ message: "Invalid shift type ID" });
         }
 
+        // Verify shift type exists
+        const [shiftType] = await db
+          .select()
+          .from(shiftTypes)
+          .where(eq(shiftTypes.id, parseInt(shiftTypeId.toString())))
+          .limit(1);
+
+        if (!shiftType) {
+          return res.status(400).json({ message: "Invalid shift type" });
+        }
+      }
+
+      if (existingDay) {
         // Update existing day
         const [updatedDay] = await db
           .update(shiftDays)
           .set({
-            shiftTypeId: parseInt(shiftTypeId),
+            shiftTypeId: parseInt(shiftTypeId.toString()),
           })
           .where(eq(shiftDays.id, existingDay.id))
           .returning();
 
         return res.json(updatedDay);
-      }
-
-      // If no day exists and we're trying to remove a shift type, just return success
-      if (shiftTypeId === null) {
-        return res.json({ message: "No shift type to remove" });
       }
 
       // Create new day entry
@@ -1814,7 +1839,7 @@ export function registerRoutes(app: Express): Server {
         .values({
           inspectorGroupId: parseInt(groupId),
           dayOfWeek: parseInt(dayOfWeek),
-          shiftTypeId: parseInt(shiftTypeId),
+          shiftTypeId: parseInt(shiftTypeId.toString()),
         })
         .returning();
 
@@ -1824,6 +1849,9 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Error updating shift day" });
     }
   };
+
+  // Register the route
+  app.put("/api/admin/inspector-groups/:groupId/days/:dayOfWeek", requireAdmin, updateShiftDay);
 
   const server = createServer(app);
   return server;
