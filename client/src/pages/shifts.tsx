@@ -18,12 +18,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -45,7 +50,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Users, Edit, Trash2 } from "lucide-react";
+import { Loader2, Plus, Users, Edit, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
 import {
@@ -151,6 +157,10 @@ export default function BuildingShifts() {
   const [pageSize, setPageSize] = useState(5);
   const [groupToDelete, setGroupToDelete] = useState<number | null>(null);
   const [dayToDelete, setDayToDelete] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
+  const [openBuildingCombobox, setOpenBuildingCombobox] = useState(false);
+  const [openWeekCombobox, setOpenWeekCombobox] = useState(false);
+  const [buildingSearch, setBuildingSearch] = useState("");
+  const [weekSearch, setWeekSearch] = useState("");
 
 
   const filterForm = useForm<FilterFormData>({
@@ -456,6 +466,27 @@ export default function BuildingShifts() {
     setEditingDay(null);
   }, [filterForm.watch("buildingId")]);
 
+  // Filter buildings based on search
+  const filteredBuildings = buildingsData?.buildings.filter((building) => {
+    if (!buildingSearch) return true;
+    const searchTerm = buildingSearch.toLowerCase();
+    return (
+      building.name.toLowerCase().includes(searchTerm) ||
+      building.code.toLowerCase().includes(searchTerm) ||
+      building.area.toLowerCase().includes(searchTerm)
+    );
+  });
+
+  // Filter weeks based on search
+  const filteredWeeks = selectedBuilding?.shifts.filter((shift) => {
+    if (!weekSearch) return true;
+    const searchTerm = weekSearch.toLowerCase();
+    return (
+      shift.week.toLowerCase().includes(searchTerm) ||
+      shift.role.name.toLowerCase().includes(searchTerm)
+    );
+  });
+
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -482,69 +513,145 @@ export default function BuildingShifts() {
         <Form {...filterForm}>
           <form onSubmit={filterForm.handleSubmit(onFilterSubmit)} className="mb-6">
             <div className="grid grid-cols-2 gap-4">
-              {/* Building Selection */}
+              {/* Building Selection with Search */}
               <FormField
                 control={filterForm.control}
                 name="buildingId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Select Building</FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          setSelectedGroup(null);
-                          // When building changes, reset the week selection
-                          const building = buildingsData?.buildings.find(b => b.id.toString() === value);
-                          if (building?.shifts.length) {
-                            filterForm.setValue("weekId", building.shifts[0].id.toString());
-                          } else {
-                            filterForm.setValue("weekId", "");
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose a building" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {buildingsData?.buildings.map((building) => (
-                            <SelectItem key={building.id} value={building.id.toString()}>
-                              {building.name} ({building.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
+                    <Popover open={openBuildingCombobox} onOpenChange={setOpenBuildingCombobox}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openBuildingCombobox}
+                            className="justify-between"
+                          >
+                            {field.value
+                              ? buildingsData?.buildings.find(
+                                  (building) => building.id.toString() === field.value
+                                )?.name || "Select building..."
+                              : "Select building..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search buildings..."
+                            value={buildingSearch}
+                            onValueChange={setBuildingSearch}
+                          />
+                          <CommandEmpty>No building found.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredBuildings?.map((building) => (
+                              <CommandItem
+                                key={building.id}
+                                value={building.id.toString()}
+                                onSelect={(value) => {
+                                  field.onChange(value);
+                                  setOpenBuildingCombobox(false);
+                                  setSelectedGroup(null);
+                                  const building = buildingsData?.buildings.find(
+                                    (b) => b.id.toString() === value
+                                  );
+                                  if (building?.shifts.length) {
+                                    filterForm.setValue(
+                                      "weekId",
+                                      building.shifts[0].id.toString()
+                                    );
+                                  } else {
+                                    filterForm.setValue("weekId", "");
+                                  }
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === building.id.toString()
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {building.name} ({building.code})
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Week Selection */}
+              {/* Week Selection with Search */}
               <FormField
                 control={filterForm.control}
                 name="weekId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Select Week</FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose a week" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {selectedBuilding?.shifts.map((shift) => (
-                            <SelectItem key={shift.id} value={shift.id.toString()}>
-                              Week {shift.week} - {shift.role.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
+                    <Popover open={openWeekCombobox} onOpenChange={setOpenWeekCombobox}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openWeekCombobox}
+                            className="justify-between"
+                          >
+                            {field.value
+                              ? `Week ${
+                                  selectedBuilding?.shifts.find(
+                                    (s) => s.id.toString() === field.value
+                                  )?.week
+                                } - ${
+                                  selectedBuilding?.shifts.find(
+                                    (s) => s.id.toString() === field.value
+                                  )?.role.name
+                                }`
+                              : "Select week..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <CommandInput
+                            placeholder="Search weeks..."
+                            value={weekSearch}
+                            onValueChange={setWeekSearch}
+                          />
+                          <CommandEmpty>No week found.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredWeeks?.map((shift) => (
+                              <CommandItem
+                                key={shift.id}
+                                value={shift.id.toString()}
+                                onSelect={(value) => {
+                                  field.onChange(value);
+                                  setOpenWeekCombobox(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === shift.id.toString()
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                Week {shift.week} - {shift.role.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -899,8 +1006,7 @@ export default function BuildingShifts() {
                     type="submit"
                     disabled={updateSingleDayShiftTypeMutation.isPending}
                     onClick={() => {
-                      if (singleDayShiftTypeForm.formState.isValid) {
-                        setIsEditShiftTypesOpen(false);
+                      if (singleDayShiftTypeForm.formState.isValid) {                        setIsEditShiftTypesOpen(false);
                       }
                     }}
                   >
