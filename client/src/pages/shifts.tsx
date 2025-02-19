@@ -43,6 +43,8 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Plus, Users, Clock, Edit } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
+import { Link } from "wouter";
+import { ArrowRight } from "lucide-react";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -112,34 +114,90 @@ const singleDayShiftTypeSchema = z.object({
 
 type SingleDayShiftTypeFormData = z.infer<typeof singleDayShiftTypeSchema>;
 
-export default function Shifts() {
-  const { user } = useUser();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
-  const queryClient = useQueryClient();
-  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
-  const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
-  const [selectedGroupForShiftTypes, setSelectedGroupForShiftTypes] = useState<InspectorGroup | null>(null);
-  const [isEditShiftTypesOpen, setIsEditShiftTypesOpen] = useState(false);
-  const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
 
-  const { data: inspectorShifts, isLoading: isLoadingInspectorShifts } = useQuery<ShiftAssignment[]>({
-    queryKey: ["/api/inspector/shifts"],
+//This is the new component from the edited code
+export default function BuildingShifts() {
+  const { user } = useUser();
+
+  const { data: buildingsData, isLoading } = useQuery<BuildingsResponse>({
+    queryKey: ["/api/buildings/with-shifts"],
     queryFn: async () => {
-      const response = await fetch("/api/inspector/shifts", {
+      const response = await fetch("/api/buildings/with-shifts", {
         credentials: "include",
       });
       if (!response.ok) {
-        throw new Error("Failed to fetch shifts");
+        throw new Error("Failed to fetch buildings");
       }
       return response.json();
     },
-    enabled: !!user?.isInspector,
+    enabled: !!user?.isAdmin,
   });
 
-  const { data: buildingsData, isLoading: isLoadingBuildings } = useQuery<BuildingsResponse>({
+  if (!user?.isAdmin) {
+    return (
+      <Navbar>
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You don't have permission to access this page.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Navbar>
+    );
+  }
+
+  return (
+    <Navbar>
+      <div className="p-6">
+        <h1 className="text-3xl font-bold mb-6">Buildings</h1>
+
+        {isLoading ? (
+          <div className="flex justify-center p-4">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : !buildingsData || buildingsData.buildings.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Buildings Found</AlertTitle>
+            <AlertDescription>
+              No buildings have been created yet.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {buildingsData.buildings.map((building) => (
+              <Link key={building.id} href={`/building/${building.id}/weeks`}>
+                <Card className="cursor-pointer transition-all duration-200 hover:shadow-lg">
+                  <CardHeader>
+                    <CardTitle>{building.name}</CardTitle>
+                    <CardDescription>
+                      Code: {building.code} | Area: {building.area}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">
+                        {building.shifts.length} Shifts Assigned
+                      </p>
+                      <Button variant="ghost" size="sm">
+                        View Weeks <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </Navbar>
+  );
+}
+
+//Original code refactored for building-weeks view
+export function BuildingWeeks(){
+    const { data: buildingsData, isLoading: isLoadingBuildings } = useQuery<BuildingsResponse>({
     queryKey: ["/api/buildings/with-shifts"],
     queryFn: async () => {
       const response = await fetch("/api/buildings/with-shifts", {
@@ -334,8 +392,18 @@ export default function Shifts() {
     return shiftTypesData.filter(type => type.id !== currentShiftTypeId);
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
+  const [selectedGroupForShiftTypes, setSelectedGroupForShiftTypes] = useState<InspectorGroup | null>(null);
+  const [isEditShiftTypesOpen, setIsEditShiftTypesOpen] = useState(false);
+  const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
   const buildings = buildingsData?.buildings || [];
-  const isLoading = isLoadingInspectorShifts || isLoadingBuildings || isLoadingShiftTypes;
+  const isLoading = isLoadingBuildings || isLoadingShiftTypes;
 
   const groupInspectorsByStatus = (inspectors: ShiftInspector[]) => {
     return {
@@ -351,7 +419,7 @@ export default function Shifts() {
     return availableInspectors.filter((inspector) => !assignedInspectorIds.has(inspector.id));
   };
 
-  if (!user?.isInspector && !user?.isAdmin) {
+  if (!user?.isAdmin) {
     return (
       <Navbar>
         <div className="p-6">
@@ -370,437 +438,420 @@ export default function Shifts() {
     <Navbar>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">
-            {user?.isAdmin ? "Shifts by Building" : "My Shift Assignments"}
-          </h1>
+          <h1 className="text-3xl font-bold">Shifts by Building</h1>
         </div>
 
         {isLoading ? (
           <div className="flex justify-center p-4">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : user?.isInspector ? (
-          !inspectorShifts || inspectorShifts.length === 0 ? (
-            <Alert>
-              <AlertTitle>No Shifts Found</AlertTitle>
-              <AlertDescription>
-                You don't have any shift assignments yet.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div>Inspector shifts view here</div>
-          )
+        ) : buildings.length === 0 ? (
+          <Alert>
+            <AlertTitle>No Buildings Found</AlertTitle>
+            <AlertDescription>
+              No buildings with shifts have been created yet.
+            </AlertDescription>
+          </Alert>
         ) : (
-          <div className="grid gap-6">
-            {buildings.length === 0 ? (
-              <Alert>
-                <AlertTitle>No Buildings Found</AlertTitle>
-                <AlertDescription>
-                  No buildings with shifts have been created yet.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              buildings.map((building) => (
-                <Card key={building.id}>
-                  <CardHeader>
-                    <CardTitle>{building.name}</CardTitle>
-                    <CardDescription>
-                      Code: {building.code} | Area: {building.area}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {building.shifts.length === 0 ? (
-                      <p className="text-center text-muted-foreground">No shifts assigned</p>
-                    ) : (
-                      <div className="space-y-6">
-                        {building.shifts
-                          .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                          .map((shift) => (
-                            <div key={shift.id} className="space-y-4">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <h3 className="text-lg font-semibold">
-                                    Week {shift.week} - {shift.role?.name}
-                                  </h3>
-                                </div>
-                                <Dialog 
-                                  open={isCreateGroupDialogOpen && selectedShift === shift} 
-                                  onOpenChange={() => {
-                                    if(selectedShift === shift) {
-                                      setIsCreateGroupDialogOpen(false);
-                                      setSelectedShift(null);
-                                      createGroupForm.reset();
-                                    } else {
-                                      setSelectedShift(shift);
-                                      setIsCreateGroupDialogOpen(true);
-                                    }
-                                  }}
-                                >
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      Add Inspector Group
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Create Inspector Group</DialogTitle>
-                                      <DialogDescription>
-                                        Create a new group of inspectors for this shift. You can add shift types and inspectors after creating the group.
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <Form {...createGroupForm}>
-                                      <form
-                                        onSubmit={createGroupForm.handleSubmit((data) => {
-                                          if (selectedShift) {
-                                            createInspectorGroupMutation.mutate({
-                                              shiftId: selectedShift.id,
-                                              data,
-                                            });
-                                          }
-                                        })}
-                                        className="space-y-4"
+          buildings.map((building) => (
+            <div key={building.id} >
+              <Card>
+                <CardHeader>
+                  <CardTitle>{building.name}</CardTitle>
+                  <CardDescription>
+                    Code: {building.code} | Area: {building.area}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {building.shifts.length === 0 ? (
+                    <p className="text-center text-muted-foreground">No shifts assigned</p>
+                  ) : (
+                    <>
+                      {building.shifts.map((shift) => (
+                        <div key={shift.id} className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="text-lg font-semibold">
+                                Week {shift.week} - {shift.role?.name}
+                              </h3>
+                            </div>
+                            <Dialog
+                              open={isCreateGroupDialogOpen && selectedShift === shift}
+                              onOpenChange={() => {
+                                if (selectedShift === shift) {
+                                  setIsCreateGroupDialogOpen(false);
+                                  setSelectedShift(null);
+                                  createGroupForm.reset();
+                                } else {
+                                  setSelectedShift(shift);
+                                  setIsCreateGroupDialogOpen(true);
+                                }
+                              }}
+                            >
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add Inspector Group
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Create Inspector Group</DialogTitle>
+                                  <DialogDescription>
+                                    Create a new group of inspectors for this shift. You can add shift types and inspectors after creating the group.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <Form {...createGroupForm}>
+                                  <form
+                                    onSubmit={createGroupForm.handleSubmit((data) => {
+                                      if (selectedShift) {
+                                        createInspectorGroupMutation.mutate({
+                                          shiftId: selectedShift.id,
+                                          data,
+                                        });
+                                      }
+                                    })}
+                                    className="space-y-4"
+                                  >
+                                    <FormField
+                                      control={createGroupForm.control}
+                                      name="name"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Group Name</FormLabel>
+                                          <FormControl>
+                                            <Input placeholder="Enter group name" {...field} />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <DialogFooter>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setIsCreateGroupDialogOpen(false);
+                                          setSelectedShift(null);
+                                          createGroupForm.reset();
+                                        }}
                                       >
-                                        <FormField
-                                          control={createGroupForm.control}
-                                          name="name"
-                                          render={({ field }) => (
-                                            <FormItem>
-                                              <FormLabel>Group Name</FormLabel>
-                                              <FormControl>
-                                                <Input placeholder="Enter group name" {...field} />
-                                              </FormControl>
-                                              <FormMessage />
-                                            </FormItem>
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        type="submit"
+                                        disabled={createInspectorGroupMutation.isPending}
+                                      >
+                                        {createInspectorGroupMutation.isPending && (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        )}
+                                        Create Group
+                                      </Button>
+                                    </DialogFooter>
+                                  </form>
+                                </Form>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+
+                          {shift.inspectorGroups.map((group) => (
+                            <div key={group.id} className="space-y-4 border rounded-lg p-4">
+                              <div className="flex justify-between items-center">
+                                <h4 className="font-medium">{group.name}</h4>
+                                <div className="flex items-center gap-2">
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="outline" size="sm">
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Inspector
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Add Inspector to Group</DialogTitle>
+                                        <DialogDescription>
+                                          Select an inspector to add to this group.
+                                        </DialogDescription>
+                                      </DialogHeader>
+                                      <div className="space-y-4 py-4">
+                                        <Select
+                                          value={selectedInspector || undefined}
+                                          onValueChange={setSelectedInspector}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select an inspector" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {getAvailableInspectorsForGroup(group).map((inspector) => (
+                                              <SelectItem
+                                                key={inspector.id}
+                                                value={inspector.id.toString()}
+                                              >
+                                                {inspector.fullName}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <DialogFooter>
+                                        <Button
+                                          onClick={() => {
+                                            if (selectedInspector) {
+                                              assignInspectorMutation.mutate({
+                                                groupId: group.id,
+                                                inspectorId: parseInt(selectedInspector),
+                                              });
+                                            }
+                                          }}
+                                          disabled={!selectedInspector || assignInspectorMutation.isPending}
+                                        >
+                                          {assignInspectorMutation.isPending && (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                           )}
-                                        />
-                                        <DialogFooter>
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => {
-                                              setIsCreateGroupDialogOpen(false);
-                                              setSelectedShift(null);
-                                              createGroupForm.reset();
-                                            }}
-                                          >
-                                            Cancel
-                                          </Button>
-                                          <Button
-                                            type="submit"
-                                            disabled={createInspectorGroupMutation.isPending}
-                                          >
-                                            {createInspectorGroupMutation.isPending && (
-                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            )}
-                                            Create Group
-                                          </Button>
-                                        </DialogFooter>
-                                      </form>
-                                    </Form>
-                                  </DialogContent>
-                                </Dialog>
+                                          Add Inspector
+                                        </Button>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                  </Dialog>
+                                </div>
                               </div>
 
-                              {shift.inspectorGroups.map((group) => (
-                                <div key={group.id} className="space-y-4 border rounded-lg p-4">
-                                  <div className="flex justify-between items-center">
-                                    <h4 className="font-medium">{group.name}</h4>
-                                    <div className="flex items-center gap-2">
-                                      <Dialog>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {DAYS.map((day, dayIndex) => {
+                                  const existingDay = group.days.find(d => d.dayOfWeek === dayIndex);
+                                  return (
+                                    <div
+                                      key={dayIndex}
+                                      className="flex items-center justify-between p-3 bg-secondary/10 rounded-md"
+                                    >
+                                      <div>
+                                        <p className="font-medium">{day}</p>
+                                        {existingDay?.shiftType ? (
+                                          <p className="text-sm text-muted-foreground">
+                                            {existingDay.shiftType.name}
+                                            <br />
+                                            {existingDay.shiftType.startTime} - {existingDay.shiftType.endTime}
+                                          </p>
+                                        ) : (
+                                          <p className="text-sm text-muted-foreground">No shift assigned</p>
+                                        )}
+                                      </div>
+                                      <Dialog
+                                        open={editingDay?.groupId === group.id && editingDay?.dayOfWeek === dayIndex}
+                                        onOpenChange={(open) => {
+                                          if (!open) {
+                                            setEditingDay(null);
+                                            singleDayShiftTypeForm.reset();
+                                          }
+                                        }}
+                                      >
                                         <DialogTrigger asChild>
-                                          <Button variant="outline" size="sm">
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add Inspector
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                              setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                              setSelectedGroupForShiftTypes(group);
+                                              singleDayShiftTypeForm.reset({
+                                                shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
+                                              });
+                                            }}
+                                          >
+                                            {existingDay?.shiftType ? (
+                                              <>
+                                                <Edit className="h-4 w-4 mr-2" />
+                                                Edit
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Add
+                                              </>
+                                            )}
                                           </Button>
                                         </DialogTrigger>
                                         <DialogContent>
                                           <DialogHeader>
-                                            <DialogTitle>Add Inspector to Group</DialogTitle>
+                                            <DialogTitle>
+                                              {existingDay?.shiftType ? "Edit" : "Add"} Shift Type for {day}
+                                            </DialogTitle>
                                             <DialogDescription>
-                                              Select an inspector to add to this group.
+                                              Select a shift type for this day.
                                             </DialogDescription>
                                           </DialogHeader>
-                                          <div className="space-y-4 py-4">
-                                            <Select
-                                              value={selectedInspector || undefined}
-                                              onValueChange={setSelectedInspector}
-                                            >
-                                              <SelectTrigger>
-                                                <SelectValue placeholder="Select an inspector" />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                {getAvailableInspectorsForGroup(group).map((inspector) => (
-                                                  <SelectItem
-                                                    key={inspector.id}
-                                                    value={inspector.id.toString()}
-                                                  >
-                                                    {inspector.fullName}
-                                                  </SelectItem>
-                                                ))}
-                                              </SelectContent>
-                                            </Select>
-                                          </div>
-                                          <DialogFooter>
-                                            <Button
-                                              onClick={() => {
-                                                if (selectedInspector) {
-                                                  assignInspectorMutation.mutate({
-                                                    groupId: group.id,
-                                                    inspectorId: parseInt(selectedInspector),
+                                          <Form {...singleDayShiftTypeForm}>
+                                            <form
+                                              onSubmit={singleDayShiftTypeForm.handleSubmit((data) => {
+                                                if (editingDay) {
+                                                  updateSingleDayShiftTypeMutation.mutate({
+                                                    groupId: editingDay.groupId,
+                                                    dayOfWeek: editingDay.dayOfWeek,
+                                                    shiftTypeId: data.shiftTypeId,
                                                   });
                                                 }
-                                              }}
-                                              disabled={!selectedInspector || assignInspectorMutation.isPending}
+                                              })}
+                                              className="space-y-4"
                                             >
-                                              {assignInspectorMutation.isPending && (
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                              )}
-                                              Add Inspector
-                                            </Button>
-                                          </DialogFooter>
+                                              <FormField
+                                                control={singleDayShiftTypeForm.control}
+                                                name="shiftTypeId"
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Shift Type</FormLabel>
+                                                    <Select
+                                                      onValueChange={field.onChange}
+                                                      value={field.value}
+                                                    >
+                                                      <FormControl>
+                                                        <SelectTrigger>
+                                                          <SelectValue placeholder="Select shift type" />
+                                                        </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                        <SelectItem value="none">No shift</SelectItem>
+                                                        {getAvailableShiftTypes(
+                                                          group,
+                                                          dayIndex,
+                                                          existingDay?.shiftType !== undefined
+                                                        ).map((type) => (
+                                                          <SelectItem
+                                                            key={type.id}
+                                                            value={type.id.toString()}
+                                                          >
+                                                            {type.name} ({type.startTime} - {type.endTime})
+                                                          </SelectItem>
+                                                        ))}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}
+                                              />
+                                              <DialogFooter>
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  onClick={() => {
+                                                    setEditingDay(null);
+                                                    singleDayShiftTypeForm.reset();
+                                                  }}
+                                                >
+                                                  Cancel
+                                                </Button>
+                                                <Button
+                                                  type="submit"
+                                                  disabled={updateSingleDayShiftTypeMutation.isPending}
+                                                >
+                                                  {updateSingleDayShiftTypeMutation.isPending && (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                  )}
+                                                  Save Changes
+                                                </Button>
+                                              </DialogFooter>
+                                            </form>
+                                          </Form>
                                         </DialogContent>
                                       </Dialog>
                                     </div>
-                                  </div>
+                                  );
+                                })}
+                              </div>
 
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {DAYS.map((day, dayIndex) => {
-                                      const existingDay = group.days.find(d => d.dayOfWeek === dayIndex);
+                              <div className="mt-4">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      <Users className="h-4 w-4 mr-2" />
+                                      View Inspectors
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-2xl">
+                                    <DialogHeader>
+                                      <DialogTitle>Group Inspectors</DialogTitle>
+                                      <DialogDescription>
+                                        Week {selectedShift?.week} - {group.name}
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    {(() => {
+                                      const groupedInspectors = groupInspectorsByStatus(group.inspectors);
                                       return (
-                                        <div 
-                                          key={dayIndex}
-                                          className="flex items-center justify-between p-3 bg-secondary/10 rounded-md"
-                                        >
+                                        <div className="space-y-4">
                                           <div>
-                                            <p className="font-medium">{day}</p>
-                                            {existingDay?.shiftType ? (
-                                              <p className="text-sm text-muted-foreground">
-                                                {existingDay.shiftType.name}
-                                                <br />
-                                                {existingDay.shiftType.startTime} - {existingDay.shiftType.endTime}
-                                              </p>
-                                            ) : (
-                                              <p className="text-sm text-muted-foreground">No shift assigned</p>
-                                            )}
-                                          </div>
-                                          <Dialog
-                                            open={editingDay?.groupId === group.id && editingDay?.dayOfWeek === dayIndex}
-                                            onOpenChange={(open) => {
-                                              if (!open) {
-                                                setEditingDay(null);
-                                                singleDayShiftTypeForm.reset();
-                                              }
-                                            }}
-                                          >
-                                            <DialogTrigger asChild>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                  setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                                  setSelectedGroupForShiftTypes(group);
-                                                  singleDayShiftTypeForm.reset({
-                                                    shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
-                                                  });
-                                                }}
-                                              >
-                                                {existingDay?.shiftType ? (
-                                                  <>
-                                                    <Edit className="h-4 w-4 mr-2" />
-                                                    Edit
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    Add
-                                                  </>
-                                                )}
-                                              </Button>
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                              <DialogHeader>
-                                                <DialogTitle>
-                                                  {existingDay?.shiftType ? "Edit" : "Add"} Shift Type for {day}
-                                                </DialogTitle>
-                                                <DialogDescription>
-                                                  Select a shift type for this day.
-                                                </DialogDescription>
-                                              </DialogHeader>
-                                              <Form {...singleDayShiftTypeForm}>
-                                                <form
-                                                  onSubmit={singleDayShiftTypeForm.handleSubmit((data) => {
-                                                    if (editingDay) {
-                                                      updateSingleDayShiftTypeMutation.mutate({
-                                                        groupId: editingDay.groupId,
-                                                        dayOfWeek: editingDay.dayOfWeek,
-                                                        shiftTypeId: data.shiftTypeId,
-                                                      });
-                                                    }
-                                                  })}
-                                                  className="space-y-4"
+                                            <h4 className="font-medium mb-2">
+                                              Accepted ({groupedInspectors.accepted.length})
+                                            </h4>
+                                            <div className="space-y-2">
+                                              {groupedInspectors.accepted.map((si) => (
+                                                <div
+                                                  key={si.inspector.id}
+                                                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
                                                 >
-                                                  <FormField
-                                                    control={singleDayShiftTypeForm.control}
-                                                    name="shiftTypeId"
-                                                    render={({ field }) => (
-                                                      <FormItem>
-                                                        <FormLabel>Shift Type</FormLabel>
-                                                        <Select
-                                                          onValueChange={field.onChange}
-                                                          value={field.value}
-                                                        >
-                                                          <FormControl>
-                                                            <SelectTrigger>
-                                                              <SelectValue placeholder="Select shift type" />
-                                                            </SelectTrigger>
-                                                          </FormControl>
-                                                          <SelectContent>
-                                                            <SelectItem value="none">No shift</SelectItem>
-                                                            {getAvailableShiftTypes(
-                                                              group,
-                                                              dayIndex,
-                                                              existingDay?.shiftType !== undefined
-                                                            ).map((type) => (
-                                                              <SelectItem
-                                                                key={type.id}
-                                                                value={type.id.toString()}
-                                                              >
-                                                                {type.name} ({type.startTime} - {type.endTime})
-                                                              </SelectItem>
-                                                            ))}
-                                                          </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                      </FormItem>
-                                                    )}
-                                                  />
-                                                  <DialogFooter>
-                                                    <Button
-                                                      type="button"
-                                                      variant="outline"
-                                                      onClick={() => {
-                                                        setEditingDay(null);
-                                                        singleDayShiftTypeForm.reset();
-                                                      }}
-                                                    >
-                                                      Cancel
-                                                    </Button>
-                                                    <Button
-                                                      type="submit"
-                                                      disabled={updateSingleDayShiftTypeMutation.isPending}
-                                                    >
-                                                      {updateSingleDayShiftTypeMutation.isPending && (
-                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                      )}
-                                                      Save Changes
-                                                    </Button>
-                                                  </DialogFooter>
-                                                </form>
-                                              </Form>
-                                            </DialogContent>
-                                          </Dialog>
+                                                  <span>{si.inspector.fullName}</span>
+                                                  <Badge variant="success">ACCEPTED</Badge>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <h4 className="font-medium mb-2">
+                                              Pending ({groupedInspectors.pending.length})
+                                            </h4>
+                                            <div className="space-y-2">
+                                              {groupedInspectors.pending.map((si) => (
+                                                <div
+                                                  key={si.inspector.id}
+                                                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                                                >
+                                                  <span>{si.inspector.fullName}</span>
+                                                  <Badge>PENDING</Badge>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <h4 className="font-medium mb-2">
+                                              Rejected ({groupedInspectors.rejected.length})
+                                            </h4>
+                                            <div className="space-y-2">
+                                              {groupedInspectors.rejected.map((si) => (
+                                                <div key={si.inspector.id} className="space-y-1">
+                                                  <div className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
+                                                    <span>{si.inspector.fullName}</span>
+                                                    <Badge variant="destructive">REJECTED</Badge>
+                                                  </div>
+                                                  {si.rejectionReason && (
+                                                    <p className="text-sm text-muted-foreground ml-2">
+                                                      Reason: {si.rejectionReason}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
                                         </div>
                                       );
-                                    })}
-                                  </div>
+                                    })()}
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
 
-                                  <div className="mt-4">
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                          <Users className="h-4 w-4 mr-2" />
-                                          View Inspectors
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent className="max-w-2xl">
-                                        <DialogHeader>
-                                          <DialogTitle>Group Inspectors</DialogTitle>
-                                          <DialogDescription>
-                                            Week {selectedShift?.week} - {group.name}
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        {(() => {
-                                          const groupedInspectors = groupInspectorsByStatus(group.inspectors);
-                                          return (
-                                            <div className="space-y-4">
-                                              <div>
-                                                <h4 className="font-medium mb-2">
-                                                  Accepted ({groupedInspectors.accepted.length})
-                                                </h4>
-                                                <div className="space-y-2">
-                                                  {groupedInspectors.accepted.map((si) => (
-                                                    <div
-                                                      key={si.inspector.id}
-                                                      className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                    >
-                                                      <span>{si.inspector.fullName}</span>
-                                                      <Badge variant="success">ACCEPTED</Badge>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                              <div>
-                                                <h4 className="font-medium mb-2">
-                                                  Pending ({groupedInspectors.pending.length})
-                                                </h4>
-                                                <div className="space-y-2">
-                                                  {groupedInspectors.pending.map((si) => (
-                                                    <div
-                                                      key={si.inspector.id}
-                                                      className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                                                    >
-                                                      <span>{si.inspector.fullName}</span>
-                                                      <Badge>PENDING</Badge>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                              <div>
-                                                <h4 className="font-medium mb-2">
-                                                  Rejected ({groupedInspectors.rejected.length})
-                                                </h4>
-                                                <div className="space-y-2">
-                                                  {groupedInspectors.rejected.map((si) => (
-                                                    <div key={si.inspector.id} className="space-y-1">
-                                                      <div className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
-                                                        <span>{si.inspector.fullName}</span>
-                                                        <Badge variant="destructive">REJECTED</Badge>
-                                                      </div>
-                                                      {si.rejectionReason && (
-                                                        <p className="text-sm text-muted-foreground ml-2">
-                                                          Reason: {si.rejectionReason}
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          );
-                                        })()}
-                                      </DialogContent>
-                                    </Dialog>
-                                  </div>
-
-                                </div>
-                              ))}
                             </div>
                           ))}
-                        <TablePagination
-                          currentPage={currentPage}
-                          totalItems={building.shifts.length}
-                          pageSize={pageSize}
-                          onPageChange={setCurrentPage}
-                          onPageSizeChange={setPageSize}
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+                        </div>
+                      ))}
+                      <TablePagination
+                        currentPage={currentPage}
+                        totalItems={building.shifts.length}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={setPageSize}
+                      />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ))
         )}
       </div>
     </Navbar>

@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Shifts from "@/pages/shifts";
+import BuildingWeeks from "@/pages/building-weeks";
 import Roles from "@/pages/roles";
 import Employees from "@/pages/employees";
 import Requests from "@/pages/requests";
@@ -17,7 +18,6 @@ import Users from "@/pages/users";
 import TaskTypes from "@/pages/task-types";
 import Managers from "@/pages/managers";
 import InspectorsPage from "./pages/inspectors";
-// Update import name
 import Buildings from "@/pages/buildings";
 import Utilities from "@/pages/utilities";
 import CreateShift from "@/pages/create-shift";
@@ -43,6 +43,7 @@ function Router() {
         {user.isAdmin ? <Dashboard /> : <Redirect to="/shifts" />}
       </Route>
       <Route path="/shifts" component={Shifts} />
+      <Route path="/building/:buildingId/weeks" component={BuildingWeeks} />
       {user.isAdmin && (
         <>
           <Route path="/buildings" component={Buildings} />
