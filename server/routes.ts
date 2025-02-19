@@ -1078,8 +1078,7 @@ export function registerRoutes(app: Express): Server {
             id: users.id,
             username: users.username,
             fullName: users.fullName,
-          })
-          .from(users)
+          })          .from(users)
           .where(
             and(
               eq(users.isAdmin, false),
@@ -1546,21 +1545,160 @@ export function registerRoutes(app: Express): Server {
     }
   );
 
+  // Admin: Update shift day
   app.put(
-    "/api/shifts/:id/days/:dayOfWeek",
-    requireAuth,
+    "/api/admin/inspector-groups/:groupId/days/:dayOfWeek",
+    requireAdmin,
     async (req: Request, res: Response) => {
       try {
-        await updateShiftDay(req, res);
+        const { groupId, dayOfWeek } = req.params;
+        const { shiftTypeId } = req.body;
+
+        console.log("Updating shift day:", { groupId, dayOfWeek, shiftTypeId });
+
+        // Validate group ID and day of week
+        const groupIdNum = parseInt(groupId);
+        const dayOfWeekNum = parseInt(dayOfWeek);
+
+        if (isNaN(groupIdNum)) {
+          return res.status(400).json({ message: "Invalid group ID" });
+        }
+
+        if (isNaN(dayOfWeekNum)) {
+          return res.status(400).json({ message: "Invalid day of week" });
+        }
+
+        // Check if the group exists
+        const [existingGroup] = await db
+          .select()
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.id, groupIdNum))
+          .limit(1);
+
+        if (!existingGroup) {
+          return res.status(404).json({ message: "Inspector group not found" });
+        }
+
+        // Check if a day entry exists
+        const [existingDay] = await db
+          .select()
+          .from(shiftDays)
+          .where(
+            and(
+              eq(shiftDays.inspectorGroupId, groupIdNum),
+              eq(shiftDays.dayOfWeek, dayOfWeekNum)
+            )
+          )
+          .limit(1);
+
+        // If we're removing the shift type (shiftTypeId is null)
+        if (shiftTypeId === null) {
+          if (existingDay) {
+            await db
+              .delete(shiftDays)
+              .where(eq(shiftDays.id, existingDay.id));
+
+            return res.json({ message: "Shift type removed successfully" });
+          }
+          return res.json({ message: "No shift type to remove" });
+        }
+
+        // For updates or new assignments, validate shiftTypeId
+        const shiftTypeIdNum = parseInt(shiftTypeId);
+        if (isNaN(shiftTypeIdNum)) {
+          return res.status(400).json({ message: "Invalid shift type ID" });
+        }
+
+        // Verify shift type exists
+        const [shiftType] = await db
+          .select()
+          .from(shiftTypes)
+          .where(eq(shiftTypes.id, shiftTypeIdNum))
+          .limit(1);
+
+        if (!shiftType) {
+          return res.status(400).json({ message: "Shift type not found" });
+        }
+
+        if (existingDay) {
+          // Update existing day
+          const [updatedDay] = await db
+            .update(shiftDays)
+            .set({
+              shiftTypeId: shiftTypeIdNum,
+            })
+            .where(eq(shiftDays.id, existingDay.id))
+            .returning();
+
+          return res.json(updatedDay);
+        }
+
+        // Create new day entry
+        const [newDay] = await db
+          .insert(shiftDays)
+          .values({
+            inspectorGroupId: groupIdNum,
+            dayOfWeek: dayOfWeekNum,
+            shiftTypeId: shiftTypeIdNum,
+          })
+          .returning();
+
+        res.json(newDay);
       } catch (error) {
-        console.error("Error in shift day update route:", error);
-        res.status(500).json({
+        console.error("Error updating shift day:", error);
+        res.status(500).json({ 
           message: "Error updating shift day",
           error: error instanceof Error ? error.message : "Unknown error"
         });
       }
     }
   );
+
+  // Delete inspector group (admin only)
+  app.delete(
+    "/api/admin/inspector-groups/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+
+        // Check if group exists
+        const [existingGroup] = await db
+          .select()
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.id, parseInt(id)))
+          .limit(1);
+
+        if (!existingGroup) {
+          return res.status(404).json({ message: "Inspector group not found" });
+        }
+
+        // Begin transaction to ensure data consistency
+        await db.transaction(async (tx) => {
+          // First, delete all shift assignments for this group
+          await tx
+            .delete(shiftInspectors)
+            .where(eq(shiftInspectors.inspectorGroupId, parseInt(id)));
+
+          // Then, delete all shift days for this group
+          await tx
+            .delete(shiftDays)
+            .where(eq(shiftDays.inspectorGroupId, parseInt(id)));
+
+          // Finally, delete the group itself
+          await tx
+            .delete(inspectorGroups)
+            .where(eq(inspectorGroups.id, parseInt(id)));
+        });
+
+        res.json({ message: "Inspector group and related data deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting inspector group:", error);
+        res.status(500).json({ message: "Error deleting inspector group" });
+      }
+    },
+  );
+
   // Get all utilities (admin only)
   app.get(
     "/api/admin/utilities",
