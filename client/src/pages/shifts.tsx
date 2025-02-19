@@ -646,17 +646,16 @@ export default function BuildingShifts() {
                   <SelectValue placeholder="Select an inspector" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedGroup && selectedWeek?.inspectorGroups
-                    .find(g => g.id === selectedGroup)
-                    ?.inspectors
-                    .map((inspector) => (
-                      <SelectItem
-                        key={inspector.inspector.id}
-                        value={inspector.inspector.id.toString()}
-                      >
-                        {inspector.inspector.fullName}
-                      </SelectItem>
-                    ))}
+                  {selectedGroup && availableInspectors && getAvailableInspectorsForGroup(
+                    selectedWeek?.inspectorGroups.find(g => g.id === selectedGroup)!
+                  ).map((inspector) => (
+                    <SelectItem
+                      key={inspector.id}
+                      value={inspector.id.toString()}
+                    >
+                      {inspector.fullName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <DialogFooter>
