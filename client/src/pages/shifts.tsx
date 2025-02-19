@@ -150,6 +150,7 @@ export default function BuildingShifts() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [groupToDelete, setGroupToDelete] = useState<number | null>(null);
+  const [dayToDelete, setDayToDelete] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
 
 
   const filterForm = useForm<FilterFormData>({
@@ -371,6 +372,37 @@ export default function BuildingShifts() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to delete inspector group",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteShiftTypeMutation = useMutation({
+    mutationFn: async ({ groupId, dayOfWeek }: { groupId: number; dayOfWeek: number }) => {
+      const response = await fetch(
+        `/api/admin/inspector-groups/${groupId}/days/${dayOfWeek}/shift-type`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to delete shift type");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
+      toast({
+        title: "Success",
+        description: "Shift type removed successfully",
+      });
+      setDayToDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete shift type",
         variant: "destructive",
       });
     },
@@ -637,36 +669,54 @@ export default function BuildingShifts() {
                                       {existingDay.shiftType.startTime} -{" "}
                                       {existingDay.shiftType.endTime}
                                     </div>
+                                    <div className="flex gap-2 mt-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                          setSelectedGroupForShiftTypes(group);
+                                          setIsEditShiftTypesOpen(true);
+                                          singleDayShiftTypeForm.reset({
+                                            shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
+                                          });
+                                        }}
+                                      >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setDayToDelete({ groupId: group.id, dayOfWeek: dayIndex })}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </Button>
+                                    </div>
                                   </div>
                                 ) : (
-                                  <div className="text-sm text-muted-foreground">
-                                    No shift assigned
-                                  </div>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                    setSelectedGroupForShiftTypes(group);
-                                    setIsEditShiftTypesOpen(true);
-                                    singleDayShiftTypeForm.reset({
-                                      shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
-                                    });
-                                  }}
-                                >
-                                  {existingDay?.shiftType ? (
-                                    <>
-                                      <Edit className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </>
-                                  ) : (
-                                    <>
+                                  <div>
+                                    <div className="text-sm text-muted-foreground">
+                                      No shift assigned
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                        setSelectedGroupForShiftTypes(group);
+                                        setIsEditShiftTypesOpen(true);
+                                        singleDayShiftTypeForm.reset({
+                                          shiftTypeId: "none",
+                                        });
+                                      }}
+                                    >
                                       <Plus className="h-4 w-4 mr-2" />
                                       Add
-                                    </>
-                                  )}
-                                </Button>
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                           );
@@ -895,6 +945,41 @@ export default function BuildingShifts() {
                   </>
                 ) : (
                   'Delete Group'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Shift Type Confirmation Dialog */}
+        <AlertDialog 
+          open={dayToDelete !== null} 
+          onOpenChange={(open) => !open && setDayToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Shift Type?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove the shift type assignment for this day.
+                Are you sure you want to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (dayToDelete) {
+                    deleteShiftTypeMutation.mutate(dayToDelete);
+                  }
+                }}
+              >
+                {deleteShiftTypeMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Shift Type'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

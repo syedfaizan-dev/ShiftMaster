@@ -1080,7 +1080,7 @@ export function registerRoutes(app: Express): Server {
             username: users.username,
             fullName: users.fullName,
           })
-                    .from(users)
+          .from(users)
           .where(
             and(
               eq(users.isAdmin, false),
@@ -1750,6 +1750,63 @@ export function registerRoutes(app: Express): Server {
         res.status(500).json({ message: "Error deleting inspector group" });
       }
     },
+  );
+
+  // Delete shift type for a specific day (admin only)
+  app.delete(
+    "/api/admin/inspector-groups/:groupId/days/:dayOfWeek/shift-type",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { groupId, dayOfWeek } = req.params;
+
+        // Check if group exists
+        const [existingGroup] = await db
+          .select()
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.id, parseInt(groupId)))
+          .limit(1);
+
+        if (!existingGroup) {
+          return res.status(404).json({ message: "Inspector group not found" });
+        }
+
+        // Check if day exists
+        const [existingDay] = await db
+          .select()
+          .from(shiftDays)
+          .where(
+            and(
+              eq(shiftDays.inspectorGroupId, parseInt(groupId)),
+              eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
+            )
+          )
+          .limit(1);
+
+        if (!existingDay) {
+          return res.status(404).json({ message: "Day not found for this group" });
+        }
+
+        // Update the day to remove the shift type
+        const [updatedDay] = await db
+          .update(shiftDays)
+          .set({
+            shiftTypeId: null,
+          })
+          .where(
+            and(
+              eq(shiftDays.inspectorGroupId, parseInt(groupId)),
+              eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
+            )
+          )
+          .returning();
+
+        res.json({ message: "Shift type removed successfully", day: updatedDay });
+      } catch (error) {
+        console.error("Error removing shift type:", error);
+        res.status(500).json({ message: "Error removing shift type" });
+      }
+    }
   );
 
   const server = createServer(app);
