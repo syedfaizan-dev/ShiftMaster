@@ -1,0 +1,195 @@
+Uncaught TypeError: Cannot destructure property 'getFieldState' of 'useFormContext(...)' as it is null.
+    at useFormField (form.tsx:45:11)
+    at form.tsx:91:33
+    at renderWithHooks (chunk-RPCDYKBN.js?v=fcb683da:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=fcb683da:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=fcb683da:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=fcb683da:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=fcb683da:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=fcb683da:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=fcb683da:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=fcb683da:19198:20)
+useFormField @ form.tsx:45
+(anonymous) @ form.tsx:91
+renderWithHooks @ chunk-RPCDYKBN.js?v=fcb683da:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=fcb683da:14325
+beginWork @ chunk-RPCDYKBN.js?v=fcb683da:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=fcb683da:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=fcb683da:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=fcb683da:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=fcb683da:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=fcb683da:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=fcb683da:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=fcb683da:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=fcb683da:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=fcb683da:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=fcb683da:555
+flush @ @tanstack_react-query.js?v=fcb683da:569
+batch @ @tanstack_react-query.js?v=fcb683da:587
+dispatch_fn @ @tanstack_react-query.js?v=fcb683da:996
+setData @ @tanstack_react-query.js?v=fcb683da:696
+onSuccess @ @tanstack_react-query.js?v=fcb683da:897
+resolve @ @tanstack_react-query.js?v=fcb683da:456
+Promise.then
+run @ @tanstack_react-query.js?v=fcb683da:498
+start @ @tanstack_react-query.js?v=fcb683da:536
+fetch @ @tanstack_react-query.js?v=fcb683da:926
+executeFetch_fn @ @tanstack_react-query.js?v=fcb683da:2211
+onSubscribe @ @tanstack_react-query.js?v=fcb683da:1898
+subscribe @ @tanstack_react-query.js?v=fcb683da:24
+(anonymous) @ @tanstack_react-query.js?v=fcb683da:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=fcb683da:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=fcb683da:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=fcb683da:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=fcb683da:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=fcb683da:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=fcb683da:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=fcb683da:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=fcb683da:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=fcb683da:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=fcb683da:19432
+commitRoot @ chunk-RPCDYKBN.js?v=fcb683da:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=fcb683da:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18718
+workLoop @ chunk-RPCDYKBN.js?v=fcb683da:197
+flushWork @ chunk-RPCDYKBN.js?v=fcb683da:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=fcb683da:384Understand this errorAI
+form.tsx:45 Uncaught TypeError: Cannot destructure property 'getFieldState' of 'useFormContext(...)' as it is null.
+    at useFormField (form.tsx:45:11)
+    at form.tsx:91:33
+    at renderWithHooks (chunk-RPCDYKBN.js?v=fcb683da:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=fcb683da:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=fcb683da:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=fcb683da:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=fcb683da:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=fcb683da:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=fcb683da:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=fcb683da:19198:20)
+useFormField @ form.tsx:45
+(anonymous) @ form.tsx:91
+renderWithHooks @ chunk-RPCDYKBN.js?v=fcb683da:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=fcb683da:14325
+beginWork @ chunk-RPCDYKBN.js?v=fcb683da:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=fcb683da:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=fcb683da:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=fcb683da:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=fcb683da:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=fcb683da:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=fcb683da:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=fcb683da:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=fcb683da:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=fcb683da:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=fcb683da:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=fcb683da:555
+flush @ @tanstack_react-query.js?v=fcb683da:569
+batch @ @tanstack_react-query.js?v=fcb683da:587
+dispatch_fn @ @tanstack_react-query.js?v=fcb683da:996
+setData @ @tanstack_react-query.js?v=fcb683da:696
+onSuccess @ @tanstack_react-query.js?v=fcb683da:897
+resolve @ @tanstack_react-query.js?v=fcb683da:456
+Promise.then
+run @ @tanstack_react-query.js?v=fcb683da:498
+start @ @tanstack_react-query.js?v=fcb683da:536
+fetch @ @tanstack_react-query.js?v=fcb683da:926
+executeFetch_fn @ @tanstack_react-query.js?v=fcb683da:2211
+onSubscribe @ @tanstack_react-query.js?v=fcb683da:1898
+subscribe @ @tanstack_react-query.js?v=fcb683da:24
+(anonymous) @ @tanstack_react-query.js?v=fcb683da:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=fcb683da:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=fcb683da:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=fcb683da:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=fcb683da:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=fcb683da:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=fcb683da:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=fcb683da:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=fcb683da:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=fcb683da:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=fcb683da:19432
+commitRoot @ chunk-RPCDYKBN.js?v=fcb683da:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=fcb683da:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18718
+workLoop @ chunk-RPCDYKBN.js?v=fcb683da:197
+flushWork @ chunk-RPCDYKBN.js?v=fcb683da:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=fcb683da:384Understand this errorAI
+chunk-RPCDYKBN.js?v=fcb683da:14032 The above error occurred in the <FormLabel> component:
+
+    at https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/ui/form.tsx:95:6
+    at div
+    at div
+    at div
+    at main
+    at div
+    at div
+    at Navbar (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/components/navbar.tsx:38:34)
+    at BuildingShifts (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/pages/shifts.tsx:70:20)
+    at Route (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:323:16)
+    at Switch (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:379:17)
+    at Router (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/App.tsx?v=5lXIHNLYe07ZnR3g7mMNF:44:31)
+    at QueryClientProvider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=fcb683da:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=fcb683da:14032
+update.callback @ chunk-RPCDYKBN.js?v=fcb683da:14052
+callCallback @ chunk-RPCDYKBN.js?v=fcb683da:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=fcb683da:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=fcb683da:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=fcb683da:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=fcb683da:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=fcb683da:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=fcb683da:19353
+commitRoot @ chunk-RPCDYKBN.js?v=fcb683da:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=fcb683da:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=fcb683da:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=fcb683da:555
+flush @ @tanstack_react-query.js?v=fcb683da:569
+batch @ @tanstack_react-query.js?v=fcb683da:587
+dispatch_fn @ @tanstack_react-query.js?v=fcb683da:996
+setData @ @tanstack_react-query.js?v=fcb683da:696
+onSuccess @ @tanstack_react-query.js?v=fcb683da:897
+resolve @ @tanstack_react-query.js?v=fcb683da:456
+Promise.then
+run @ @tanstack_react-query.js?v=fcb683da:498
+start @ @tanstack_react-query.js?v=fcb683da:536
+fetch @ @tanstack_react-query.js?v=fcb683da:926
+executeFetch_fn @ @tanstack_react-query.js?v=fcb683da:2211
+onSubscribe @ @tanstack_react-query.js?v=fcb683da:1898
+subscribe @ @tanstack_react-query.js?v=fcb683da:24
+(anonymous) @ @tanstack_react-query.js?v=fcb683da:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=fcb683da:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=fcb683da:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=fcb683da:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=fcb683da:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=fcb683da:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=fcb683da:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=fcb683da:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=fcb683da:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=fcb683da:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=fcb683da:19432
+commitRoot @ chunk-RPCDYKBN.js?v=fcb683da:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=fcb683da:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=fcb683da:18718
+workLoop @ chunk-RPCDYKBN.js?v=fcb683da:197
+flushWork @ chunk-RPCDYKBN.js?v=fcb683da:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=fcb683da:384Understand this errorAI
+chunk-RPCDYKBN.js?v=fcb683da:9129 Uncaught TypeError: Cannot destructure property 'getFieldState' of 'useFormContext(...)' as it is null.
+    at useFormField (form.tsx:45:11)
+    at form.tsx:91:33
+    at renderWithHooks (chunk-RPCDYKBN.js?v=fcb683da:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=fcb683da:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=fcb683da:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=fcb683da:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=fcb683da:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=fcb683da:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=fcb683da:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=fcb683da:18736:28)
