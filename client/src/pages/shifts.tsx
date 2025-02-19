@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Input } from "@/components/ui/input";
 
 // Type definitions
 type ShiftType = {
@@ -130,9 +131,15 @@ const singleDayShiftTypeSchema = z.object({
   shiftTypeId: z.string(),
 });
 
+const createWeekFormSchema = z.object({
+  week: z.string().min(1, "Week is required"),
+  roleId: z.string().min(1, "Role is required"),
+});
+
 type FilterFormData = z.infer<typeof filterFormSchema>;
 type InspectorGroupFormData = z.infer<typeof inspectorGroupSchema>;
 type SingleDayShiftTypeFormData = z.infer<typeof singleDayShiftTypeSchema>;
+type CreateWeekFormData = z.infer<typeof createWeekFormSchema>;
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -157,6 +164,7 @@ export default function BuildingShifts() {
   const [openWeekCombobox, setOpenWeekCombobox] = useState(false);
   const [buildingSearch, setBuildingSearch] = useState("");
   const [weekSearch, setWeekSearch] = useState("");
+  const [isCreateWeekDialogOpen, setIsCreateWeekDialogOpen] = useState(false);
 
 
   const filterForm = useForm<FilterFormData>({
@@ -178,6 +186,14 @@ export default function BuildingShifts() {
     resolver: zodResolver(singleDayShiftTypeSchema),
     defaultValues: {
       shiftTypeId: "",
+    },
+  });
+
+  const createWeekForm = useForm<CreateWeekFormData>({
+    resolver: zodResolver(createWeekFormSchema),
+    defaultValues: {
+      week: "",
+      roleId: "",
     },
   });
 
@@ -630,6 +646,53 @@ export default function BuildingShifts() {
     );
   }
 
+  const { data: roles } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/admin/roles"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/roles", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch roles");
+      }
+      return response.json();
+    },
+    enabled: !!user?.isAdmin,
+  });
+
+  const createWeekMutation = useMutation({
+    mutationFn: async ({ buildingId, data }: { buildingId: number; data: CreateWeekFormData }) => {
+      const response = await fetch(`/api/admin/buildings/${buildingId}/weeks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create week");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
+      toast({
+        title: "Success",
+        description: "Week created successfully",
+      });
+      setIsCreateWeekDialogOpen(false);
+      createWeekForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create week",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <Navbar>
       <div className="p-6">
@@ -712,74 +775,87 @@ export default function BuildingShifts() {
                 )}
               />
 
-              {/* Week Selection with Search */}
-              <FormField
-                control={filterForm.control}
-                name="weekId"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Select Week</FormLabel>
-                    <Popover open={openWeekCombobox} onOpenChange={setOpenWeekCombobox}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={openWeekCombobox}
-                            className="justify-between"
-                          >
-                            {field.value
-                              ? `Week ${
-                                  selectedBuilding?.shifts.find(
-                                    (s) => s.id.toString() === field.value
-                                  )?.week
-                                } - ${
-                                  selectedBuilding?.shifts.find(
-                                    (s) => s.id.toString() === field.value
-                                  )?.role.name
-                                }`
-                              : "Select week..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[400px] p-0">
-                        <Command>
-                          <CommandInput
-                            placeholder="Search weeks..."
-                            value={weekSearch}
-                            onValueChange={setWeekSearch}
-                          />
-                          <CommandEmpty>No week found.</CommandEmpty>
-                          <CommandGroup>
-                            {filteredWeeks?.map((shift) => (
-                              <CommandItem
-                                key={shift.id}
-                                value={shift.id.toString()}
-                                onSelect={(value) => {
-                                  field.onChange(value);
-                                  setOpenWeekCombobox(false);
-                                }}
+              {/* Week Selection with Search and Add Week Button */}
+              <div className="space-y-2">
+                <FormLabel>Week Selection</FormLabel>
+                <div className="flex gap-2">
+                  <FormField
+                    control={filterForm.control}
+                    name="weekId"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <Popover open={openWeekCombobox} onOpenChange={setOpenWeekCombobox}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openWeekCombobox}
+                                className="justify-between"
                               >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    field.value === shift.id.toString()
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                Week {shift.week} - {shift.role.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                                {field.value
+                                  ? `Week ${
+                                      selectedBuilding?.shifts.find(
+                                        (s) => s.id.toString() === field.value
+                                      )?.week
+                                    } - ${
+                                      selectedBuilding?.shifts.find(
+                                        (s) => s.id.toString() === field.value
+                                      )?.role.name
+                                    }`
+                                  : "Select week..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0">
+                            <Command>
+                              <CommandInput
+                                placeholder="Search weeks..."
+                                value={weekSearch}
+                                onValueChange={setWeekSearch}
+                              />
+                              <CommandEmpty>No week found.</CommandEmpty>
+                              <CommandGroup>
+                                {filteredWeeks?.map((shift) => (
+                                  <CommandItem
+                                    key={shift.id}
+                                    value={shift.id.toString()}
+                                    onSelect={(value) => {
+                                      field.onChange(value);
+                                      setOpenWeekCombobox(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === shift.id.toString()
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    Week {shift.week} - {shift.role.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {selectedBuilding && (
+                    <Button
+                      type="button"
+                      onClick={() => setIsCreateWeekDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Week
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           </form>
         </Form>
@@ -909,37 +985,40 @@ export default function BuildingShifts() {
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => setDayToDelete({ groupId: group.id, dayOfWeek: dayIndex })}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">No shift</span>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => {
-                                        setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                        setSelectedGroupForShiftTypes(group);
-                                        setIsEditShiftTypesOpen(true);
-                                        singleDayShiftTypeForm.reset({
-                                          shiftTypeId: "none",
-                                        });
-                                      }}
-                                    >
-                                      <Plus className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setDayToDelete({ groupId: group.id, dayOfWeek: dayIndex })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {existingDay.shiftType.startTime} - {existingDay.shiftType.endTime}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">No shift</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                    setSelectedGroupForShiftTypes(group);
+                    setIsEditShiftTypesOpen(true);
+                    singleDayShiftTypeForm.reset({
+                      shiftTypeId: "none",
+                    });
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
                               </div>
                             );
                           })}
@@ -1207,6 +1286,90 @@ export default function BuildingShifts() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        {/* Add Create Week Dialog */}
+        <Dialog open={isCreateWeekDialogOpen} onOpenChange={setIsCreateWeekDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Week</DialogTitle>
+              <DialogDescription>
+                Add a new week to {selectedBuilding?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...createWeekForm}>
+              <form
+                onSubmit={createWeekForm.handleSubmit((data) => {
+                  if (selectedBuilding) {
+                    createWeekMutation.mutate({
+                      buildingId: selectedBuilding.id,
+                      data,
+                    });
+                  }
+                })}
+                className="space-y-4"
+              >
+                <FormField
+                  control={createWeekForm.control}
+                  name="week"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Week Number</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter week number" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createWeekForm.control}
+                  name="roleId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {roles?.map((role) => (
+                            <SelectItem key={role.id} value={role.id.toString()}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateWeekDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createWeekMutation.isPending}>
+                    {createWeekMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Week"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Navbar>
   );

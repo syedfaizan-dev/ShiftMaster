@@ -1802,6 +1802,48 @@ export function registerRoutes(app: Express): Server {
     }
   );
 
+  // Admin: Create week for building
+  app.post(
+    "/api/admin/buildings/:buildingId/weeks",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { buildingId } = req.params;
+        const { week, roleId } = req.body;
+
+        // Validate that the role exists
+        const [role] = await db
+          .select()
+          .from(roles)
+          .where(eq(roles.id, parseInt(roleId)))
+          .limit(1);
+
+        if (!role) {
+          return res.status(400).json({ message: "Invalid role" });
+        }
+
+        // Create the week
+        const [newShift] = await db
+          .insert(shifts)
+          .values({
+            buildingId: parseInt(buildingId),
+            week,
+            roleId: parseInt(roleId),
+            createdBy: req.user!.id,
+          })
+          .returning();
+
+        res.status(201).json(newShift);
+      } catch (error) {
+        console.error("Error creating week:", error);
+        res.status(500).json({
+          message: "Error creating week",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+  );
+
   const server = createServer(app);
   return server;
 }
