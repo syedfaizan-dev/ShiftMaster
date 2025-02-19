@@ -405,18 +405,6 @@ export default function BuildingShifts() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Shifts Management</h1>
-          {selectedWeek && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateGroupDialogOpen(true);
-                setSelectedShift(selectedWeek);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Group
-            </Button>
-          )}
         </div>
 
         {/* Filter Form */}
@@ -504,13 +492,25 @@ export default function BuildingShifts() {
         {/* Show week details if both building and week are selected */}
         {selectedWeek && (
           <Card>
-            <CardHeader>
-              <CardTitle>
-                {selectedBuilding?.name} - Week {selectedWeek.week}
-              </CardTitle>
-              <CardDescription>
-                Role: {selectedWeek.role.name}
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
+                  {selectedBuilding?.name} - Week {selectedWeek.week}
+                </CardTitle>
+                <CardDescription>
+                  Role: {selectedWeek.role.name}
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreateGroupDialogOpen(true);
+                  setSelectedShift(selectedWeek);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Inspector Group
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
@@ -572,7 +572,6 @@ export default function BuildingShifts() {
                             </Button>
                           </div>
                         </TableCell>
-                        {/* Generate cells for each day */}
                         {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => {
                           const existingDay = group.days.find(
                             (d) => d.dayOfWeek === dayIndex
@@ -695,12 +694,21 @@ export default function BuildingShifts() {
         </Dialog>
 
         {/* Create Group Dialog */}
-        <Dialog open={isCreateGroupDialogOpen} onOpenChange={setIsCreateGroupDialogOpen}>
+        <Dialog 
+          open={isCreateGroupDialogOpen} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsCreateGroupDialogOpen(false);
+              setSelectedShift(null);
+              createGroupForm.reset();
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Inspector Group</DialogTitle>
               <DialogDescription>
-                Fill in the form below to create a new inspector group.
+                Fill in the form below to create a new inspector group for Week {selectedShift?.week}.
               </DialogDescription>
             </DialogHeader>
             <Form {...createGroupForm}>
