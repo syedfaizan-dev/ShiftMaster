@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "@db";
 import { buildings, shifts, users, roles, shiftTypes, shiftInspectors, shiftDays, inspectorGroups } from "@db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, or } from "drizzle-orm";
 
 export async function getBuildingsWithShifts(req: Request, res: Response) {
   try {
@@ -20,7 +20,11 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
       })
       .from(buildings)
       .leftJoin(users, eq(buildings.supervisorId, users.id))
-      .where(req.user?.isAdmin ? undefined : eq(buildings.supervisorId, req.user!.id));
+      .where(
+        req.user?.isAdmin 
+          ? undefined 
+          : or(eq(buildings.supervisorId, req.user?.id || 0), isNull(buildings.supervisorId))
+      );
 
     // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
@@ -30,8 +34,6 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
           .select({
             id: shifts.id,
             week: shifts.week,
-            status: shifts.status,
-            rejectionReason: shifts.rejectionReason,
             roleId: shifts.roleId,
             buildingId: shifts.buildingId,
             groupName: shifts.groupName,
@@ -63,6 +65,8 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                       username: users.username,
                     },
                     status: shiftInspectors.status,
+                    isPrimary: shiftInspectors.isPrimary,
+                    responseAt: shiftInspectors.responseAt,
                     rejectionReason: shiftInspectors.rejectionReason,
                   })
                   .from(shiftInspectors)
@@ -87,8 +91,18 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
 
                 return {
                   ...group,
-                  inspectors,
-                  days,
+                  inspectors: inspectors.map(inspector => ({
+                    inspector: inspector.inspector,
+                    status: inspector.status || "PENDING",
+                    isPrimary: inspector.isPrimary || false,
+                    responseAt: inspector.responseAt,
+                    rejectionReason: inspector.rejectionReason,
+                  })),
+                  days: days.map(day => ({
+                    id: day.id,
+                    dayOfWeek: day.dayOfWeek,
+                    shiftType: day.shiftType?.id ? day.shiftType : null,
+                  })),
                 };
               })
             );
