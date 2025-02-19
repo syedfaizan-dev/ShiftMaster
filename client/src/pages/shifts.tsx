@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import {
@@ -168,6 +168,18 @@ export default function BuildingShifts() {
     enabled: !!user?.isAdmin,
   });
 
+  // Set default values when buildings data is loaded
+  useEffect(() => {
+    if (buildingsData?.buildings.length) {
+      const firstBuilding = buildingsData.buildings[0];
+      filterForm.setValue("buildingId", firstBuilding.id.toString());
+
+      if (firstBuilding.shifts.length) {
+        filterForm.setValue("weekId", firstBuilding.shifts[0].id.toString());
+      }
+    }
+  }, [buildingsData]);
+
   const { data: availableInspectors } = useQuery<Inspector[]>({
     queryKey: ["/api/admin/inspectors"],
     queryFn: async () => {
@@ -273,13 +285,13 @@ export default function BuildingShifts() {
   });
 
   const updateSingleDayShiftTypeMutation = useMutation({
-    mutationFn: async ({ 
-      groupId, 
-      dayOfWeek, 
-      shiftTypeId 
-    }: { 
-      groupId: number; 
-      dayOfWeek: number; 
+    mutationFn: async ({
+      groupId,
+      dayOfWeek,
+      shiftTypeId
+    }: {
+      groupId: number;
+      dayOfWeek: number;
       shiftTypeId: string;
     }) => {
       const response = await fetch(`/api/admin/inspector-groups/${groupId}/days/${dayOfWeek}`, {
@@ -376,8 +388,8 @@ export default function BuildingShifts() {
         <h1 className="text-3xl font-bold mb-6">Shifts Management</h1>
 
         <Form {...filterForm}>
-          <form onSubmit={filterForm.handleSubmit(onFilterSubmit)} className="space-y-4 mb-6">
-            <div className="grid gap-4">
+          <form onSubmit={filterForm.handleSubmit(onFilterSubmit)} className="mb-6">
+            <div className="grid grid-cols-2 gap-4">
               {/* Building Selection */}
               <FormField
                 control={filterForm.control}
@@ -389,7 +401,13 @@ export default function BuildingShifts() {
                       value={field.value}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        filterForm.setValue("weekId", ""); // Reset week selection
+                        // When building changes, set the first week as selected
+                        const building = buildingsData?.buildings.find(b => b.id.toString() === value);
+                        if (building?.shifts.length) {
+                          filterForm.setValue("weekId", building.shifts[0].id.toString());
+                        } else {
+                          filterForm.setValue("weekId", "");
+                        }
                       }}
                     >
                       <FormControl>
@@ -410,36 +428,34 @@ export default function BuildingShifts() {
                 )}
               />
 
-              {/* Week Selection - Only show if building is selected */}
-              {filterForm.watch("buildingId") && (
-                <FormField
-                  control={filterForm.control}
-                  name="weekId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Week</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose a week" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {selectedBuilding?.shifts.map((shift) => (
-                            <SelectItem key={shift.id} value={shift.id.toString()}>
-                              Week {shift.week} - {shift.role.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+              {/* Week Selection */}
+              <FormField
+                control={filterForm.control}
+                name="weekId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Week</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a week" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {selectedBuilding?.shifts.map((shift) => (
+                          <SelectItem key={shift.id} value={shift.id.toString()}>
+                            Week {shift.week} - {shift.role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </form>
         </Form>
