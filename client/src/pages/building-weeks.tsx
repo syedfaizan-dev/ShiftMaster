@@ -14,7 +14,6 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import Navbar from "@/components/navbar";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 
 type BuildingWithShifts = {
   id: number;
@@ -24,8 +23,6 @@ type BuildingWithShifts = {
   shifts: Array<{
     id: number;
     week: string;
-    status: "PENDING" | "ACCEPTED" | "REJECTED";
-    rejectionReason: string | null;
     role: { id: number; name: string };
     inspectorGroups: Array<{
       id: number;
@@ -131,12 +128,6 @@ export default function BuildingWeeks() {
                     <CardDescription>
                       <div className="flex items-center gap-2">
                         <span>{shift.role.name}</span>
-                        <Badge variant={
-                          shift.status === "ACCEPTED" ? "default" :
-                          shift.status === "REJECTED" ? "destructive" : "secondary"
-                        }>
-                          {shift.status}
-                        </Badge>
                       </div>
                     </CardDescription>
                   </CardHeader>

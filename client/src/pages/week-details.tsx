@@ -81,8 +81,6 @@ type InspectorGroup = {
 type ShiftAssignment = {
   id: number;
   week: string;
-  status: "PENDING" | "ACCEPTED" | "REJECTED";
-  rejectionReason: string | null;
   role: { id: number; name: string };
   building: { id: number; name: string; code: string; area: string };
   inspectorGroups: InspectorGroup[];
@@ -613,6 +611,9 @@ export default function WeekDetails() {
                             }>
                               {si.status}
                             </Badge>
+                            {si.status === "REJECTED" && si.rejectionReason && (
+                              <span className="text-xs text-red-600 ml-2">{si.rejectionReason}</span>
+                            )}
                           </div>
                         ))}
                       </div>
