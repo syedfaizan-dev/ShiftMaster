@@ -1079,7 +1079,8 @@ export function registerRoutes(app: Express): Server {
             id: users.id,
             username: users.username,
             fullName: users.fullName,
-          })          .from(users)
+          })
+                    .from(users)
           .where(
             and(
               eq(users.isAdmin, false),
@@ -1702,6 +1703,51 @@ export function registerRoutes(app: Express): Server {
       } catch (error) {
         console.error("Error deleting utility:", error);
         res.status(500).json({ message: "Error deleting utility" });
+      }
+    },
+  );
+
+  // Delete inspector group (admin only)
+  app.delete(
+    "/api/admin/inspector-groups/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+
+        // Check if group exists
+        const [existingGroup] = await db
+          .select()
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.id, parseInt(id)))
+          .limit(1);
+
+        if (!existingGroup) {
+          return res.status(404).json({ message: "Inspector group not found" });
+        }
+
+        // Begin transaction to ensure data consistency
+        await db.transaction(async (tx) => {
+          // First, delete all shift assignments for this group
+          await tx
+            .delete(shiftInspectors)
+            .where(eq(shiftInspectors.inspectorGroupId, parseInt(id)));
+
+          // Then, delete all shift days for this group
+          await tx
+            .delete(shiftDays)
+            .where(eq(shiftDays.inspectorGroupId, parseInt(id)));
+
+          // Finally, delete the group itself
+          await tx
+            .delete(inspectorGroups)
+            .where(eq(inspectorGroups.id, parseInt(id)));
+        });
+
+        res.json({ message: "Inspector group and related data deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting inspector group:", error);
+        res.status(500).json({ message: "Error deleting inspector group" });
       }
     },
   );

@@ -45,9 +45,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Users, Edit } from "lucide-react";
+import { Loader2, Plus, Users, Edit, Trash2 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import * as z from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Type definitions
 type ShiftType = {
@@ -139,6 +149,7 @@ export default function BuildingShifts() {
   const [isAddInspectorOpen, setIsAddInspectorOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [groupToDelete, setGroupToDelete] = useState<number | null>(null);
 
 
   const filterForm = useForm<FilterFormData>({
@@ -332,6 +343,34 @@ export default function BuildingShifts() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update shift type",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      const response = await fetch(`/api/admin/inspector-groups/${groupId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete inspector group");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/buildings/with-shifts"] });
+      toast({
+        title: "Success",
+        description: "Inspector group deleted successfully",
+      });
+      setGroupToDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete inspector group",
         variant: "destructive",
       });
     },
@@ -559,17 +598,27 @@ export default function BuildingShifts() {
                                 </div>
                               ))}
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedGroup(group.id);
-                                setIsAddInspectorOpen(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add Inspector
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedGroup(group.id);
+                                  setIsAddInspectorOpen(true);
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Inspector
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setGroupToDelete(group.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Group
+                              </Button>
+                            </div>
                           </div>
                         </TableCell>
                         {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => {
@@ -632,8 +681,8 @@ export default function BuildingShifts() {
         )}
 
         {/* Add Inspector Dialog */}
-        <Dialog 
-          open={isAddInspectorOpen} 
+        <Dialog
+          open={isAddInspectorOpen}
           onOpenChange={(open) => {
             if (!open) {
               setIsAddInspectorOpen(false);
@@ -694,8 +743,8 @@ export default function BuildingShifts() {
         </Dialog>
 
         {/* Create Group Dialog */}
-        <Dialog 
-          open={isCreateGroupDialogOpen} 
+        <Dialog
+          open={isCreateGroupDialogOpen}
           onOpenChange={(open) => {
             if (!open) {
               setIsCreateGroupDialogOpen(false);
@@ -796,8 +845,8 @@ export default function BuildingShifts() {
                   )}
                 />
                 <DialogFooter className="mt-4">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={updateSingleDayShiftTypeMutation.isPending}
                     onClick={() => {
                       if (singleDayShiftTypeForm.formState.isValid) {
@@ -819,6 +868,38 @@ export default function BuildingShifts() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Group Confirmation Dialog */}
+        <AlertDialog open={groupToDelete !== null} onOpenChange={(open) => !open && setGroupToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action will delete the inspector group and all related shift assignments.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (groupToDelete) {
+                    deleteGroupMutation.mutate(groupToDelete);
+                  }
+                }}
+              >
+                {deleteGroupMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Group'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Navbar>
   );
