@@ -1076,8 +1076,7 @@ export function registerRoutes(app: Express): Server {
       try {
         const employees = await db
           .select({
-            id: users.id,
-            username: users.username,
+            id: users.id,            username: users.username,
             fullName: users.fullName,
           })
           .from(users)
@@ -1300,7 +1299,6 @@ export function registerRoutes(app: Express): Server {
                 eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
               )
             );
-
           // If shiftTypeId is not "none", insert new assignment
           if (shiftTypeId !== "none") {
             const [newDay] = await tx
@@ -1314,7 +1312,6 @@ export function registerRoutes(app: Express): Server {
 
             return newDay;
           }
-
           return null;
         });
 
@@ -1787,21 +1784,17 @@ export function registerRoutes(app: Express): Server {
           return res.status(404).json({ message: "Day not found for this group" });
         }
 
-        // Update the day to remove the shift type
-        const [updatedDay] = await db
-          .update(shiftDays)
-          .set({
-            shiftTypeId: null,
-          })
+        // Delete the shift day record instead of updating it
+        await db
+          .delete(shiftDays)
           .where(
             and(
               eq(shiftDays.inspectorGroupId, parseInt(groupId)),
               eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
             )
-          )
-          .returning();
+          );
 
-        res.json({ message: "Shift type removed successfully", day: updatedDay });
+        res.json({ message: "Shift type removed successfully" });
       } catch (error) {
         console.error("Error removing shift type:", error);
         res.status(500).json({ message: "Error removing shift type" });
