@@ -1563,6 +1563,149 @@ export function registerRoutes(app: Express): Server {
       }
     }
   );
+  // Get all utilities (admin only)
+  app.get(
+    "/api/admin/utilities",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const allUtilities = await db.select().from(utilities);
+        res.json(allUtilities);
+      } catch (error) {
+        console.error("Error fetching utilities:", error);
+        res.status(500).json({ message: "Error fetching utilities" });
+      }
+    },
+  );
+
+  // Create utility (admin only)
+  app.post(
+    "/api/admin/utilities",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { name, description } = req.body;
+
+        // Check if utility with same name exists
+        const [existingUtility] = await db
+          .select()
+          .from(utilities)
+          .where(eq(utilities.name, name))
+          .limit(1);
+
+        if (existingUtility) {
+          return res.status(400).json({ message: "Utility with this name already exists" });
+        }
+
+        const [newUtility] = await db
+          .insert(utilities)
+          .values({
+            name,
+            description,
+            createdBy: req.user!.id,
+          })
+          .returning();
+
+        res.status(201).json(newUtility);
+      } catch (error) {
+        console.error("Error creating utility:", error);
+        res.status(500).json({ message: "Error creating utility" });
+      }
+    },
+  );
+
+  // Update utility (admin only)
+  app.put(
+    "/api/admin/utilities/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { name, description } = req.body;
+
+        // Check if utility exists
+        const [existingUtility] = await db
+          .select()
+          .from(utilities)
+          .where(eq(utilities.id, parseInt(id)))
+          .limit(1);
+
+        if (!existingUtility) {
+          return res.status(404).json({ message: "Utility not found" });
+        }
+
+        // Check for name conflicts
+        if (name !== existingUtility.name) {
+          const [utilityWithSameName] = await db
+            .select()
+            .from(utilities)
+            .where(eq(utilities.name, name))
+            .limit(1);
+
+          if (utilityWithSameName) {
+            return res.status(400).json({ message: "Utility with this name already exists" });
+          }
+        }
+
+        const [updatedUtility] = await db
+          .update(utilities)
+          .set({
+            name,
+            description,
+          })
+          .where(eq(utilities.id, parseInt(id)))
+          .returning();
+
+        res.json(updatedUtility);
+      } catch (error) {
+        console.error("Error updating utility:", error);
+        res.status(500).json({ message: "Error updating utility" });
+      }
+    },
+  );
+
+  // Delete utility (admin only)
+  app.delete(
+    "/api/admin/utilities/:id",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+
+        // Check if utility exists
+        const [existingUtility] = await db
+          .select()
+          .from(utilities)
+          .where(eq(utilities.id, parseInt(id)))
+          .limit(1);
+
+        if (!existingUtility) {
+          return res.status(404).json({ message: "Utility not found" });
+        }
+
+        // Check if utility is being used by any tasks
+        const [relatedTask] = await db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.assignedTo, parseInt(id)))
+          .limit(1);
+
+        if (relatedTask) {
+          return res.status(400).json({
+            message: "Cannot delete utility as it has assigned tasks. Please reassign or delete the tasks first.",
+          });
+        }
+
+        await db.delete(utilities).where(eq(utilities.id, parseInt(id)));
+
+        res.json({ message: "Utility deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting utility:", error);
+        res.status(500).json({ message: "Error deleting utility" });
+      }
+    },
+  );
+
   const server = createServer(app);
   return server;
 }
