@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "@db";
-import { buildings, shifts, users, roles, shiftTypes, shiftInspectors, shiftDays, inspectorGroups } from "@db/schema";
+import { buildings, shifts, users, roles, shiftTypes, shiftInspectors, shiftDays, inspectorGroups, taskAssignments } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function getBuildingsWithShifts(req: Request, res: Response) {
@@ -25,35 +25,40 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
     // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
       buildingsData.map(async (building) => {
-        // Get shifts for this building with basic info
+        // Get shifts for this building with task assignments
         const buildingShifts = await db
           .select({
             id: shifts.id,
             week: shifts.week,
-            status: shifts.status,
-            rejectionReason: shifts.rejectionReason,
-            roleId: shifts.roleId,
             buildingId: shifts.buildingId,
-            groupName: shifts.groupName,
           })
           .from(shifts)
           .where(eq(shifts.buildingId, building.id));
 
-        // For each shift, get inspector groups, role, and daily assignments
+        // For each shift, get task assignments with their related data
         const shiftsWithDetails = await Promise.all(
           buildingShifts.map(async (shift) => {
-            // Get all inspector groups for this shift
-            const groups = await db
+            // Get all task assignments for this shift
+            const tasks = await db
               .select({
-                id: inspectorGroups.id,
-                name: inspectorGroups.name,
+                id: taskAssignments.id,
+                role: {
+                  id: roles.id,
+                  name: roles.name,
+                },
+                inspectorGroup: {
+                  id: inspectorGroups.id,
+                  name: inspectorGroups.name,
+                },
               })
-              .from(inspectorGroups)
-              .where(eq(inspectorGroups.shiftId, shift.id));
+              .from(taskAssignments)
+              .leftJoin(roles, eq(taskAssignments.roleId, roles.id))
+              .leftJoin(inspectorGroups, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
+              .where(eq(taskAssignments.shiftId, shift.id));
 
-            // For each group, get inspectors and daily assignments
-            const groupsWithDetails = await Promise.all(
-              groups.map(async (group) => {
+            // For each task assignment, get inspectors and daily assignments
+            const tasksWithDetails = await Promise.all(
+              tasks.map(async (task) => {
                 // Get all inspectors for this group
                 const inspectors = await db
                   .select({
@@ -67,7 +72,7 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                   })
                   .from(shiftInspectors)
                   .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-                  .where(eq(shiftInspectors.inspectorGroupId, group.id));
+                  .where(eq(shiftInspectors.inspectorGroupId, task.inspectorGroup.id));
 
                 // Get daily assignments for this group
                 const days = await db
@@ -83,29 +88,22 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                   })
                   .from(shiftDays)
                   .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
-                  .where(eq(shiftDays.inspectorGroupId, group.id));
+                  .where(eq(shiftDays.inspectorGroupId, task.inspectorGroup.id));
 
                 return {
-                  ...group,
-                  inspectors,
-                  days,
+                  ...task,
+                  inspectorGroup: {
+                    ...task.inspectorGroup,
+                    inspectors,
+                    days,
+                  },
                 };
               })
             );
 
-            // Get role details
-            const [role] = await db
-              .select({
-                id: roles.id,
-                name: roles.name,
-              })
-              .from(roles)
-              .where(eq(roles.id, shift.roleId));
-
             return {
               ...shift,
-              role,
-              inspectorGroups: groupsWithDetails,
+              taskAssignments: tasksWithDetails,
             };
           })
         );

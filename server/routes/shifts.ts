@@ -8,18 +8,24 @@ import {
   shiftTypes, 
   buildings, 
   shiftInspectors,
-  shiftDays 
+  shiftDays,
+  taskAssignments,
+  inspectorGroups 
 } from "@db/schema";
 
 export async function getShifts(req: Request, res: Response) {
   try {
     // Get all shifts where the user is assigned as an inspector
     const userShifts = await db
-      .select()
+      .select({
+        shiftId: taskAssignments.shiftId,
+      })
       .from(shiftInspectors)
+      .leftJoin(inspectorGroups, eq(shiftInspectors.inspectorGroupId, inspectorGroups.id))
+      .leftJoin(taskAssignments, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
       .where(eq(shiftInspectors.inspectorId, req.user!.id));
 
-    const shiftIds = userShifts.map(s => s.shiftId);
+    const shiftIds = [...new Set(userShifts.map(s => s.shiftId))];
 
     // If no shifts found, return empty array
     if (shiftIds.length === 0 && !req.user?.isAdmin) {
@@ -30,17 +36,7 @@ export async function getShifts(req: Request, res: Response) {
     const query = db
       .select({
         id: shifts.id,
-        roleId: shifts.roleId,
-        buildingId: shifts.buildingId,
         week: shifts.week,
-        groupName: shifts.groupName,
-        status: shifts.status,
-        rejectionReason: shifts.rejectionReason,
-        responseAt: shifts.responseAt,
-        role: {
-          id: roles.id,
-          name: roles.name,
-        },
         building: {
           id: buildings.id,
           name: buildings.name,
@@ -49,7 +45,6 @@ export async function getShifts(req: Request, res: Response) {
         },
       })
       .from(shifts)
-      .leftJoin(roles, eq(shifts.roleId, roles.id))
       .leftJoin(buildings, eq(shifts.buildingId, buildings.id));
 
     // If not admin, only show shifts where the user is an inspector
@@ -60,46 +55,75 @@ export async function getShifts(req: Request, res: Response) {
 
     const shiftsData = await query;
 
-    // Get inspectors and daily assignments for each shift
+    // Get task assignments and details for each shift
     const shiftsWithDetails = await Promise.all(
       shiftsData.map(async (shift) => {
-        // Get all inspectors for this shift
-        const shiftInspectorsData = await db
+        // Get all task assignments for this shift
+        const taskAssignmentsData = await db
           .select({
-            inspector: {
-              id: users.id,
-              fullName: users.fullName,
-              username: users.username,
+            id: taskAssignments.id,
+            role: {
+              id: roles.id,
+              name: roles.name,
             },
-            isPrimary: shiftInspectors.isPrimary,
-            status: shiftInspectors.status,
-            rejectionReason: shiftInspectors.rejectionReason,
-            responseAt: shiftInspectors.responseAt,
+            inspectorGroup: {
+              id: inspectorGroups.id,
+              name: inspectorGroups.name,
+            },
           })
-          .from(shiftInspectors)
-          .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-          .where(eq(shiftInspectors.shiftId, shift.id));
+          .from(taskAssignments)
+          .leftJoin(roles, eq(taskAssignments.roleId, roles.id))
+          .leftJoin(inspectorGroups, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
+          .where(eq(taskAssignments.shiftId, shift.id));
 
-        // Get daily assignments
-        const dailyAssignments = await db
-          .select({
-            id: shiftDays.id,
-            dayOfWeek: shiftDays.dayOfWeek,
-            shiftType: {
-              id: shiftTypes.id,
-              name: shiftTypes.name,
-              startTime: shiftTypes.startTime,
-              endTime: shiftTypes.endTime,
-            },
+        // For each task assignment, get inspectors and daily assignments
+        const taskAssignmentsWithDetails = await Promise.all(
+          taskAssignmentsData.map(async (task) => {
+            // Get all inspectors for this group
+            const inspectors = await db
+              .select({
+                inspector: {
+                  id: users.id,
+                  fullName: users.fullName,
+                  username: users.username,
+                },
+                status: shiftInspectors.status,
+                rejectionReason: shiftInspectors.rejectionReason,
+              })
+              .from(shiftInspectors)
+              .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+              .where(eq(shiftInspectors.inspectorGroupId, task.inspectorGroup.id));
+
+            // Get daily assignments
+            const days = await db
+              .select({
+                id: shiftDays.id,
+                dayOfWeek: shiftDays.dayOfWeek,
+                shiftType: {
+                  id: shiftTypes.id,
+                  name: shiftTypes.name,
+                  startTime: shiftTypes.startTime,
+                  endTime: shiftTypes.endTime,
+                },
+              })
+              .from(shiftDays)
+              .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
+              .where(eq(shiftDays.inspectorGroupId, task.inspectorGroup.id));
+
+            return {
+              ...task,
+              inspectorGroup: {
+                ...task.inspectorGroup,
+                inspectors,
+                days,
+              },
+            };
           })
-          .from(shiftDays)
-          .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
-          .where(eq(shiftDays.shiftId, shift.id));
+        );
 
         return {
           ...shift,
-          inspectors: shiftInspectorsData,
-          days: dailyAssignments,
+          taskAssignments: taskAssignmentsWithDetails,
         };
       })
     );
@@ -117,17 +141,9 @@ export async function createShift(req: Request, res: Response) {
       return res.status(403).send("Not authorized - Admin access required");
     }
 
-    const { 
-      inspectors, 
-      roleId, 
-      buildingId, 
-      week, 
-      groupName,
-      dailyAssignments 
-    } = req.body;
+    const { buildingId, week, tasks } = req.body;
 
-    // Validate required fields
-    if (!inspectors?.length || !roleId || !buildingId || !week || !groupName || !dailyAssignments?.length) {
+    if (!buildingId || !week || !tasks?.length) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -137,59 +153,66 @@ export async function createShift(req: Request, res: Response) {
       const [shift] = await tx
         .insert(shifts)
         .values({
-          roleId,
           buildingId,
           week,
-          groupName,
-          status: 'PENDING',
           createdBy: req.user!.id,
         })
         .returning();
 
-      // Add inspectors
+      // Create task assignments and related data
       await Promise.all(
-        inspectors.map(async (inspector: { id: number, isPrimary: boolean }) => {
-          await tx.insert(shiftInspectors).values({
-            shiftId: shift.id,
-            inspectorId: inspector.id,
-            isPrimary: inspector.isPrimary,
-          });
-        })
-      );
+        tasks.map(async (task: {
+          roleId: number;
+          inspectorGroup: {
+            name: string;
+            inspectorIds: number[];
+            days: Array<{ dayOfWeek: number; shiftTypeId: number }>;
+          };
+        }) => {
+          // Create inspector group
+          const [group] = await tx
+            .insert(inspectorGroups)
+            .values({
+              name: task.inspectorGroup.name,
+            })
+            .returning();
 
-      // Add daily assignments
-      await Promise.all(
-        dailyAssignments.map(async (assignment: { dayOfWeek: number, shiftTypeId: number }) => {
-          await tx.insert(shiftDays).values({
+          // Create task assignment
+          await tx.insert(taskAssignments).values({
             shiftId: shift.id,
-            dayOfWeek: assignment.dayOfWeek,
-            shiftTypeId: assignment.shiftTypeId,
+            roleId: task.roleId,
+            inspectorGroupId: group.id,
           });
+
+          // Add inspectors to group
+          await Promise.all(
+            task.inspectorGroup.inspectorIds.map(async (inspectorId) => {
+              await tx.insert(shiftInspectors).values({
+                inspectorGroupId: group.id,
+                inspectorId,
+                status: 'PENDING',
+              });
+            })
+          );
+
+          // Add daily assignments
+          await Promise.all(
+            task.inspectorGroup.days.map(async (day) => {
+              await tx.insert(shiftDays).values({
+                inspectorGroupId: group.id,
+                dayOfWeek: day.dayOfWeek,
+                shiftTypeId: day.shiftTypeId,
+              });
+            })
+          );
         })
       );
 
       return shift;
     });
 
-    // Get complete shift details with relationships
-    const completeShift = await db.query.shifts.findFirst({
-      where: eq(shifts.id, result.id),
-      with: {
-        inspectors: {
-          with: {
-            inspector: true,
-          },
-        },
-        days: {
-          with: {
-            shiftType: true,
-          },
-        },
-        role: true,
-        building: true,
-      },
-    });
-
+    // Get complete shift details
+    const completeShift = await getShiftDetails(result.id);
     res.json(completeShift);
   } catch (error) {
     console.error('Error creating shift:', error);
@@ -197,321 +220,87 @@ export async function createShift(req: Request, res: Response) {
   }
 }
 
-export async function handleShiftResponse(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const { action, rejectionReason } = req.body;
+async function getShiftDetails(shiftId: number) {
+  const [shift] = await db
+    .select({
+      id: shifts.id,
+      week: shifts.week,
+      building: {
+        id: buildings.id,
+        name: buildings.name,
+        code: buildings.code,
+        area: buildings.area,
+      },
+    })
+    .from(shifts)
+    .leftJoin(buildings, eq(shifts.buildingId, buildings.id))
+    .where(eq(shifts.id, shiftId));
 
-    if (!['ACCEPT', 'REJECT'].includes(action)) {
-      return res.status(400).json({ message: "Invalid action. Must be ACCEPT or REJECT" });
-    }
+  if (!shift) return null;
 
-    // Get the shift and verify it exists and belongs to the current inspector
-    const [shift] = await db
-      .select()
-      .from(shifts)
-      .where(
-        and(
-          eq(shifts.id, parseInt(id)),
-          eq(shifts.inspectorId, req.user!.id)
-        )
-      )
-      .limit(1);
+  const taskAssignmentsData = await db
+    .select({
+      id: taskAssignments.id,
+      role: {
+        id: roles.id,
+        name: roles.name,
+      },
+      inspectorGroup: {
+        id: inspectorGroups.id,
+        name: inspectorGroups.name,
+      },
+    })
+    .from(taskAssignments)
+    .leftJoin(roles, eq(taskAssignments.roleId, roles.id))
+    .leftJoin(inspectorGroups, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
+    .where(eq(taskAssignments.shiftId, shiftId));
 
-    if (!shift) {
-      return res.status(404).json({ message: "Shift not found or you're not authorized" });
-    }
-
-    if (shift.status !== 'PENDING') {
-      return res.status(400).json({ message: "Shift has already been processed" });
-    }
-
-    if (action === 'REJECT' && !rejectionReason) {
-      return res.status(400).json({ message: "Rejection reason is required" });
-    }
-
-    // Update the shift status based on the action
-    const [updatedShift] = await db
-      .update(shifts)
-      .set({
-        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
-        responseAt: new Date(),
-        rejectionReason: action === 'REJECT' ? rejectionReason : null,
-      })
-      .where(eq(shifts.id, parseInt(id)))
-      .returning();
-
-    res.json(updatedShift);
-  } catch (error) {
-    console.error("Error processing shift response:", error);
-    res.status(500).json({ message: "Error processing shift response" });
-  }
-}
-
-export async function updateShift(req: Request, res: Response) {
-  try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).send("Not authorized - Admin access required");
-    }
-
-    const { id } = req.params;
-    const { inspectorId, roleId, shiftTypeId, buildingId, week, backupId } = req.body;
-
-    // Validate that the shift exists
-    const [existingShift] = await db
-      .select()
-      .from(shifts)
-      .where(eq(shifts.id, parseInt(id)))
-      .limit(1);
-
-    if (!existingShift) {
-      return res.status(404).send("Shift not found");
-    }
-
-    // Validate that the shift type exists
-    const [shiftType] = await db
-      .select()
-      .from(shiftTypes)
-      .where(eq(shiftTypes.id, shiftTypeId))
-      .limit(1);
-
-    if (!shiftType) {
-      return res.status(400).json({ message: "Invalid shift type" });
-    }
-
-    // Validate building exists
-    const [building] = await db
-      .select()
-      .from(buildings)
-      .where(eq(buildings.id, buildingId))
-      .limit(1);
-
-    if (!building) {
-      return res.status(400).json({ message: "Invalid building ID" });
-    }
-
-    // Update the shift
-    const [updatedShift] = await db
-      .update(shifts)
-      .set({
-        inspectorId,
-        roleId,
-        shiftTypeId,
-        buildingId,
-        week,
-        backupId,
-      })
-      .where(eq(shifts.id, parseInt(id)))
-      .returning();
-
-    res.json(updatedShift);
-  } catch (error) {
-    console.error('Error updating shift:', error);
-    res.status(500).send((error as Error).message);
-  }
-}
-
-export async function getInspectorsByShiftType(req: Request, res: Response) {
-  try {
-    // Get the shift type ID and week from query params
-    const shiftTypeId = req.query.shiftTypeId ? parseInt(req.query.shiftTypeId as string) : null;
-    const week = req.query.week as string;
-
-    if (!shiftTypeId || !week) {
-      return res.status(400).json({ message: "Both shift type ID and week are required" });
-    }
-
-    // Get all inspectors
-    const inspectors = await db
-      .select({
-        id: users.id,
-        fullName: users.fullName,
-        username: users.username,
-      })
-      .from(users)
-      .where(eq(users.isInspector, true));
-
-    // For each inspector, check if they have any conflicting shifts in the given week
-    const inspectorsWithAvailability = await Promise.all(
-      inspectors.map(async (inspector) => {
-        // Find shifts for this inspector in the given week
-        const existingShifts = await db
-          .select({
-            shiftId: shifts.id,
-            shiftTypeId: shifts.shiftTypeId,
-          })
-          .from(shifts)
-          .innerJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
-          .where(
-            and(
-              eq(shiftInspectors.inspectorId, inspector.id),
-              eq(shifts.week, week),
-              eq(shifts.status, 'ACCEPTED')
-            )
-          );
-
-        // Check if any of the existing shifts are of the same type
-        const hasConflictingShift = existingShifts.some(
-          shift => shift.shiftTypeId === shiftTypeId
-        );
-
-        return {
-          ...inspector,
-          availability: {
-            isAvailable: !hasConflictingShift,
-            reason: hasConflictingShift
-              ? `Already assigned to a shift in week ${week}`
-              : undefined
-          }
-        };
-      })
-    );
-
-    res.json(inspectorsWithAvailability);
-  } catch (error) {
-    console.error("Error fetching inspectors availability:", error);
-    res.status(500).json({ message: "Error fetching inspectors" });
-  }
-}
-
-export async function getInspectorsByShiftTypeForTask(req: Request, res: Response) {
-  try {
-    const shiftTypeId = req.query.shiftTypeId ? parseInt(req.query.shiftTypeId as string) : null;
-
-    if (!shiftTypeId) {
-      return res.status(400).json({ message: "Shift type ID is required" });
-    }
-
-    // Get all inspectors who have shifts of this type and are accepted
-    const inspectorsWithShifts = await db
-      .select({
-        id: users.id,
-        fullName: users.fullName,
-        username: users.username,
-      })
-      .from(shifts)
-      .leftJoin(users, eq(shifts.inspectorId, users.id))
-      .where(
-        and(
-          eq(shifts.shiftTypeId, shiftTypeId),
-          eq(shifts.status, 'ACCEPTED')
-        )
-      )
-      .groupBy(users.id, users.fullName, users.username);
-
-    res.json(inspectorsWithShifts);
-  } catch (error) {
-    console.error("Error fetching inspectors by shift type:", error);
-    res.status(500).json({ message: "Error fetching inspectors" });
-  }
-}
-
-export async function updateShiftInspectors(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const { inspectors } = req.body;
-
-    if (!Array.isArray(inspectors)) {
-      return res.status(400).json({ message: "Inspectors must be an array" });
-    }
-
-    // Start a transaction
-    const result = await db.transaction(async (tx) => {
-      // First, delete existing inspector assignments for this shift
-      await tx
-        .delete(shiftInspectors)
-        .where(eq(shiftInspectors.shiftId, parseInt(id)));
-
-      // Then, insert new inspector assignments
-      await Promise.all(
-        inspectors.map(async (inspector: { id: number; isPrimary: boolean }) => {
-          await tx
-            .insert(shiftInspectors)
-            .values({
-              shiftId: parseInt(id),
-              inspectorId: inspector.id,
-              isPrimary: inspector.isPrimary,
-            });
-        })
-      );
-
-      // Return the updated shift with its inspectors
-      const updatedShift = await tx
+  const taskAssignmentsWithDetails = await Promise.all(
+    taskAssignmentsData.map(async (task) => {
+      const inspectors = await db
         .select({
-          id: shifts.id,
-          inspectors: {
-            inspector: {
-              id: users.id,
-              fullName: users.fullName,
-              username: users.username,
-            },
-            isPrimary: shiftInspectors.isPrimary,
+          inspector: {
+            id: users.id,
+            fullName: users.fullName,
+            username: users.username,
+          },
+          status: shiftInspectors.status,
+          rejectionReason: shiftInspectors.rejectionReason,
+        })
+        .from(shiftInspectors)
+        .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
+        .where(eq(shiftInspectors.inspectorGroupId, task.inspectorGroup.id));
+
+      const days = await db
+        .select({
+          id: shiftDays.id,
+          dayOfWeek: shiftDays.dayOfWeek,
+          shiftType: {
+            id: shiftTypes.id,
+            name: shiftTypes.name,
+            startTime: shiftTypes.startTime,
+            endTime: shiftTypes.endTime,
           },
         })
-        .from(shifts)
-        .leftJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
-        .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-        .where(eq(shifts.id, parseInt(id)));
+        .from(shiftDays)
+        .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
+        .where(eq(shiftDays.inspectorGroupId, task.inspectorGroup.id));
 
-      return updatedShift;
-    });
+      return {
+        ...task,
+        inspectorGroup: {
+          ...task.inspectorGroup,
+          inspectors,
+          days,
+        },
+      };
+    })
+  );
 
-    res.json(result);
-  } catch (error) {
-    console.error("Error updating shift inspectors:", error);
-    res.status(500).json({ 
-      message: "Error updating shift inspectors",
-      error: error instanceof Error ? error.message : "Unknown error" 
-    });
-  }
-}
-
-export async function updateShiftDay(req: Request, res: Response) {
-  try {
-    const { id, dayOfWeek } = req.params;
-    const { shiftTypeId } = req.body;
-
-    // Validate parameters
-    if (!id || dayOfWeek === undefined || !shiftTypeId) {
-      return res.status(400).json({ 
-        message: "Missing required parameters",
-        error: "Shift ID, day of week, and shift type ID are required" 
-      });
-    }
-
-    // Start a transaction
-    const result = await db.transaction(async (tx) => {
-      // Delete existing day assignment if any
-      await tx
-        .delete(shiftDays)
-        .where(
-          and(
-            eq(shiftDays.shiftId, parseInt(id)),
-            eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
-          )
-        );
-
-      // Insert new day assignment
-      const [newDay] = await tx
-        .insert(shiftDays)
-        .values({
-          shiftId: parseInt(id),
-          dayOfWeek: parseInt(dayOfWeek),
-          shiftTypeId: parseInt(shiftTypeId),
-        })
-        .returning();
-
-      return newDay;
-    });
-
-    res.json(result);
-  } catch (error) {
-    console.error("Error updating shift day:", error);
-    res.status(500).json({ 
-      message: "Error updating shift day",
-      error: error instanceof Error ? error.message : "Unknown error" 
-    });
-  }
+  return {
+    ...shift,
+    taskAssignments: taskAssignmentsWithDetails,
+  };
 }
 
 export async function handleShiftInspectorResponse(req: Request, res: Response) {
@@ -532,9 +321,11 @@ export async function handleShiftInspectorResponse(req: Request, res: Response) 
     const [shiftInspector] = await db
       .select()
       .from(shiftInspectors)
+      .leftJoin(inspectorGroups, eq(shiftInspectors.inspectorGroupId, inspectorGroups.id))
+      .leftJoin(taskAssignments, eq(taskAssignments.inspectorGroupId, inspectorGroups.id))
       .where(
         and(
-          eq(shiftInspectors.shiftId, parseInt(shiftId)),
+          eq(taskAssignments.shiftId, parseInt(shiftId)),
           eq(shiftInspectors.inspectorId, parseInt(inspectorId))
         )
       )
@@ -560,116 +351,18 @@ export async function handleShiftInspectorResponse(req: Request, res: Response) 
         responseAt: new Date(),
         rejectionReason: action === 'REJECT' ? rejectionReason : null,
       })
-      .where(
-        and(
-          eq(shiftInspectors.shiftId, parseInt(shiftId)),
-          eq(shiftInspectors.inspectorId, parseInt(inspectorId))
-        )
-      )
+      .where(eq(shiftInspectors.id, shiftInspector.id))
       .returning();
 
     res.json(updatedShiftInspector);
   } catch (error) {
     console.error("Error processing shift inspector response:", error);
-    res.status(500).json({ 
-      message: "Error processing shift inspector response",
-      error: error instanceof Error ? error.message : "Unknown error" 
-    });
-  }
-}
-
-export async function getInspectorShiftAssignments(req: Request, res: Response) {
-  try {
-    if (!req.user?.id) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Get all shift assignments where the user is an inspector
-    const assignments = await db
-      .select({
-        id: shifts.id,
-        week: shifts.week,
-        status: shifts.status,
-        rejectionReason: shifts.rejectionReason,
-        role: {
-          id: roles.id,
-          name: roles.name,
-        },
-        building: {
-          id: buildings.id,
-          name: buildings.name,
-          code: buildings.code,
-          area: buildings.area,
-        },
-      })
-      .from(shifts)
-      .leftJoin(roles, eq(shifts.roleId, roles.id))
-      .leftJoin(buildings, eq(shifts.buildingId, buildings.id))
-      .innerJoin(shiftInspectors, eq(shifts.id, shiftInspectors.shiftId))
-      .where(eq(shiftInspectors.inspectorId, req.user.id));
-
-    // Get additional details for each shift
-    const shiftsWithDetails = await Promise.all(
-      assignments.map(async (shift) => {
-        // Get all inspectors for this shift
-        const shiftInspectorsData = await db
-          .select({
-            inspector: {
-              id: users.id,
-              fullName: users.fullName,
-              username: users.username,
-            },
-            isPrimary: shiftInspectors.isPrimary,
-            status: shiftInspectors.status,
-            rejectionReason: shiftInspectors.rejectionReason,
-          })
-          .from(shiftInspectors)
-          .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
-          .where(eq(shiftInspectors.shiftId, shift.id));
-
-        // Get daily assignments
-        const dailyAssignments = await db
-          .select({
-            id: shiftDays.id,
-            dayOfWeek: shiftDays.dayOfWeek,
-            shiftType: {
-              id: shiftTypes.id,
-              name: shiftTypes.name,
-              startTime: shiftTypes.startTime,
-              endTime: shiftTypes.endTime,
-            },
-          })
-          .from(shiftDays)
-          .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
-          .where(eq(shiftDays.shiftId, shift.id));
-
-        return {
-          ...shift,
-          shiftInspectors: shiftInspectorsData,
-          days: dailyAssignments,
-        };
-      })
-    );
-
-    res.json(shiftsWithDetails);
-  } catch (error) {
-    console.error("Error fetching inspector shift assignments:", error);
-    res.status(500).json({ 
-      message: "Error fetching inspector shift assignments",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
+    res.status(500).json({ message: "Error processing shift inspector response" });
   }
 }
 
 export default {
   getShifts,
   createShift,
-  handleShiftResponse,
-  updateShift,
-  getInspectorsByShiftType,
-  getInspectorsByShiftTypeForTask,
-  updateShiftInspectors,
-  updateShiftDay,
   handleShiftInspectorResponse,
-  getInspectorShiftAssignments,
 };

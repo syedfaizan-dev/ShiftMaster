@@ -78,24 +78,17 @@ type InspectorGroup = {
   days: ShiftDay[];
 };
 
-type ShiftAssignment = {
+type TaskAssignment = {
+  id: number;
+  role: { id: number; name: string };
+  inspectorGroup: InspectorGroup;
+};
+
+type Shift = {
   id: number;
   week: string;
-  role: { id: number; name: string };
   building: { id: number; name: string; code: string; area: string };
-  inspectorGroups: InspectorGroup[];
-};
-
-type BuildingWithShifts = {
-  id: number;
-  name: string;
-  code: string;
-  area: string;
-  shifts: ShiftAssignment[];
-};
-
-type BuildingsResponse = {
-  buildings: BuildingWithShifts[];
+  taskAssignments: TaskAssignment[];
 };
 
 const inspectorGroupSchema = z.object({
@@ -117,7 +110,7 @@ export default function WeekDetails() {
   const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
   const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
 
-  const { data: buildingsData, isLoading } = useQuery<BuildingsResponse>({
+  const { data: buildingsData, isLoading } = useQuery<{ buildings: Array<{ id: number; name: string; code: string; area: string; shifts: Shift[] }> }>({
     queryKey: ["/api/buildings/with-shifts"],
     queryFn: async () => {
       const response = await fetch("/api/buildings/with-shifts", {
@@ -159,7 +152,6 @@ export default function WeekDetails() {
     enabled: !!user?.isAdmin,
   });
 
-  // Find the building and shift from the existing data
   const building = buildingsData?.buildings.find(b => b.id.toString() === buildingId);
   const shiftData = building?.shifts.find(s => s.id.toString() === weekId);
 
@@ -329,12 +321,6 @@ export default function WeekDetails() {
               </h1>
               <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                 <span>{building?.name}</span>
-                {shiftData.role && (
-                  <>
-                    <span>•</span>
-                    <span>{shiftData.role.name}</span>
-                  </>
-                )}
               </div>
             </div>
           )}
@@ -343,7 +329,7 @@ export default function WeekDetails() {
             <DialogTrigger asChild>
               <Button className="ml-auto">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Inspector Group
+                Add Task Assignment
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -398,14 +384,14 @@ export default function WeekDetails() {
           </Alert>
         ) : (
           <div className="space-y-6">
-            {shiftData.inspectorGroups.map((group) => (
-              <Card key={group.id}>
+            {shiftData.taskAssignments.map((taskAssignment) => (
+              <Card key={taskAssignment.id}>
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle>{group.name}</CardTitle>
+                      <CardTitle>{taskAssignment.inspectorGroup.name}</CardTitle>
                       <CardDescription>
-                        {group.inspectors.length} Inspectors Assigned
+                        Role: {taskAssignment.role.name} • {taskAssignment.inspectorGroup.inspectors.length} Inspectors Assigned
                       </CardDescription>
                     </div>
                     <Dialog>
@@ -431,7 +417,7 @@ export default function WeekDetails() {
                               <SelectValue placeholder="Select an inspector" />
                             </SelectTrigger>
                             <SelectContent>
-                              {getAvailableInspectorsForGroup(group).map((inspector) => (
+                              {getAvailableInspectorsForGroup(taskAssignment.inspectorGroup).map((inspector) => (
                                 <SelectItem
                                   key={inspector.id}
                                   value={inspector.id.toString()}
@@ -447,7 +433,7 @@ export default function WeekDetails() {
                             onClick={() => {
                               if (selectedInspector) {
                                 assignInspectorMutation.mutate({
-                                  groupId: group.id,
+                                  groupId: taskAssignment.inspectorGroup.id,
                                   inspectorId: parseInt(selectedInspector),
                                 });
                               }
@@ -468,7 +454,7 @@ export default function WeekDetails() {
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {DAYS.map((day, index) => {
-                        const shiftDay = group.days.find(d => d.dayOfWeek === index);
+                        const shiftDay = taskAssignment.inspectorGroup.days.find(d => d.dayOfWeek === index);
                         return (
                           <Card key={index} className="bg-muted/30">
                             <CardHeader className="p-3">
@@ -492,7 +478,7 @@ export default function WeekDetails() {
                               )}
 
                               <Dialog
-                                open={editingDay?.groupId === group.id && editingDay?.dayOfWeek === index}
+                                open={editingDay?.groupId === taskAssignment.inspectorGroup.id && editingDay?.dayOfWeek === index}
                                 onOpenChange={(open) => {
                                   if (!open) {
                                     setEditingDay(null);
@@ -506,7 +492,7 @@ export default function WeekDetails() {
                                     size="sm"
                                     className="mt-2 w-full"
                                     onClick={() => {
-                                      setEditingDay({ groupId: group.id, dayOfWeek: index });
+                                      setEditingDay({ groupId: taskAssignment.inspectorGroup.id, dayOfWeek: index });
                                       singleDayShiftTypeForm.reset({
                                         shiftTypeId: shiftDay?.shiftType?.id.toString() || "none",
                                       });
@@ -602,7 +588,7 @@ export default function WeekDetails() {
                     <div>
                       <h3 className="text-sm font-medium mb-2">Assigned Inspectors</h3>
                       <div className="space-y-2">
-                        {group.inspectors.map((si) => (
+                        {taskAssignment.inspectorGroup.inspectors.map((si) => (
                           <div key={si.inspector.id} className="flex items-center justify-between bg-muted/30 p-2 rounded">
                             <span className="text-sm">{si.inspector.fullName}</span>
                             <Badge variant={
