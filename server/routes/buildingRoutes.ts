@@ -25,10 +25,6 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
 
     console.log("Found buildings:", buildingsData);
 
-    if (!buildingsData) {
-      return res.status(404).json({ message: "No buildings found" });
-    }
-
     // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
       buildingsData.map(async (building) => {
@@ -62,8 +58,7 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                   .from(roles)
                   .where(eq(roles.id, shift.roleId));
 
-                const role = roleResult[0] || null;
-                console.log(`Found role for shift ${shift.id}:`, role);
+                const role = roleResult[0] || { id: 0, name: 'Unknown Role' };
 
                 // Get all inspector groups for this shift
                 const groups = await db
@@ -73,8 +68,6 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                   })
                   .from(inspectorGroups)
                   .where(eq(inspectorGroups.shiftId, shift.id));
-
-                console.log(`Found inspector groups for shift ${shift.id}:`, groups);
 
                 // For each group, get inspectors and daily assignments
                 const groupsWithDetails = await Promise.all(
@@ -97,8 +90,6 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                         .leftJoin(users, eq(shiftInspectors.inspectorId, users.id))
                         .where(eq(shiftInspectors.inspectorGroupId, group.id));
 
-                      console.log(`Found inspectors for group ${group.id}:`, inspectorsResult);
-
                       // Get daily assignments for this group
                       const daysResult = await db
                         .select({
@@ -115,54 +106,80 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
                         .leftJoin(shiftTypes, eq(shiftDays.shiftTypeId, shiftTypes.id))
                         .where(eq(shiftDays.inspectorGroupId, group.id));
 
-                      console.log(`Found days for group ${group.id}:`, daysResult);
-
                       return {
                         ...group,
                         inspectors: inspectorsResult.map(inspector => ({
-                          inspector: inspector.inspector,
+                          inspector: inspector.inspector || {
+                            id: 0,
+                            fullName: 'Unknown Inspector',
+                            username: 'unknown'
+                          },
                           status: inspector.status || "PENDING",
                           isPrimary: inspector.isPrimary || false,
-                          responseAt: inspector.responseAt,
-                          rejectionReason: inspector.rejectionReason,
+                          responseAt: inspector.responseAt || null,
+                          rejectionReason: inspector.rejectionReason || null,
                         })),
                         days: daysResult.map(day => ({
-                          id: day.id,
-                          dayOfWeek: day.dayOfWeek,
+                          id: day.id || 0,
+                          dayOfWeek: day.dayOfWeek || 0,
                           shiftType: day.shiftType?.id ? day.shiftType : null,
                         })),
                       };
                     } catch (groupError) {
                       console.error(`Error processing group ${group.id}:`, groupError);
-                      throw groupError;
+                      return {
+                        ...group,
+                        inspectors: [],
+                        days: [],
+                      };
                     }
                   })
                 );
 
                 return {
-                  ...shift,
+                  id: shift.id,
+                  week: shift.week,
                   role,
+                  buildingId: shift.buildingId,
+                  groupName: shift.groupName,
                   inspectorGroups: groupsWithDetails,
                 };
               } catch (shiftError) {
                 console.error(`Error processing shift ${shift.id}:`, shiftError);
-                throw shiftError;
+                return {
+                  id: shift.id,
+                  week: shift.week,
+                  role: { id: 0, name: 'Unknown Role' },
+                  buildingId: shift.buildingId,
+                  groupName: shift.groupName,
+                  inspectorGroups: [],
+                };
               }
             })
           );
 
           return {
-            ...building,
+            id: building.id,
+            name: building.name,
+            code: building.code,
+            area: building.area,
+            supervisor: building.supervisor || null,
             shifts: shiftsWithDetails,
           };
         } catch (buildingError) {
           console.error(`Error processing building ${building.id}:`, buildingError);
-          throw buildingError;
+          return {
+            id: building.id,
+            name: building.name,
+            code: building.code,
+            area: building.area,
+            supervisor: null,
+            shifts: [],
+          };
         }
       })
     );
 
-    // Send the complete response
     res.json({ buildings: buildingsWithShifts });
   } catch (error) {
     console.error("Error fetching buildings with shifts:", error);
