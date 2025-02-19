@@ -59,23 +59,39 @@ type ShiftAssignment = {
   inspectorGroups: InspectorGroup[];
 };
 
+type BuildingWithShifts = {
+  id: number;
+  name: string;
+  code: string;
+  area: string;
+  shifts: ShiftAssignment[];
+};
+
+type BuildingsResponse = {
+  buildings: BuildingWithShifts[];
+};
+
 export default function WeekDetails() {
   const { user } = useUser();
   const { buildingId, weekId } = useParams();
 
-  const { data: shiftData, isLoading } = useQuery<ShiftAssignment>({
-    queryKey: ["/api/buildings", buildingId, "weeks", weekId],
+  const { data: buildingsData, isLoading } = useQuery<BuildingsResponse>({
+    queryKey: ["/api/buildings/with-shifts"],
     queryFn: async () => {
-      const response = await fetch(`/api/buildings/${buildingId}/weeks/${weekId}`, {
+      const response = await fetch("/api/buildings/with-shifts", {
         credentials: "include",
       });
       if (!response.ok) {
-        throw new Error("Failed to fetch week details");
+        throw new Error("Failed to fetch buildings");
       }
       return response.json();
     },
-    enabled: !!user?.isAdmin && !!buildingId && !!weekId,
+    enabled: !!user?.isAdmin,
   });
+
+  // Find the building and shift from the existing data
+  const building = buildingsData?.buildings.find(b => b.id.toString() === buildingId);
+  const shiftData = building?.shifts.find(s => s.id.toString() === weekId);
 
   if (!user?.isAdmin) {
     return (
