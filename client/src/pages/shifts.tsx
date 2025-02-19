@@ -633,10 +633,6 @@ export default function BuildingShifts() {
   return (
     <Navbar>
       <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Shifts Management</h1>
-        </div>
-
         {/* Filter Form */}
         <Form {...filterForm}>
           <form onSubmit={filterForm.handleSubmit(onFilterSubmit)} className="mb-6">
@@ -798,6 +794,26 @@ export default function BuildingShifts() {
         {/* Show week details if both building and week are selected */}
         {selectedWeek && (
           <>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">
+                  {selectedBuilding?.name} - Week {selectedWeek.week}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Role: {selectedWeek.role.name}
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setIsCreateGroupDialogOpen(true);
+                  setSelectedShift(selectedWeek);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Inspector Group
+              </Button>
+            </div>
+
             <div className="hidden md:block">
               <DataTable columns={columns} data={selectedWeek.inspectorGroups} />
             </div>
@@ -969,8 +985,7 @@ export default function BuildingShifts() {
                       value={inspector.id.toString()}
                     >
                       {inspector.fullName}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>                  ))}
                 </SelectContent>
               </Select>
               <DialogFooter>
