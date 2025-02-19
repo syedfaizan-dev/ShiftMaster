@@ -29,23 +29,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1006,17 +1000,18 @@ export default function BuildingShifts() {
                     type="submit"
                     disabled={updateSingleDayShiftTypeMutation.isPending}
                     onClick={() => {
-                      if (singleDayShiftTypeForm.formState.isValid) {                        setIsEditShiftTypesOpen(false);
-                      }
+                      if (singleDayShiftTypeForm.formState.isValid) {
+                        setIsEditShiftTypesOpen(false);
+                                            }
                     }}
                   >
                     {updateSingleDayShiftTypeMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
+                        Updating...
                       </>
                     ) : (
-                      'Save Changes'
+                      'Update Shift Type'
                     )}
                   </Button>
                 </DialogFooter>
