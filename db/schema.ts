@@ -60,10 +60,7 @@ export const shifts = pgTable("shifts", {
   roleId: integer("role_id").references(() => roles.id).notNull(),
   buildingId: integer("building_id").references(() => buildings.id).notNull(),
   week: text("week").notNull(), // Format: YYYY-WW
-  groupName: text("group_name").notNull(), // New field for inspector groups
-  status: text("status").default('PENDING').notNull(),
-  responseAt: timestamp("response_at"),
-  rejectionReason: text("rejection_reason"),
+  groupName: text("group_name").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
 });
