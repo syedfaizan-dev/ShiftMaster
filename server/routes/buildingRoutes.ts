@@ -25,28 +25,25 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
     // Map through buildings to get shifts and related data
     const buildingsWithShifts = await Promise.all(
       buildingsData.map(async (building) => {
-        // Get shifts for this building
+        // Get shifts for this building with basic info
         const buildingShifts = await db
           .select({
             id: shifts.id,
             week: shifts.week,
-            buildingId: shifts.buildingId,
-            role: {
-              id: roles.id,
-              name: roles.name,
-            },
-            groupName: shifts.groupName,
             status: shifts.status,
+            rejectionReason: shifts.rejectionReason,
+            roleId: shifts.roleId,
+            buildingId: shifts.buildingId,
+            groupName: shifts.groupName,
           })
           .from(shifts)
-          .leftJoin(roles, eq(shifts.roleId, roles.id))
           .where(eq(shifts.buildingId, building.id));
 
-        // For each shift, get inspector groups and their details
+        // For each shift, get inspector groups, role, and daily assignments
         const shiftsWithDetails = await Promise.all(
           buildingShifts.map(async (shift) => {
             // Get all inspector groups for this shift
-            const inspectorGroupsData = await db
+            const groups = await db
               .select({
                 id: inspectorGroups.id,
                 name: inspectorGroups.name,
@@ -54,9 +51,9 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
               .from(inspectorGroups)
               .where(eq(inspectorGroups.shiftId, shift.id));
 
-            // For each inspector group, get inspectors and daily assignments
-            const inspectorGroupsWithDetails = await Promise.all(
-              inspectorGroupsData.map(async (group) => {
+            // For each group, get inspectors and daily assignments
+            const groupsWithDetails = await Promise.all(
+              groups.map(async (group) => {
                 // Get all inspectors for this group
                 const inspectors = await db
                   .select({
@@ -96,9 +93,19 @@ export async function getBuildingsWithShifts(req: Request, res: Response) {
               })
             );
 
+            // Get role details
+            const [role] = await db
+              .select({
+                id: roles.id,
+                name: roles.name,
+              })
+              .from(roles)
+              .where(eq(roles.id, shift.roleId));
+
             return {
               ...shift,
-              inspectorGroups: inspectorGroupsWithDetails,
+              role,
+              inspectorGroups: groupsWithDetails,
             };
           })
         );

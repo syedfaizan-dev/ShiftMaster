@@ -78,14 +78,24 @@ type InspectorGroup = {
   days: ShiftDay[];
 };
 
-type Shift = {
+type ShiftAssignment = {
   id: number;
   week: string;
-  building: { id: number; name: string; code: string; area: string };
   role: { id: number; name: string };
-  groupName: string;
-  status: string;
+  building: { id: number; name: string; code: string; area: string };
   inspectorGroups: InspectorGroup[];
+};
+
+type BuildingWithShifts = {
+  id: number;
+  name: string;
+  code: string;
+  area: string;
+  shifts: ShiftAssignment[];
+};
+
+type BuildingsResponse = {
+  buildings: BuildingWithShifts[];
 };
 
 const inspectorGroupSchema = z.object({
@@ -107,7 +117,7 @@ export default function WeekDetails() {
   const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
   const [editingDay, setEditingDay] = useState<{ groupId: number; dayOfWeek: number } | null>(null);
 
-  const { data: buildingsData, isLoading } = useQuery<{ buildings: Array<{ id: number; name: string; code: string; area: string; shifts: Shift[] }> }>({
+  const { data: buildingsData, isLoading } = useQuery<BuildingsResponse>({
     queryKey: ["/api/buildings/with-shifts"],
     queryFn: async () => {
       const response = await fetch("/api/buildings/with-shifts", {
@@ -149,6 +159,7 @@ export default function WeekDetails() {
     enabled: !!user?.isAdmin,
   });
 
+  // Find the building and shift from the existing data
   const building = buildingsData?.buildings.find(b => b.id.toString() === buildingId);
   const shiftData = building?.shifts.find(s => s.id.toString() === weekId);
 

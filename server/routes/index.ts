@@ -6,6 +6,7 @@ import { registerRoleRoutes } from "./roleRoutes";
 import { registerTaskRoutes } from "./taskRoutes";
 import { registerBuildingRoutes } from "./buildingRoutes";
 import { registerRequestRoutes } from "./requestRoutes";
+import { registerNotificationRoutes } from "./notificationRoutes";
 
 export function registerRoutes(app: Express) {
   registerAuthRoutes(app);
@@ -15,4 +16,5 @@ export function registerRoutes(app: Express) {
   registerTaskRoutes(app);
   registerBuildingRoutes(app);
   registerRequestRoutes(app);
+  registerNotificationRoutes(app);
 }
