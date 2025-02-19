@@ -61,10 +61,8 @@ type Inspector = {
 
 type ShiftInspector = {
   inspector: Inspector;
-  isPrimary: boolean;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
   rejectionReason: string | null;
-  responseAt: string | null;
 };
 
 type ShiftDay = {
@@ -83,6 +81,8 @@ type InspectorGroup = {
 type ShiftAssignment = {
   id: number;
   week: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  rejectionReason: string | null;
   role: { id: number; name: string };
   building: { id: number; name: string; code: string; area: string };
   inspectorGroups: InspectorGroup[];
@@ -479,9 +479,9 @@ export default function WeekDetails() {
                             <CardContent className="p-3 pt-0">
                               {shiftDay?.shiftType ? (
                                 <div className="space-y-1">
-                                  <div className="font-medium text-sm">
+                                  <p className="font-medium text-sm">
                                     {shiftDay.shiftType.name}
-                                  </div>
+                                  </p>
                                   <div className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
                                     <span>
@@ -490,7 +490,7 @@ export default function WeekDetails() {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="text-sm text-muted-foreground">No shift assigned</div>
+                                <p className="text-sm text-muted-foreground">No shift assigned</p>
                               )}
 
                               <Dialog
@@ -606,25 +606,13 @@ export default function WeekDetails() {
                       <div className="space-y-2">
                         {group.inspectors.map((si) => (
                           <div key={si.inspector.id} className="flex items-center justify-between bg-muted/30 p-2 rounded">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">{si.inspector.fullName}</span>
-                              {si.isPrimary && (
-                                <Badge variant="secondary" className="text-xs">Primary</Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={
-                                si.status === "ACCEPTED" ? "default" :
-                                si.status === "REJECTED" ? "destructive" : "secondary"
-                              }>
-                                {si.status}
-                              </Badge>
-                              {si.rejectionReason && (
-                                <span className="text-xs text-muted-foreground">
-                                  Reason: {si.rejectionReason}
-                                </span>
-                              )}
-                            </div>
+                            <span className="text-sm">{si.inspector.fullName}</span>
+                            <Badge variant={
+                              si.status === "ACCEPTED" ? "default" :
+                              si.status === "REJECTED" ? "destructive" : "secondary"
+                            }>
+                              {si.status}
+                            </Badge>
                           </div>
                         ))}
                       </div>
