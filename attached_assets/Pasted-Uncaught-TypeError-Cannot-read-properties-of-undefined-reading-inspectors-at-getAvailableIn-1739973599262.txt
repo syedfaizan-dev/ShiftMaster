@@ -1,0 +1,34 @@
+Uncaught TypeError: Cannot read properties of undefined (reading 'inspectors')
+    at getAvailableInspectorsForGroup (shifts.tsx:370:48)
+    at BuildingShifts (shifts.tsx:649:60)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=fcb683da:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=fcb683da:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=fcb683da:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=fcb683da:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=fcb683da:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=fcb683da:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=fcb683da:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=fcb683da:19198:20)Understand this errorAI
+chunk-RPCDYKBN.js?v=fcb683da:14032 The above error occurred in the <BuildingShifts> component:
+
+    at BuildingShifts (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/pages/shifts.tsx:81:20)
+    at Route (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:323:16)
+    at Switch (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=fcb683da:379:17)
+    at Router (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/src/App.tsx?v=foWO-Euff3iQUBWqrR4Ke:44:31)
+    at QueryClientProvider (https://6f5ee4b1-eefa-4240-834c-adea379ec83b-00-2uoc1y8b65gln.sisko.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=fcb683da:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=fcb683da:14032Understand this errorAI
+chunk-RPCDYKBN.js?v=fcb683da:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'inspectors')
+    at getAvailableInspectorsForGroup (shifts.tsx:370:48)
+    at BuildingShifts (shifts.tsx:649:60)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=fcb683da:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=fcb683da:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=fcb683da:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=fcb683da:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=fcb683da:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=fcb683da:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=fcb683da:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=fcb683da:18736:28)Understand this errorAI

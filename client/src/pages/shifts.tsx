@@ -365,8 +365,8 @@ export default function BuildingShifts() {
     };
   };
 
-  const getAvailableInspectorsForGroup = (group: InspectorGroup) => {
-    if (!availableInspectors) return [];
+  const getAvailableInspectorsForGroup = (group?: InspectorGroup) => {
+    if (!availableInspectors || !group) return [];
     const assignedInspectorIds = new Set(group.inspectors.map((si) => si.inspector.id));
     return availableInspectors.filter((inspector) => !assignedInspectorIds.has(inspector.id));
   };
@@ -375,6 +375,15 @@ export default function BuildingShifts() {
     // Handle form submission if needed
     console.log("Filter form submitted:", data);
   };
+
+  // Reset selected group when building changes
+  useEffect(() => {
+    setSelectedGroup(null);
+    setSelectedInspector(undefined);
+    setIsAddInspectorOpen(false);
+    setIsEditShiftTypesOpen(false);
+    setEditingDay(null);
+  }, [filterForm.watch("buildingId")]);
 
   if (!user?.isAdmin) {
     return (
@@ -426,7 +435,8 @@ export default function BuildingShifts() {
                         value={field.value}
                         onValueChange={(value) => {
                           field.onChange(value);
-                          // When building changes, set the first week as selected
+                          setSelectedGroup(null);
+                          // When building changes, reset the week selection
                           const building = buildingsData?.buildings.find(b => b.id.toString() === value);
                           if (building?.shifts.length) {
                             filterForm.setValue("weekId", building.shifts[0].id.toString());
@@ -646,8 +656,8 @@ export default function BuildingShifts() {
                   <SelectValue placeholder="Select an inspector" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedGroup && availableInspectors && getAvailableInspectorsForGroup(
-                    selectedWeek?.inspectorGroups.find(g => g.id === selectedGroup)!
+                  {selectedGroup && selectedWeek && availableInspectors && getAvailableInspectorsForGroup(
+                    selectedWeek.inspectorGroups.find(g => g.id === selectedGroup)
                   ).map((inspector) => (
                     <SelectItem
                       key={inspector.id}
