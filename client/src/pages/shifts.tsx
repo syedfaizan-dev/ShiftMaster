@@ -58,6 +58,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DataTable } from "@/components/ui/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
 
 // Type definitions
 type ShiftType = {
@@ -481,6 +483,138 @@ export default function BuildingShifts() {
     );
   });
 
+  const columns: ColumnDef<InspectorGroup>[] = [
+    {
+      id: "inspectors",
+      header: "Inspectors Info",
+      cell: ({ row }) => {
+        const group = row.original;
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">{group.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {group.inspectors.length} inspector(s)
+                </div>
+              </div>
+              <div className="flex space-x-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    setSelectedGroup(group.id);
+                    setIsAddInspectorOpen(true);
+                  }}
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setGroupToDelete(group.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              {group.inspectors.map((si) => (
+                <div key={si.inspector.id} className="flex items-center gap-1 text-sm">
+                  <span className="truncate">{si.inspector.fullName}</span>
+                  <Badge
+                    variant={
+                      si.status === "ACCEPTED"
+                        ? "success"
+                        : si.status === "REJECTED"
+                          ? "destructive"
+                          : "default"
+                    }
+                    className="text-xs"
+                  >
+                    {si.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      },
+    },
+    ...DAYS.map((day, index) => ({
+      id: `day-${index}`,
+      header: day,
+      cell: ({ row }) => {
+        const group = row.original;
+        const dayIndex = (index + 1) % 7;
+        const existingDay = group.days.find((d) => d.dayOfWeek === dayIndex);
+
+        return (
+          <div className="min-w-[180px] p-2">
+            {existingDay?.shiftType ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-sm">
+                    {existingDay.shiftType.name}
+                  </span>
+                  <div className="flex space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                        setSelectedGroupForShiftTypes(group);
+                        setIsEditShiftTypesOpen(true);
+                        singleDayShiftTypeForm.reset({
+                          shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
+                        });
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setDayToDelete({ groupId: group.id, dayOfWeek: dayIndex })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {existingDay.shiftType.startTime} - {existingDay.shiftType.endTime}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">No shift assigned</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                    setSelectedGroupForShiftTypes(group);
+                    setIsEditShiftTypesOpen(true);
+                    singleDayShiftTypeForm.reset({
+                      shiftTypeId: "none",
+                    });
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      },
+    })),
+  ];
+
   if (!user?.isAdmin) {
     return (
       <Navbar>
@@ -663,113 +797,86 @@ export default function BuildingShifts() {
 
         {/* Show week details if both building and week are selected */}
         {selectedWeek && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>
-                  {selectedBuilding?.name} - Week {selectedWeek.week}
-                </CardTitle>
-                <CardDescription>
-                  Role: {selectedWeek.role.name}
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsCreateGroupDialogOpen(true);
-                  setSelectedShift(selectedWeek);
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Inspector Group
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[200px]">Inspectors Info</TableHead>
-                      <TableHead className="w-[250px]">Inspectors Group</TableHead>
-                      <TableHead>Monday</TableHead>
-                      <TableHead>Tuesday</TableHead>
-                      <TableHead>Wednesday</TableHead>
-                      <TableHead>Thursday</TableHead>
-                      <TableHead>Friday</TableHead>
-                      <TableHead>Saturday</TableHead>
-                      <TableHead>Sunday</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedWeek.inspectorGroups.map((group) => (
-                      <TableRow key={group.id}>
-                        {/* Inspector group information cell */}
-                        <TableCell className="font-medium p-2">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-medium">{group.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {group.inspectors.length} inspector(s)
-                                </div>
-                              </div>
-                              <div className="flex space-x-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => {
-                                    setSelectedGroup(group.id);
-                                    setIsAddInspectorOpen(true);
-                                  }}
-                                >
-                                  <Users className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => setGroupToDelete(group.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="space-y-1">
-                              {group.inspectors.map((si) => (
-                                <div key={si.inspector.id} className="flex items-center gap-1 text-sm">
-                                  <span className="truncate">{si.inspector.fullName}</span>
-                                  <Badge
-                                    variant={
-                                      si.status === "ACCEPTED"
-                                        ? "success"
-                                        : si.status === "REJECTED"
-                                          ? "destructive"
-                                          : "default"
-                                    }
-                                    className="text-xs"
-                                  >
-                                    {si.status}
-                                  </Badge>
-                                </div>
-                              ))}
-                            </div>
+          <>
+            <div className="hidden md:block">
+              <DataTable columns={columns} data={selectedWeek.inspectorGroups} />
+            </div>
+
+            {/* Mobile view */}
+            <div className="block md:hidden space-y-6">
+              {selectedWeek.inspectorGroups.map((group) => (
+                <Card key={group.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>{group.name}</CardTitle>
+                        <CardDescription>{group.inspectors.length} inspector(s)</CardDescription>
+                      </div>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setSelectedGroup(group.id);
+                            setIsAddInspectorOpen(true);
+                          }}
+                        >
+                          <Users className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setGroupToDelete(group.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Inspectors</h4>
+                        {group.inspectors.map((si) => (
+                          <div key={si.inspector.id} className="flex items-center gap-1 text-sm">
+                            <span className="truncate">{si.inspector.fullName}</span>
+                            <Badge
+                              variant={
+                                si.status === "ACCEPTED"
+                                  ? "success"
+                                  : si.status === "REJECTED"
+                                    ? "destructive"
+                                    : "default"
+                              }
+                              className="text-xs"
+                            >
+                              {si.status}
+                            </Badge>
                           </div>
-                        </TableCell>
-                        {/* Cell content for shift days */}
-                        {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => {
-                          const existingDay = group.days.find(
-                            (d) => d.dayOfWeek === dayIndex
-                          );
-                          return (
-                            <TableCell key={dayIndex} className="p-2">
-                              <div className="min-w-[180px]">
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Weekly Schedule</h4>
+                        <div className="grid grid-cols-1 gap-4">
+                          {DAYS.map((day, index) => {
+                            const dayIndex = (index + 1) % 7;
+                            const existingDay = group.days.find((d) => d.dayOfWeek === dayIndex);
+                            return (
+                              <div key={day} className="flex items-center justify-between p-2 rounded-lg border">
+                                <div className="font-medium">{day}</div>
                                 {existingDay?.shiftType ? (
                                   <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-medium text-sm">
-                                        {existingDay.shiftType.name}
-                                      </span>
+                                    <div className="flex items-center gap-4">
+                                      <div>
+                                        <div className="font-medium text-sm">
+                                          {existingDay.shiftType.name}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {existingDay.shiftType.startTime} - {existingDay.shiftType.endTime}
+                                        </div>
+                                      </div>
                                       <div className="flex space-x-1">
                                         <Button
                                           variant="ghost"
@@ -796,13 +903,10 @@ export default function BuildingShifts() {
                                         </Button>
                                       </div>
                                     </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {existingDay.shiftType.startTime} - {existingDay.shiftType.endTime}
-                                    </div>
                                   </div>
                                 ) : (
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm text-muted-foreground">No shift assigned</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">No shift</span>
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -821,16 +925,16 @@ export default function BuildingShifts() {
                                   </div>
                                 )}
                               </div>
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Add Inspector Dialog */}
