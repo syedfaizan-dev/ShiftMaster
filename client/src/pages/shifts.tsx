@@ -481,93 +481,81 @@ export default function BuildingShifts() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="p-2 text-left font-medium">Inspectors Info</th>
-                        <th className="p-2 text-left font-medium">Inspectors Group</th>
-                        <th className="p-2 text-center font-medium">Monday</th>
-                        <th className="p-2 text-center font-medium">Tuesday</th>
-                        <th className="p-2 text-center font-medium">Wednesday</th>
-                        <th className="p-2 text-center font-medium">Thursday</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedWeek.inspectorGroups.map((group) => (
-                        <tr key={group.id} className="border-b">
-                          <td className="p-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{group.inspectors.length}</span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedGroup(group.id)}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add
-                              </Button>
+                {selectedWeek.inspectorGroups.map((group) => (
+                  <div key={group.id} className="space-y-4 border rounded-lg p-4 mb-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-medium">{group.name}</h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedGroup(group.id)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Inspector
+                      </Button>
+                    </div>
+
+                    {/* Days Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {DAYS.map((day, dayIndex) => {
+                        const existingDay = group.days.find(
+                          (d) => d.dayOfWeek === dayIndex
+                        );
+                        return (
+                          <div
+                            key={dayIndex}
+                            className="flex items-center justify-between p-3 bg-secondary/10 rounded-md"
+                          >
+                            <div>
+                              <p className="font-medium">{day}</p>
+                              {existingDay?.shiftType ? (
+                                <p className="text-sm text-muted-foreground">
+                                  {existingDay.shiftType.name}
+                                  <br />
+                                  {existingDay.shiftType.startTime} -{" "}
+                                  {existingDay.shiftType.endTime}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  No shift assigned
+                                </p>
+                              )}
                             </div>
-                          </td>
-                          <td className="p-2">
-                            <div className="space-y-1">
-                              <div className="font-medium">{group.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {group.inspectors.map(si => si.inspector.fullName).join(', ')}
-                              </div>
-                            </div>
-                          </td>
-                          {[1, 2, 3, 4].map((dayIndex) => {
-                            const dayShift = group.days.find(
-                              (d) => d.dayOfWeek === dayIndex
-                            );
-                            return (
-                              <td key={dayIndex} className="p-2">
-                                <div className="flex flex-col items-center">
-                                  {dayShift?.shiftType ? (
-                                    <>
-                                      <div className="font-medium">{dayShift.shiftType.name}</div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {dayShift.shiftType.startTime} - {dayShift.shiftType.endTime}
-                                      </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                          setSelectedGroupForShiftTypes(group);
-                                          singleDayShiftTypeForm.reset({
-                                            shiftTypeId: dayShift.shiftType.id.toString(),
-                                          });
-                                        }}
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
-                                        setSelectedGroupForShiftTypes(group);
-                                        singleDayShiftTypeForm.reset({
-                                          shiftTypeId: "none",
-                                        });
-                                      }}
-                                    >
-                                      <Plus className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingDay({ groupId: group.id, dayOfWeek: dayIndex });
+                                setSelectedGroupForShiftTypes(group);
+                                singleDayShiftTypeForm.reset({
+                                  shiftTypeId: existingDay?.shiftType?.id.toString() || "none",
+                                });
+                              }}
+                            >
+                              {existingDay?.shiftType ? (
+                                <>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* View Inspectors Button */}
+                    <Button variant="outline" size="sm">
+                      <Users className="h-4 w-4 mr-2" />
+                      View Inspectors
+                    </Button>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
