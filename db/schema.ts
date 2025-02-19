@@ -218,7 +218,8 @@ export const taskTypes = pgTable("task_types", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  inspectorGroupId: integer("inspector_group_id").references(() => inspectorGroups.id).notNull(),
+  inspectorId: integer("inspector_id").references(() => users.id).notNull(),
+  shiftTypeId: integer("shift_type_id").references(() => shiftTypes.id).notNull(),
   taskTypeId: integer("task_type_id").references(() => taskTypes.id).notNull(),
   status: text("status").default("PENDING").notNull(),
   date: timestamp("date").notNull(),
@@ -229,13 +230,17 @@ export const tasks = pgTable("tasks", {
 });
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
-  inspectorGroup: one(inspectorGroups, {
-    fields: [tasks.inspectorGroupId],
-    references: [inspectorGroups.id],
+  inspector: one(users, {
+    fields: [tasks.inspectorId],
+    references: [users.id],
   }),
   assignedUtility: one(utilities, {
     fields: [tasks.assignedTo],
     references: [utilities.id],
+  }),
+  shiftType: one(shiftTypes, {
+    fields: [tasks.shiftTypeId],
+    references: [shiftTypes.id],
   }),
   taskType: one(taskTypes, {
     fields: [tasks.taskTypeId],
@@ -260,8 +265,9 @@ export type Task = typeof tasks.$inferSelect;
 export type InsertTask = typeof tasks.$inferInsert;
 
 export type TaskWithRelations = Task & {
-  inspectorGroup?: InspectorGroup;
+  inspector?: User;
   assignedUtility?: Utility;
+  shiftType?: typeof shiftTypes.$inferSelect;
   taskType?: TaskType;
 };
 
