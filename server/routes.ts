@@ -1887,62 +1887,68 @@ export function registerRoutes(app: Express): Server {
     },
   );
 
-  const updateShiftDay = async (req: Request, res: Response) => {
-    try {
-      const { groupId, dayOfWeek } = req.params;
-      const { shiftTypeId } = req.body;
+  // Get all shift types for the updated shift day endpoint.
+  app.put(
+    "/api/admin/inspector-groups/:groupId/days/:dayOfWeek",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { groupId, dayOfWeek } = req.params;
+        const { shiftTypeId } = req.body;
 
-      console.log("Updating shift day:", { groupId, dayOfWeek, shiftTypeId });
+        console.log("Updating shift day:", { groupId, dayOfWeek, shiftTypeId });
 
-      // Validate the input parameters
-      if (!groupId || isNaN(parseInt(groupId))) {
-        return res.status(400).json({ message: "Invalid group ID" });
-      }
+        // Validate group ID and day of week
+        const groupIdNum = parseInt(groupId);
+        const dayOfWeekNum = parseInt(dayOfWeek);
 
-      if (!dayOfWeek || isNaN(parseInt(dayOfWeek))) {
-        return res.status(400).json({ message: "Invalid day of week" });
-      }
+        if (isNaN(groupIdNum)) {
+          return res.status(400).json({ message: "Invalid group ID" });
+        }
 
-      // Check if the group exists
-      const [existingGroup] = await db
-        .select()
-        .from(inspectorGroups)
-        .where(eq(inspectorGroups.id, parseInt(groupId)))
-        .limit(1);
+        if (isNaN(dayOfWeekNum)) {
+          return res.status(400).json({ message: "Invalid day of week" });
+        }
 
-      if (!existingGroup) {
-        return res.status(404).json({ message: "Inspector group not found" });
-      }
+        // Check if the group exists
+        const [existingGroup] = await db
+          .select()
+          .from(inspectorGroups)
+          .where(eq(inspectorGroups.id, groupIdNum))
+          .limit(1);
 
-      // Check if a day entry exists
-      const [existingDay] = await db
-        .select()
-        .from(shiftDays)
-        .where(
-          and(
-            eq(shiftDays.inspectorGroupId, parseInt(groupId)),
-            eq(shiftDays.dayOfWeek, parseInt(dayOfWeek))
+        if (!existingGroup) {
+          return res.status(404).json({ message: "Inspector group not found" });
+        }
+
+        // Find existing day entry
+        const [existingDay] = await db
+          .select()
+          .from(shiftDays)
+          .where(
+            and(
+              eq(shiftDays.inspectorGroupId, groupIdNum),
+              eq(shiftDays.dayOfWeek, dayOfWeekNum)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
 
-      // Handle shift type removal (when shiftTypeId is null)
-      if (shiftTypeId === null && existingDay) {
-        await db
-          .delete(shiftDays)
-          .where(eq(shiftDays.id, existingDay.id));
+        // Handle shift type removal (shiftTypeId is null)
+        if (shiftTypeId === null) {
+          if (existingDay) {
+            // Delete the existing day entry
+            await db
+              .delete(shiftDays)
+              .where(eq(shiftDays.id, existingDay.id));
 
-        return res.json({ message: "Shift type removed successfully" });
-      }
+            return res.json({ message: "Shift type removed successfully" });
+          }
+          return res.json({ message: "No shift type to remove" });
+        }
 
-      // If trying to remove a non-existent shift type, return success
-      if (shiftTypeId === null && !existingDay) {
-        return res.json({ message: "No shift type to remove" });
-      }
-
-      // For updates or new assignments, validate shiftTypeId
-      if (shiftTypeId !== null) {
-        if (isNaN(parseInt(shiftTypeId.toString()))) {
+        // For updates or new assignments
+        const shiftTypeIdNum = parseInt(shiftTypeId.toString());
+        if (isNaN(shiftTypeIdNum)) {
           return res.status(400).json({ message: "Invalid shift type ID" });
         }
 
@@ -1950,46 +1956,46 @@ export function registerRoutes(app: Express): Server {
         const [shiftType] = await db
           .select()
           .from(shiftTypes)
-          .where(eq(shiftTypes.id, parseInt(shiftTypeId.toString())))
+          .where(eq(shiftTypes.id, shiftTypeIdNum))
           .limit(1);
 
         if (!shiftType) {
-          return res.status(400).json({ message: "Invalid shift type" });
+          return res.status(400).json({ message: "Shift type not found" });
         }
-      }
 
-      if (existingDay) {
-        // Update existing day
-        const [updatedDay] = await db
-          .update(shiftDays)
-          .set({
-            shiftTypeId: parseInt(shiftTypeId.toString()),
+        if (existingDay) {
+          // Update existing day
+          const [updatedDay] = await db
+            .update(shiftDays)
+            .set({
+              shiftTypeId: shiftTypeIdNum,
+            })
+            .where(eq(shiftDays.id, existingDay.id))
+            .returning();
+
+          return res.json(updatedDay);
+        }
+
+        // Create new day entry
+        const [newDay] = await db
+          .insert(shiftDays)
+          .values({
+            inspectorGroupId: groupIdNum,
+            dayOfWeek: dayOfWeekNum,
+            shiftTypeId: shiftTypeIdNum,
           })
-          .where(eq(shiftDays.id, existingDay.id))
           .returning();
 
-        return res.json(updatedDay);
+        res.json(newDay);
+      } catch (error) {
+        console.error("Error updating shift day:", error);
+        res.status(500).json({
+          message: "Error updating shift day",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
       }
-
-      // Create new day entry
-      const [newDay] = await db
-        .insert(shiftDays)
-        .values({
-          inspectorGroupId: parseInt(groupId),
-          dayOfWeek: parseInt(dayOfWeek),
-          shiftTypeId: parseInt(shiftTypeId.toString()),
-        })
-        .returning();
-
-      res.json(newDay);
-    } catch (error) {
-      console.error("Error updating shift day:", error);
-      res.status(500).json({ message: "Error updating shift day" });
     }
-  };
-
-  // Register the route
-  app.put("/api/admin/inspector-groups/:groupId/days/:dayOfWeek", requireAdmin, updateShiftDay);
+  );
 
   const server = createServer(app);
   return server;
